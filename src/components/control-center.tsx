@@ -1,0 +1,1034 @@
+"use client";
+
+import {
+  Activity,
+  ArrowDownToLine,
+  Bell,
+  Bot,
+  Boxes,
+  Building2,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleDollarSign,
+  ClipboardCheck,
+  Clock3,
+  Command,
+  FileClock,
+  FileKey2,
+  Filter,
+  GitBranch,
+  LayoutDashboard,
+  LockKeyhole,
+  Menu,
+  MoreHorizontal,
+  PlugZap,
+  Plus,
+  Search,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  SlidersHorizontal,
+  X,
+  XCircle,
+  Zap,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  agents as initialAgents,
+  approvals as initialApprovals,
+  auditEvents as initialAuditEvents,
+  chartData,
+  integrations,
+  policies as initialPolicies,
+} from "@/lib/demo-data";
+import type {
+  Agent,
+  AgentStatus,
+  Approval,
+  AuditEvent,
+  Integration,
+  Policy,
+  RiskLevel,
+} from "@/lib/types";
+
+type View =
+  | "overview"
+  | "agents"
+  | "approvals"
+  | "policies"
+  | "audit"
+  | "integrations";
+
+const navItems: Array<{
+  id: View;
+  label: string;
+  icon: typeof LayoutDashboard;
+}> = [
+  { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "agents", label: "Agents", icon: Bot },
+  { id: "approvals", label: "Approvals", icon: ClipboardCheck },
+  { id: "policies", label: "Policies", icon: Shield },
+  { id: "audit", label: "Audit log", icon: FileClock },
+  { id: "integrations", label: "Integrations", icon: PlugZap },
+];
+
+const titles: Record<View, string> = {
+  overview: "Control center",
+  agents: "Agent registry",
+  approvals: "Approval queue",
+  policies: "Policy engine",
+  audit: "Audit log",
+  integrations: "Integrations",
+};
+
+function money(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function statusLabel(status: AgentStatus) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function Status({ status }: { status: AgentStatus }) {
+  return (
+    <span className={`status status-${status}`}>
+      <span className="status-dot" />
+      {statusLabel(status)}
+    </span>
+  );
+}
+
+function Risk({ risk }: { risk: RiskLevel }) {
+  return (
+    <span className={`risk risk-${risk}`}>
+      <span className="risk-dot" />
+      {risk} risk
+    </span>
+  );
+}
+
+function BrandMark({ small = false }: { small?: boolean }) {
+  return (
+    <span className={`brand-mark ${small ? "brand-mark-small" : ""}`}>
+      <ShieldCheck aria-hidden="true" />
+    </span>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: typeof Bot;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="empty-state">
+      <Icon aria-hidden="true" />
+      <h3>{title}</h3>
+      <p>{description}</p>
+    </div>
+  );
+}
+
+function TopBar({
+  view,
+  onMenu,
+}: {
+  view: View;
+  onMenu: () => void;
+}) {
+  return (
+    <header className="topbar">
+      <button className="icon-button menu-button" onClick={onMenu} aria-label="Open navigation">
+        <Menu />
+      </button>
+      <h1>{titles[view]}</h1>
+      <div className="topbar-actions">
+        <button className="organization-control">
+          <Building2 />
+          <span>Aperture Labs</span>
+          <ChevronDown />
+        </button>
+        <button className="command-control" aria-label="Search or run command">
+          <Search />
+          <span>Search or run command…</span>
+          <kbd>
+            <Command />K
+          </kbd>
+        </button>
+        <button className="icon-button notification-button" aria-label="Notifications">
+          <Bell />
+          <span />
+        </button>
+        <button className="profile-control">
+          <span className="avatar">MP</span>
+          <span className="profile-name">Maya Patel</span>
+          <ChevronDown />
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function Sidebar({
+  view,
+  open,
+  pendingCount,
+  onSelect,
+  onClose,
+}: {
+  view: View;
+  open: boolean;
+  pendingCount: number;
+  onSelect: (view: View) => void;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      {open && <button className="mobile-overlay" onClick={onClose} aria-label="Close navigation" />}
+      <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
+        <div className="brand">
+          <BrandMark />
+          <span>
+            Sentinel<strong>Ops</strong>
+          </span>
+          <button className="icon-button sidebar-close" onClick={onClose} aria-label="Close navigation">
+            <X />
+          </button>
+        </div>
+        <nav aria-label="Product navigation">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const selected = view === item.id;
+            return (
+              <button
+                key={item.id}
+                className={`nav-item ${selected ? "nav-item-selected" : ""}`}
+                onClick={() => {
+                  onSelect(item.id);
+                  onClose();
+                }}
+                aria-current={selected ? "page" : undefined}
+              >
+                <Icon />
+                <span>{item.label}</span>
+                {item.id === "approvals" && pendingCount > 0 && (
+                  <span className="nav-count">{pendingCount}</span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="system-state">
+            <span className="online-dot" />
+            <div>
+              <span>System status</span>
+              <strong>All systems operational</strong>
+            </div>
+          </div>
+          <button className="collapse-control">
+            <ChevronLeft />
+            Collapse
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+function Metric({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: typeof Bot;
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="metric">
+      <Icon className="metric-icon" />
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small>{detail}</small>
+      </div>
+    </div>
+  );
+}
+
+function ActivityChart() {
+  const width = 760;
+  const height = 210;
+  const padding = { left: 38, right: 12, top: 10, bottom: 24 };
+  const max = 1000;
+  const x = (index: number) =>
+    padding.left +
+    (index * (width - padding.left - padding.right)) / (chartData.length - 1);
+  const y = (value: number) =>
+    padding.top +
+    (1 - value / max) * (height - padding.top - padding.bottom);
+  const points = (key: "allowed" | "approved" | "blocked") =>
+    chartData.map((item, index) => `${x(index)},${y(item[key])}`).join(" ");
+
+  return (
+    <section className="panel chart-panel">
+      <div className="section-heading">
+        <div>
+          <h2>Actions over time</h2>
+          <p>Policy decisions across the last 7 days</p>
+        </div>
+        <button className="secondary-button">
+          <Clock3 /> Last 7 days <ChevronDown />
+        </button>
+      </div>
+      <div className="chart-legend" aria-hidden="true">
+        <span><i className="legend-allowed" />Allowed</span>
+        <span><i className="legend-approved" />Approved</span>
+        <span><i className="legend-blocked" />Blocked</span>
+      </div>
+      <div className="chart-wrap">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+          role="img"
+          aria-label="Seven day chart of allowed, approved, and blocked agent actions"
+        >
+          {[0, 250, 500, 750, 1000].map((value) => (
+            <g key={value}>
+              <line
+                x1={padding.left}
+                x2={width - padding.right}
+                y1={y(value)}
+                y2={y(value)}
+                className="chart-grid-line"
+              />
+              <text x={0} y={y(value) + 3} className="chart-axis-label">{value.toLocaleString()}</text>
+            </g>
+          ))}
+          <polyline points={points("allowed")} className="chart-line chart-line-allowed" />
+          <polyline points={points("approved")} className="chart-line chart-line-approved" />
+          <polyline points={points("blocked")} className="chart-line chart-line-blocked" />
+          {(["allowed", "approved", "blocked"] as const).flatMap((key) =>
+            chartData.map((item, index) => (
+              <circle
+                key={`${key}-${item.day}`}
+                cx={x(index)}
+                cy={y(item[key])}
+                r={key === "allowed" ? 3.5 : 3}
+                className={`chart-point chart-point-${key}`}
+              />
+            )),
+          )}
+          {chartData.map((item, index) => (
+            <text
+              key={item.day}
+              x={x(index)}
+              y={height - 3}
+              textAnchor="middle"
+              className="chart-axis-label chart-day-label"
+            >
+              {item.day}
+            </text>
+          ))}
+        </svg>
+      </div>
+    </section>
+  );
+}
+
+function RiskPosture({ events }: { events: AuditEvent[] }) {
+  return (
+    <section className="panel risk-panel">
+      <div className="section-heading">
+        <div>
+          <h2>Live risk posture</h2>
+          <p>Latest policy events</p>
+        </div>
+        <span className="live-label"><span />Live</span>
+      </div>
+      <div className="risk-timeline">
+        {events.slice(0, 5).map((event) => (
+          <div className="risk-event" key={event.id}>
+            <span className={`timeline-marker marker-${event.result.toLowerCase()}`}>
+              {event.result === "Blocked" ? <ShieldAlert /> : <Check />}
+            </span>
+            <time>{event.time}</time>
+            <div>
+              <strong>{event.action}</strong>
+              <span>{event.agent}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AgentTable({
+  agents,
+  compact = false,
+}: {
+  agents: Agent[];
+  compact?: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<"all" | AgentStatus>("all");
+  const filtered = agents.filter((agent) => {
+    const matchesQuery =
+      agent.name.toLowerCase().includes(query.toLowerCase()) ||
+      agent.owner.toLowerCase().includes(query.toLowerCase());
+    return matchesQuery && (status === "all" || agent.status === status);
+  });
+
+  return (
+    <section className={`panel table-panel ${compact ? "table-panel-compact" : ""}`}>
+      <div className="section-heading table-heading">
+        <div>
+          <h2>{compact ? "Agent activity" : "AI agent inventory"}</h2>
+          {!compact && <p>Ownership, permissions, health, and recent activity</p>}
+        </div>
+        <div className="table-controls">
+          <label className="search-field">
+            <Search />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search agents…"
+              aria-label="Search agents"
+            />
+          </label>
+          <label className="select-field">
+            <Filter />
+            <select
+              value={status}
+              onChange={(event) => setStatus(event.target.value as "all" | AgentStatus)}
+              aria-label="Filter by status"
+            >
+              <option value="all">All statuses</option>
+              <option value="healthy">Healthy</option>
+              <option value="review">Review</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </label>
+          <button className="icon-button bordered" aria-label="Export agents">
+            <ArrowDownToLine />
+          </button>
+        </div>
+      </div>
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Status</th>
+              <th>Owner</th>
+              <th>Last action</th>
+              <th>Permissions</th>
+              <th>Actions (7d)</th>
+              <th>Cost (MTD)</th>
+              <th aria-label="Actions" />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((agent) => (
+              <tr key={agent.id}>
+                <td>
+                  <div className="agent-name-cell">
+                    <span className="agent-icon"><Bot /></span>
+                    <div>
+                      <strong>{agent.name}</strong>
+                      {!compact && <span>{agent.provider}</span>}
+                    </div>
+                  </div>
+                </td>
+                <td><Status status={agent.status} /></td>
+                <td>
+                  <div className="owner-cell">
+                    <span>{agent.owner.split(" ").map((part) => part[0]).join("")}</span>
+                    <div><strong>{agent.owner}</strong><small>{agent.team}</small></div>
+                  </div>
+                </td>
+                <td>
+                  <strong className="plain-strong">{agent.lastAction}</strong>
+                  <small className="cell-subtext">{agent.lastSeen}</small>
+                </td>
+                <td>
+                  <strong className="plain-strong">{agent.permissions[0]}</strong>
+                  <small className="cell-subtext">{agent.permissions.length} scopes</small>
+                </td>
+                <td className="mono">{agent.actions.toLocaleString()}</td>
+                <td className="mono">{money(agent.cost)}</td>
+                <td><button className="icon-button row-action" aria-label={`More actions for ${agent.name}`}><MoreHorizontal /></button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {filtered.length === 0 && (
+        <EmptyState icon={Search} title="No agents found" description="Try a different name or status filter." />
+      )}
+      <div className="table-footer">
+        <span>Showing {filtered.length} of {agents.length} agents</span>
+        <div className="pagination">
+          <button disabled><ChevronLeft /></button>
+          <button className="page-active">1</button>
+          <button>2</button>
+          <button>3</button>
+          <button><ChevronRight /></button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ApprovalCard({
+  approval,
+  onDecision,
+}: {
+  approval: Approval;
+  onDecision: (approval: Approval, decision: "approved" | "denied") => void;
+}) {
+  return (
+    <article className="approval-card">
+      <div className="approval-meta">
+        <Risk risk={approval.risk} />
+        <time>{approval.requestedAt}</time>
+      </div>
+      <div className="approval-title">
+        <span className="agent-icon">{approval.agentName.includes("GitHub") ? <GitBranch /> : <Bot />}</span>
+        <div><strong>{approval.agentName}</strong><span>{approval.request}</span></div>
+      </div>
+      <dl>
+        <div><dt>Resource</dt><dd>{approval.resource}</dd></div>
+        <div><dt>Context</dt><dd>{approval.context}</dd></div>
+      </dl>
+      <div className="approval-actions">
+        <button className="primary-button" onClick={() => onDecision(approval, "approved")}>
+          <Check /> Approve
+        </button>
+        <button className="secondary-button" onClick={() => onDecision(approval, "denied")}>
+          <XCircle /> Deny
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function ApprovalRail({
+  approvals,
+  onDecision,
+  onViewAll,
+}: {
+  approvals: Approval[];
+  onDecision: (approval: Approval, decision: "approved" | "denied") => void;
+  onViewAll: () => void;
+}) {
+  return (
+    <aside className="approval-rail panel">
+      <div className="section-heading">
+        <div><h2>Approval queue <span>{approvals.length}</span></h2><p>Human review required</p></div>
+        <button className="text-button" onClick={onViewAll}>View all</button>
+      </div>
+      <div className="approval-list">
+        {approvals.length ? (
+          approvals.slice(0, 3).map((approval) => (
+            <ApprovalCard key={approval.id} approval={approval} onDecision={onDecision} />
+          ))
+        ) : (
+          <EmptyState icon={CheckCircle2} title="Queue cleared" description="There are no actions waiting for review." />
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function Overview({
+  agents,
+  approvals,
+  audit,
+  onRegister,
+  onDecision,
+  onViewApprovals,
+}: {
+  agents: Agent[];
+  approvals: Approval[];
+  audit: AuditEvent[];
+  onRegister: () => void;
+  onDecision: (approval: Approval, decision: "approved" | "denied") => void;
+  onViewApprovals: () => void;
+}) {
+  const totalSpend = agents.reduce((sum, agent) => sum + agent.cost, 0);
+  return (
+    <main className="page overview-page">
+      <div className="page-title-row">
+        <div>
+          <h2>Good morning, Maya</h2>
+          <p>Your AI workforce is operating within policy.</p>
+        </div>
+        <button className="primary-button primary-large" onClick={onRegister}>
+          <Bot /> Register agent
+        </button>
+      </div>
+      <section className="metrics-band">
+        <Metric icon={Bot} label="Active agents" value="24" detail={`${agents.filter((a) => a.status === "healthy").length} registered here`} />
+        <Metric icon={ShieldCheck} label="Policy compliance" value="98.4%" detail="Last 7 days" />
+        <Metric icon={ClipboardCheck} label="Pending approvals" value={String(approvals.length)} detail="Requires review" />
+        <Metric icon={CircleDollarSign} label="Monthly AI spend" value="$18.6k" detail={`${money(totalSpend)} across visible agents`} />
+      </section>
+      <div className="dashboard-grid">
+        <div className="dashboard-main">
+          <div className="analytics-grid">
+            <ActivityChart />
+            <RiskPosture events={audit} />
+          </div>
+          <AgentTable agents={agents} compact />
+        </div>
+        <ApprovalRail approvals={approvals} onDecision={onDecision} onViewAll={onViewApprovals} />
+      </div>
+    </main>
+  );
+}
+
+function AgentsView({
+  agents,
+  onRegister,
+}: {
+  agents: Agent[];
+  onRegister: () => void;
+}) {
+  return (
+    <main className="page">
+      <div className="page-title-row">
+        <div><h2>AI agent inventory</h2><p>Every autonomous system, owner, permission, and health signal in one place.</p></div>
+        <button className="primary-button primary-large" onClick={onRegister}><Plus /> Register agent</button>
+      </div>
+      <div className="summary-strip">
+        <span><strong>{agents.length}</strong> Registered</span>
+        <span><strong>{agents.filter((a) => a.status === "healthy").length}</strong> Healthy</span>
+        <span><strong>{agents.filter((a) => a.status !== "healthy").length}</strong> Need attention</span>
+        <span><strong>{new Set(agents.map((a) => a.team)).size}</strong> Teams</span>
+      </div>
+      <AgentTable agents={agents} />
+    </main>
+  );
+}
+
+function ApprovalsView({
+  approvals,
+  onDecision,
+}: {
+  approvals: Approval[];
+  onDecision: (approval: Approval, decision: "approved" | "denied") => void;
+}) {
+  return (
+    <main className="page">
+      <div className="page-title-row">
+        <div><h2>Approval queue</h2><p>Review consequential actions before they reach production systems.</p></div>
+        <button className="secondary-button"><SlidersHorizontal /> Routing rules</button>
+      </div>
+      <div className="filter-row">
+        <button className="filter-chip filter-active">Pending <span>{approvals.length}</span></button>
+        <button className="filter-chip">High risk</button>
+        <button className="filter-chip">Assigned to me</button>
+      </div>
+      {approvals.length ? (
+        <div className="approvals-grid">
+          {approvals.map((approval) => (
+            <ApprovalCard key={approval.id} approval={approval} onDecision={onDecision} />
+          ))}
+        </div>
+      ) : (
+        <section className="panel">
+          <EmptyState icon={CheckCircle2} title="Everything is reviewed" description="New high-impact agent actions will appear here." />
+        </section>
+      )}
+    </main>
+  );
+}
+
+function PoliciesView({
+  policies,
+  onToggle,
+}: {
+  policies: Policy[];
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <main className="page">
+      <div className="page-title-row">
+        <div><h2>Policy engine</h2><p>Turn governance requirements into controls that execute on every agent action.</p></div>
+        <button className="primary-button primary-large"><Plus /> Create policy</button>
+      </div>
+      <div className="policy-layout">
+        <section className="panel policy-list">
+          <div className="section-heading">
+            <div><h2>Enforcement policies</h2><p>{policies.filter((p) => p.enabled).length} policies active</p></div>
+            <button className="secondary-button"><Filter /> Filter</button>
+          </div>
+          {policies.map((policy) => (
+            <article className="policy-row" key={policy.id}>
+              <div className={`policy-icon policy-${policy.mode.toLowerCase()}`}>
+                {policy.mode === "Block" ? <LockKeyhole /> : policy.mode === "Approval" ? <ClipboardCheck /> : <Activity />}
+              </div>
+              <div className="policy-copy">
+                <div><h3>{policy.name}</h3><span className={`mode mode-${policy.mode.toLowerCase()}`}>{policy.mode}</span></div>
+                <p>{policy.description}</p>
+                <small>{policy.scope} · {policy.matches} matches in 7 days</small>
+              </div>
+              <button
+                role="switch"
+                aria-checked={policy.enabled}
+                aria-label={`${policy.enabled ? "Disable" : "Enable"} ${policy.name}`}
+                className={`toggle ${policy.enabled ? "toggle-on" : ""}`}
+                onClick={() => onToggle(policy.id)}
+              >
+                <span />
+              </button>
+            </article>
+          ))}
+        </section>
+        <aside className="panel policy-insight">
+          <div className="insight-icon"><ShieldCheck /></div>
+          <h2>98.4%</h2>
+          <strong>Policy compliance</strong>
+          <p>Controls evaluated 4,118 actions this week. 103 risky actions were blocked automatically.</p>
+          <div className="insight-bars">
+            <span><i style={{ width: "96%" }} />Allowed <b>3,561</b></span>
+            <span><i style={{ width: "42%" }} />Approved <b>454</b></span>
+            <span><i style={{ width: "18%" }} />Blocked <b>103</b></span>
+          </div>
+        </aside>
+      </div>
+    </main>
+  );
+}
+
+function AuditView({ audit }: { audit: AuditEvent[] }) {
+  const [query, setQuery] = useState("");
+  const filtered = audit.filter((event) =>
+    `${event.agent} ${event.action} ${event.actor}`.toLowerCase().includes(query.toLowerCase()),
+  );
+  return (
+    <main className="page">
+      <div className="page-title-row">
+        <div><h2>Audit log</h2><p>An immutable record of agent actions, policy decisions, and human approvals.</p></div>
+        <button className="secondary-button"><ArrowDownToLine /> Export CSV</button>
+      </div>
+      <section className="panel table-panel audit-table">
+        <div className="section-heading table-heading">
+          <label className="search-field wide-search"><Search /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search actions, agents, or actors…" /></label>
+          <div className="table-controls"><button className="secondary-button"><Clock3 /> Today <ChevronDown /></button><button className="secondary-button"><Filter /> All results</button></div>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead><tr><th>Timestamp</th><th>Agent</th><th>Action</th><th>Decision</th><th>Actor</th><th>Evidence</th></tr></thead>
+            <tbody>
+              {filtered.map((event) => (
+                <tr key={event.id}>
+                  <td className="mono">{event.time}</td>
+                  <td><strong className="plain-strong">{event.agent}</strong></td>
+                  <td>{event.action}</td>
+                  <td><span className={`decision decision-${event.result.toLowerCase()}`}>{event.result}</span></td>
+                  <td>{event.actor}</td>
+                  <td><button className="text-button">View event</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function IntegrationLogo({ integration }: { integration: Integration }) {
+  if (integration.name === "GitHub") return <GitBranch />;
+  if (integration.name === "Slack") return <Zap />;
+  if (integration.name === "AWS") return <Boxes />;
+  if (integration.name === "Microsoft 365") return <FileKey2 />;
+  return <PlugZap />;
+}
+
+function IntegrationsView() {
+  const [items, setItems] = useState(integrations);
+  function toggle(id: string) {
+    setItems((current) =>
+      current.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              connected: !item.connected,
+              events: item.connected ? "Not connected" : "Connected just now",
+            }
+          : item,
+      ),
+    );
+  }
+  return (
+    <main className="page">
+      <div className="page-title-row">
+        <div><h2>Enterprise integrations</h2><p>Connect the systems where AI agents read data and take action.</p></div>
+        <button className="secondary-button"><Plus /> Request integration</button>
+      </div>
+      <div className="integrations-grid">
+        {items.map((integration) => (
+          <article className="panel integration-card" key={integration.id}>
+            <div className="integration-logo"><IntegrationLogo integration={integration} /></div>
+            <div className="integration-copy">
+              <div><h3>{integration.name}</h3>{integration.connected && <span className="connected"><Check />Connected</span>}</div>
+              <span>{integration.category}</span>
+              <p>{integration.description}</p>
+            </div>
+            <div className="integration-footer">
+              <span>{integration.events}</span>
+              <button className={integration.connected ? "secondary-button" : "primary-button"} onClick={() => toggle(integration.id)}>
+                {integration.connected ? "Configure" : "Connect"}
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </main>
+  );
+}
+
+function RegisterDialog({
+  open,
+  onClose,
+  onRegister,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onRegister: (agent: Agent) => void;
+}) {
+  const [name, setName] = useState("");
+  const [owner, setOwner] = useState("");
+  const [team, setTeam] = useState("Platform Engineering");
+  const [provider, setProvider] = useState("OpenAI");
+
+  if (!open) return null;
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!name.trim() || !owner.trim()) return;
+    onRegister({
+      id: `agent-${Date.now()}`,
+      name: name.trim(),
+      description: "Newly registered AI agent awaiting expanded configuration.",
+      owner: owner.trim(),
+      team,
+      status: "healthy",
+      provider,
+      permissions: ["No permissions granted"],
+      actions: 0,
+      cost: 0,
+      lastAction: "Agent registered",
+      lastSeen: "Just now",
+    });
+    setName("");
+    setOwner("");
+  }
+  return (
+    <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="register-title" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="dialog-header">
+          <div className="dialog-title"><BrandMark small /><div><h2 id="register-title">Register AI agent</h2><p>Add ownership and provider details. Permissions start locked.</p></div></div>
+          <button className="icon-button" onClick={onClose} aria-label="Close dialog"><X /></button>
+        </div>
+        <form onSubmit={submit}>
+          <label>Agent name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Invoice Processing Agent" autoFocus required /></label>
+          <div className="form-grid">
+            <label>Owner<input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="Full name" required /></label>
+            <label>Team<select value={team} onChange={(e) => setTeam(e.target.value)}><option>Platform Engineering</option><option>Finance</option><option>Security</option><option>Legal</option><option>Customer Support</option></select></label>
+          </div>
+          <label>Model provider<select value={provider} onChange={(e) => setProvider(e.target.value)}><option>OpenAI</option><option>Anthropic</option><option>Google</option><option>Azure AI</option><option>Self-hosted</option></select></label>
+          <div className="security-note"><LockKeyhole /><div><strong>Secure by default</strong><span>This agent will have no enterprise permissions until a policy owner grants them.</span></div></div>
+          <div className="dialog-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" type="submit"><Bot /> Register agent</button></div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function Toast({
+  message,
+  onClose,
+}: {
+  message: string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const timer = window.setTimeout(onClose, 3200);
+    return () => window.clearTimeout(timer);
+  }, [onClose]);
+  return (
+    <div className="toast" role="status">
+      <CheckCircle2 />
+      <span>{message}</span>
+      <button onClick={onClose} aria-label="Dismiss"><X /></button>
+    </div>
+  );
+}
+
+export function ControlCenter() {
+  const [view, setView] = useState<View>("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [agentList, setAgentList] = useState(initialAgents);
+  const [approvalList, setApprovalList] = useState(initialApprovals);
+  const [policyList, setPolicyList] = useState(initialPolicies);
+  const [auditList, setAuditList] = useState(initialAuditEvents);
+  const [toast, setToast] = useState("");
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const restoreTimer = window.setTimeout(() => {
+      try {
+        const saved = window.localStorage.getItem("sentinelops-demo-state");
+        if (saved) {
+          const parsed = JSON.parse(saved) as {
+            agents?: Agent[];
+            approvals?: Approval[];
+            policies?: Policy[];
+            audit?: AuditEvent[];
+          };
+          if (parsed.agents) setAgentList(parsed.agents);
+          if (parsed.approvals) setApprovalList(parsed.approvals);
+          if (parsed.policies) setPolicyList(parsed.policies);
+          if (parsed.audit) setAuditList(parsed.audit);
+        }
+      } catch {
+        // Invalid demo state should never prevent the control center from loading.
+      } finally {
+        setHydrated(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(restoreTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem(
+      "sentinelops-demo-state",
+      JSON.stringify({
+        agents: agentList,
+        approvals: approvalList,
+        policies: policyList,
+        audit: auditList,
+      }),
+    );
+  }, [agentList, approvalList, policyList, auditList, hydrated]);
+
+  const pendingApprovals = useMemo(
+    () => approvalList.filter((approval) => approval.status === "pending"),
+    [approvalList],
+  );
+
+  function decide(approval: Approval, decision: "approved" | "denied") {
+    setApprovalList((current) =>
+      current.map((item) =>
+        item.id === approval.id ? { ...item, status: decision } : item,
+      ),
+    );
+    setAgentList((current) =>
+      current.map((agent) =>
+        agent.id === approval.agentId
+          ? { ...agent, status: decision === "approved" ? "healthy" : "blocked" }
+          : agent,
+      ),
+    );
+    const event: AuditEvent = {
+      id: `evt-${Date.now()}`,
+      time: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+      agent: approval.agentName,
+      action: approval.request,
+      result: decision === "approved" ? "Approved" : "Blocked",
+      actor: "Maya Patel",
+      detail: `${approval.risk} risk request ${decision}`,
+    };
+    setAuditList((current) => [event, ...current]);
+    setToast(`${approval.request} was ${decision}.`);
+  }
+
+  function register(agent: Agent) {
+    setAgentList((current) => [agent, ...current]);
+    setAuditList((current) => [
+      {
+        id: `evt-${Date.now()}`,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+        agent: agent.name,
+        action: "Agent registered",
+        result: "Changed",
+        actor: "Maya Patel",
+        detail: `Registered with ${agent.provider}`,
+      },
+      ...current,
+    ]);
+    setRegisterOpen(false);
+    setToast(`${agent.name} is registered with permissions locked.`);
+  }
+
+  function togglePolicy(id: string) {
+    const policy = policyList.find((item) => item.id === id);
+    setPolicyList((current) =>
+      current.map((item) =>
+        item.id === id ? { ...item, enabled: !item.enabled } : item,
+      ),
+    );
+    if (policy) setToast(`${policy.name} ${policy.enabled ? "disabled" : "enabled"}.`);
+  }
+
+  return (
+    <div className="app-shell">
+      <Sidebar
+        view={view}
+        open={sidebarOpen}
+        pendingCount={pendingApprovals.length}
+        onSelect={setView}
+        onClose={() => setSidebarOpen(false)}
+      />
+      <div className="app-content">
+        <TopBar view={view} onMenu={() => setSidebarOpen(true)} />
+        {view === "overview" && (
+          <Overview
+            agents={agentList}
+            approvals={pendingApprovals}
+            audit={auditList}
+            onRegister={() => setRegisterOpen(true)}
+            onDecision={decide}
+            onViewApprovals={() => setView("approvals")}
+          />
+        )}
+        {view === "agents" && <AgentsView agents={agentList} onRegister={() => setRegisterOpen(true)} />}
+        {view === "approvals" && <ApprovalsView approvals={pendingApprovals} onDecision={decide} />}
+        {view === "policies" && <PoliciesView policies={policyList} onToggle={togglePolicy} />}
+        {view === "audit" && <AuditView audit={auditList} />}
+        {view === "integrations" && <IntegrationsView />}
+      </div>
+      <RegisterDialog open={registerOpen} onClose={() => setRegisterOpen(false)} onRegister={register} />
+      {toast && <Toast message={toast} onClose={() => setToast("")} />}
+    </div>
+  );
+}
