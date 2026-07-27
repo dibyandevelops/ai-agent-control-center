@@ -1,104 +1,65 @@
-import {
-  ArrowRight,
-  Bot,
-  ClipboardCheck,
-  Database,
-  FileCheck2,
-  LockKeyhole,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react";
-import styles from "./landing.module.css";
+import { ClipboardCheck, FileCheck2, ScanSearch } from "lucide-react";
+import { ApprovalDemo } from "./approval-demo";
+import { Reveal } from "./reveal";
+import { SectionHeader } from "./ui";
 
-const stages = [
+const workflow = [
   {
-    number: "1",
+    index: "01",
     label: "Register",
     title: "Know every agent",
-    description: "Capture ownership, model provider, purpose, and permission scope.",
+    body: "Capture ownership, model, purpose, tools, and permission scope.",
+    icon: ScanSearch,
   },
   {
-    number: "2",
+    index: "02",
     label: "Enforce",
     title: "Decide before execution",
-    description: "Allow, block, or route consequential actions for human approval.",
+    body: "Evaluate identity, context, policy, and risk before a tool call runs.",
+    icon: ClipboardCheck,
   },
   {
-    number: "3",
+    index: "03",
     label: "Prove",
     title: "Keep durable evidence",
-    description: "Record the request, policy decision, approver, and final outcome.",
+    body: "Record the request, decision, approver, and final outcome.",
+    icon: FileCheck2,
   },
-] as const;
-
-const capabilities = [
-  { icon: Bot, title: "Agent inventory", description: "Discover and track every agent, owner, model provider, purpose, tool, and permission scope." },
-  { icon: ClipboardCheck, title: "Approval gateway", description: "Route high-impact actions to the right approvers with context and policy-backed recommendations." },
-  { icon: ShieldCheck, title: "Policy engine", description: "Define intent-based controls that adapt to risk, role, data, and environment." },
-  { icon: FileCheck2, title: "Audit evidence", description: "Capture immutable records of requests, decisions, approvers, and outcomes." },
 ] as const;
 
 export function WorkflowSection() {
   return (
-    <section className={styles.workflow} id="workflow">
-      <div className={styles.sectionIntro}>
-        <h2>Govern from intent to execution</h2>
-        <p>SentinelOps unifies discovery, policy enforcement, approval, and evidence so you stay in control at speed.</p>
-      </div>
-      <ol className={styles.stages}>
-        {stages.map((stage) => (
-          <li key={stage.number}>
-            <span className={styles.stageNumber}>{stage.number}</span>
-            <strong>{stage.label}</strong>
-            <h3>{stage.title}</h3>
-            <p>{stage.description}</p>
-          </li>
-        ))}
-      </ol>
-      <div className={styles.policyExample}>
-        <h3>Policy evaluation example</h3>
-        <div className={styles.policyFlow}>
-          <article>
-            <span className={styles.flowLabel}>Request</span>
-            <div className={styles.flowIcon}><Database /></div>
-            <strong>Export 14,820 financial rows</strong>
-            <small>Action: data.export</small>
-          </article>
-          <ArrowRight className={styles.flowArrow} />
-          <article>
-            <span className={styles.flowLabel}>Identity + context</span>
-            <div className={styles.flowIcon}><UserRound /></div>
-            <strong>Finance Analyst</strong>
-            <small>Production · Finance Ops</small>
-          </article>
-          <ArrowRight className={styles.flowArrow} />
-          <article>
-            <span className={styles.flowLabel}>Policy decision</span>
-            <div className={styles.flowIcon}><LockKeyhole /></div>
-            <strong>Production changes require approval</strong>
-            <small>High-impact data export</small>
-          </article>
-          <ArrowRight className={styles.flowArrow} />
-          <article className={styles.reviewOutcome}>
-            <span className={styles.flowLabel}>Execute or approval</span>
-            <div className={styles.flowIcon}><ClipboardCheck /></div>
-            <strong>Human review required</strong>
-            <small>Finance lead · Pending</small>
-          </article>
-        </div>
-      </div>
-      <div className={styles.capabilities}>
-        <h2>One operating layer for your AI workforce</h2>
-        <div className={styles.capabilityList}>
-          {capabilities.map(({ icon: Icon, title, description }) => (
-            <article key={title}>
-              <span><Icon /></span>
-              <h3>{title}</h3>
-              <p>{description}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
+    <>
+      <section className="relative border-t border-[#38434e]/45 px-[max(28px,calc((100vw-1420px)/2))] py-[clamp(90px,10vw,150px)] max-[760px]:px-3.5 max-[760px]:py-[78px]" id="product">
+        <Reveal>
+          <SectionHeader
+            title="The control plane for autonomous work."
+            description="SentinelOps sits between AI agents and critical systems—turning organizational policy into an execution decision."
+          />
+          <ol className="relative mt-[74px] grid list-none grid-cols-3 gap-0 p-0 before:absolute before:left-[4%] before:right-[4%] before:top-[31px] before:h-px before:bg-gradient-to-r before:from-sentinel-lime before:to-sentinel-lime/20 before:content-[''] max-lg:gap-8 max-[760px]:mt-[50px] max-[760px]:grid-cols-1 max-[760px]:gap-0 max-[760px]:before:bottom-0 max-[760px]:before:left-[27px] max-[760px]:before:right-auto max-[760px]:before:top-0 max-[760px]:before:h-auto max-[760px]:before:w-px">
+            {workflow.map(({ index, label, title, body, icon: Icon }) => (
+              <li className="relative grid grid-cols-[66px_1fr] gap-[18px] pr-[42px] max-lg:grid-cols-[56px_1fr] max-lg:pr-0 max-[760px]:min-h-[170px]" key={label}>
+                <span className="absolute -top-[27px] left-[78px] font-mono text-[10px] text-sentinel-dim max-[760px]:-top-4 max-[760px]:left-[74px]">{index}</span>
+                <Icon className="z-[2] h-[62px] w-[62px] rounded-full border border-sentinel-lime/70 bg-sentinel-canvas p-[17px] text-sentinel-lime [stroke-width:1.35] max-lg:h-[54px] max-lg:w-[54px] max-lg:p-[15px]" aria-hidden="true" />
+                <div>
+                  <strong className="mt-[9px] block text-[13px] uppercase tracking-[0.12em] text-sentinel-lime">{label}</strong>
+                  <h3 className="mt-[13px] text-[clamp(20px,1.8vw,27px)] font-medium tracking-[-0.035em]">{title}</h3>
+                  <p className="mt-3 max-w-[330px] text-[13px] leading-[1.7] text-sentinel-muted">{body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </Reveal>
+      </section>
+      <section className="relative border-t border-[#38434e]/45 bg-[radial-gradient(circle_at_85%_50%,rgba(183,243,74,0.035),transparent_28%)] bg-sentinel-deep px-[max(22px,calc((100vw-1480px)/2))] py-[clamp(90px,9vw,140px)] max-[760px]:px-2.5 max-[760px]:py-[78px]" id="workflow">
+        <Reveal>
+          <SectionHeader
+            title="A decision boundary for every consequential action."
+            description="SentinelOps evaluates identity, business context, policy, and risk before execution."
+          />
+          <ApprovalDemo />
+        </Reveal>
+      </section>
+    </>
   );
 }

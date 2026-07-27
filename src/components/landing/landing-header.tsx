@@ -1,37 +1,83 @@
+"use client";
+
 import Link from "next/link";
-import { Menu } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Brand } from "./brand";
-import styles from "./landing.module.css";
+
+const navItems = [
+  { label: "Product", href: "#product" },
+  { label: "Workflow", href: "#workflow" },
+  { label: "Security", href: "#security" },
+  { label: "Deployments", href: "#deployments" },
+] as const;
 
 export function LandingHeader() {
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const updateHeader = () => setScrolled(window.scrollY > 24);
+    window.addEventListener("scroll", updateHeader, { passive: true });
+    return () => window.removeEventListener("scroll", updateHeader);
+  }, []);
+
   return (
-    <header className={styles.header}>
+    <header
+      className={`fixed inset-x-[max(18px,calc((100vw-1480px)/2))] top-3.5 z-[100] grid min-h-[68px] grid-cols-[1fr_auto_1fr] items-center rounded-[10px] border px-[14px] pl-[18px] transition-all duration-300 max-lg:grid-cols-[1fr_auto] max-[760px]:inset-x-3.5 max-[760px]:top-3 max-[760px]:min-h-[62px] max-[760px]:border-sentinel-line-strong/50 max-[760px]:bg-sentinel-canvas/90 max-[760px]:pl-3.5 max-[760px]:backdrop-blur-xl ${
+        scrolled
+          ? "min-h-[58px] border-sentinel-line-strong/60 bg-sentinel-canvas/80 shadow-[0_18px_50px_rgba(0,0,0,0.3)] backdrop-blur-xl"
+          : "border-transparent"
+      }`}
+    >
       <Brand />
-      <nav className={styles.desktopNav} aria-label="Marketing navigation">
-        <a href="#product">Product</a>
-        <a href="#workflow">Workflow</a>
-        <a href="#security">Security</a>
+      <nav className="flex items-center gap-[34px] text-[13px] font-medium text-[#c7cdd3] max-lg:hidden [&_a]:transition-colors [&_a:hover]:text-sentinel-lime" aria-label="Marketing navigation">
+        {navItems.map((item) => (
+          <a href={item.href} key={item.href}>
+            {item.label}
+          </a>
+        ))}
       </nav>
-      <div className={styles.headerActions}>
-        <Link href="/dashboard" className={styles.signIn}>
+      <div className="flex items-center justify-end gap-[26px] text-[13px] font-semibold max-lg:hidden">
+        <Link href="/dashboard" className="transition-colors hover:text-sentinel-lime">
           Sign in
         </Link>
-        <a href="#contact" className={styles.headerCta}>
+        <a href="#contact" className="inline-flex min-h-[42px] items-center justify-center rounded-[5px] border border-sentinel-lime/70 bg-sentinel-lime/[0.03] px-[22px] transition hover:-translate-y-px hover:bg-sentinel-lime hover:text-[#081004]">
           Book a demo
         </a>
       </div>
-      <details className={styles.mobileMenu}>
-        <summary aria-label="Open navigation">
-          <Menu aria-hidden="true" />
-        </summary>
-        <nav aria-label="Mobile marketing navigation">
-          <a href="#product">Product</a>
-          <a href="#workflow">Workflow</a>
-          <a href="#security">Security</a>
-          <Link href="/dashboard">Open control center</Link>
-          <a href="#contact">Book a demo</a>
+      <button
+        type="button"
+        className="hidden h-[42px] w-[42px] place-items-center rounded-[5px] border border-sentinel-line bg-sentinel-surface text-sentinel-text max-lg:grid [&_svg]:w-5"
+        aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+        aria-expanded={menuOpen}
+        onClick={() => setMenuOpen((current) => !current)}
+      >
+        {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+      </button>
+      <div
+        className={`absolute inset-x-0 top-[calc(100%+8px)] hidden rounded-[7px] border border-sentinel-line bg-[#090d11]/[0.98] p-3.5 backdrop-blur-xl transition-[opacity,transform,visibility] duration-150 max-lg:block ${
+          menuOpen ? "visible translate-y-0 opacity-100" : "invisible -translate-y-2 opacity-0"
+        }`}
+      >
+        <nav className="grid [&_a]:border-b [&_a]:border-sentinel-line [&_a]:px-3 [&_a]:py-[15px] [&_a]:text-sm [&_a:last-child]:border-0 [&_a:last-child]:text-sentinel-lime" aria-label="Mobile marketing navigation">
+          {navItems.map((item) => (
+            <a
+              href={item.href}
+              key={item.href}
+              onClick={() => setMenuOpen(false)}
+            >
+              {item.label}
+            </a>
+          ))}
+          <Link href="/dashboard" onClick={() => setMenuOpen(false)}>
+            Open control center
+          </Link>
+          <a href="#contact" onClick={() => setMenuOpen(false)}>
+            Book a demo
+          </a>
         </nav>
-      </details>
+      </div>
     </header>
   );
 }
