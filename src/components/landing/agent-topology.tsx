@@ -74,7 +74,7 @@ export function AgentTopology() {
         <DiagramNode icon={<Braces />} label="Enterprise APIs" />
         <DiagramNode icon={<Database />} label="Data stores" active />
       </div>
-      <aside className="absolute right-[2.7%] top-[120px] z-[3] min-h-[370px] w-[20%] overflow-hidden rounded-[7px] border border-[#53606b] bg-sentinel-raised/95 shadow-[-20px_28px_60px_rgba(0,0,0,0.28)] backdrop-blur-lg max-lg:static max-lg:w-auto max-lg:min-h-0">
+      <aside className="absolute right-[2.7%] top-[120px] z-[3] min-h-[370px] w-[20%] overflow-hidden rounded-2xl border border-[#53606b] bg-sentinel-raised/95 shadow-[-20px_28px_60px_rgba(0,0,0,0.28)] backdrop-blur-lg max-lg:static max-lg:w-auto max-lg:min-h-0">
         <header className="flex items-center gap-[13px] border-b border-sentinel-line p-5">
           <span className="grid h-12 w-12 place-items-center rounded-[5px] border border-sentinel-lime text-sentinel-lime [&_svg]:w-6"><SelectedIcon /></span>
           <div className="grid gap-[7px]"><h3 className="m-0 text-base font-medium">{selected.label}</h3><RiskBadge level={selected.risk} /></div>

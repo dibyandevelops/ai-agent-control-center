@@ -43,7 +43,7 @@ export function WorkflowSection() {
                 <Icon className="z-[2] h-[62px] w-[62px] rounded-full border border-sentinel-lime/70 bg-sentinel-canvas p-[17px] text-sentinel-lime [stroke-width:1.35] max-lg:h-[54px] max-lg:w-[54px] max-lg:p-[15px]" aria-hidden="true" />
                 <div>
                   <strong className="mt-[9px] block text-[13px] uppercase tracking-[0.12em] text-sentinel-lime">{label}</strong>
-                  <h3 className="mt-[13px] text-[clamp(20px,1.8vw,27px)] font-medium tracking-[-0.035em]">{title}</h3>
+                  <h3 className="mt-[13px] text-[clamp(20px,1.8vw,27px)] font-bold tracking-[-0.035em]">{title}</h3>
                   <p className="mt-3 max-w-[330px] text-[13px] leading-[1.7] text-sentinel-muted">{body}</p>
                 </div>
               </li>

@@ -24,7 +24,7 @@ export function LandingHeader() {
 
   return (
     <header
-      className={`fixed inset-x-[max(18px,calc((100vw-1480px)/2))] top-3.5 z-[100] grid min-h-[68px] grid-cols-[1fr_auto_1fr] items-center rounded-[10px] border px-[14px] pl-[18px] transition-all duration-300 max-lg:grid-cols-[1fr_auto] max-[760px]:inset-x-3.5 max-[760px]:top-3 max-[760px]:min-h-[62px] max-[760px]:border-sentinel-line-strong/50 max-[760px]:bg-sentinel-canvas/90 max-[760px]:pl-3.5 max-[760px]:backdrop-blur-xl ${
+      className={`fixed inset-x-[max(18px,calc((100vw-1480px)/2))] top-3.5 z-[100] grid min-h-[68px] grid-cols-[1fr_auto_1fr] items-center rounded-2xl border px-[14px] pl-[18px] transition-all duration-300 max-lg:grid-cols-[1fr_auto] max-[760px]:inset-x-3.5 max-[760px]:top-3 max-[760px]:min-h-[62px] max-[760px]:border-sentinel-line-strong/50 max-[760px]:bg-sentinel-canvas/90 max-[760px]:pl-3.5 max-[760px]:backdrop-blur-xl ${
         scrolled
           ? "min-h-[58px] border-sentinel-line-strong/60 bg-sentinel-canvas/80 shadow-[0_18px_50px_rgba(0,0,0,0.3)] backdrop-blur-xl"
           : "border-transparent"
@@ -42,13 +42,13 @@ export function LandingHeader() {
         <Link href="/dashboard" className="transition-colors hover:text-sentinel-lime">
           Sign in
         </Link>
-        <a href="#contact" className="inline-flex min-h-[42px] items-center justify-center rounded-[5px] border border-sentinel-lime/70 bg-sentinel-lime/[0.03] px-[22px] transition hover:-translate-y-px hover:bg-sentinel-lime hover:text-[#081004]">
+        <a href="#contact" className="inline-flex min-h-[42px] items-center justify-center rounded-full border border-sentinel-lime/70 bg-sentinel-lime/[0.03] px-[22px] font-semibold transition hover:-translate-y-px hover:bg-sentinel-lime hover:text-[#081004]">
           Book a demo
         </a>
       </div>
       <button
         type="button"
-        className="hidden h-[42px] w-[42px] place-items-center rounded-[5px] border border-sentinel-line bg-sentinel-surface text-sentinel-text max-lg:grid [&_svg]:w-5"
+        className="hidden h-[42px] w-[42px] place-items-center rounded-full border border-sentinel-line bg-sentinel-surface text-sentinel-text max-lg:grid [&_svg]:w-5"
         aria-label={menuOpen ? "Close navigation" : "Open navigation"}
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen((current) => !current)}
@@ -56,7 +56,7 @@ export function LandingHeader() {
         {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
       </button>
       <div
-        className={`absolute inset-x-0 top-[calc(100%+8px)] hidden rounded-[7px] border border-sentinel-line bg-[#090d11]/[0.98] p-3.5 backdrop-blur-xl transition-[opacity,transform,visibility] duration-150 max-lg:block ${
+        className={`absolute inset-x-0 top-[calc(100%+8px)] hidden rounded-2xl border border-sentinel-line bg-[#090d11]/[0.98] p-3.5 shadow-app-2 backdrop-blur-xl transition-[opacity,transform,visibility] duration-150 max-lg:block ${
           menuOpen ? "visible translate-y-0 opacity-100" : "invisible -translate-y-2 opacity-0"
         }`}
       >

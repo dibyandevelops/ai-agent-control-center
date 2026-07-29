@@ -23,8 +23,16 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sentinel: ["var(--font-geist-sans)", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        sentinel: ["var(--font-app)", "Arial", "Helvetica", "sans-serif"],
         mono: ["var(--font-geist-mono)", "SFMono-Regular", "Consolas", "monospace"],
+      },
+      borderRadius: {
+        app: "14px",
+        "app-lg": "20px",
+      },
+      boxShadow: {
+        "app-1": "0 1px 2px rgba(2, 6, 23, 0.16)",
+        "app-2": "0 18px 50px rgba(2, 6, 23, 0.24)",
       },
       keyframes: {
         "dash-flow": {

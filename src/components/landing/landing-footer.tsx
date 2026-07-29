@@ -11,10 +11,10 @@ export function LandingFooter() {
           <h2 className="m-0 max-w-[980px] font-mono text-[clamp(40px,4.8vw,68px)] font-medium leading-[1.08] tracking-[-0.055em] max-[760px]:text-[clamp(37px,10vw,50px)]">Put your AI workforce on a shorter leash.</h2>
           <p className="mt-[21px] text-[17px] text-sentinel-muted max-[760px]:text-sm max-[760px]:leading-[1.6]">Start with one high-risk workflow. Expand as your agent estate grows.</p>
           <div className="mt-8 flex gap-3.5 max-[760px]:grid max-[760px]:w-full max-[760px]:max-w-[420px]">
-            <a href="mailto:sales@sentinelops.ai" className="inline-flex min-h-[54px] min-w-[230px] items-center justify-center gap-[22px] rounded-[5px] border border-sentinel-lime bg-sentinel-lime px-[25px] text-sm font-semibold text-[#091004] transition hover:-translate-y-0.5 max-[760px]:min-w-0 [&_svg]:w-[17px]">
+            <a href="mailto:sales@sentinelops.ai" className="inline-flex min-h-[54px] min-w-[230px] items-center justify-center gap-[22px] rounded-full border border-sentinel-lime bg-sentinel-lime px-[27px] text-sm font-bold text-[#091004] transition hover:-translate-y-0.5 max-[760px]:min-w-0 [&_svg]:w-[17px]">
               Book a demo <ArrowUpRight />
             </a>
-            <Link href="/dashboard" className="inline-flex min-h-[54px] min-w-[230px] items-center justify-center gap-[22px] rounded-[5px] border border-sentinel-lime bg-sentinel-surface/80 px-[25px] text-sm font-semibold transition hover:-translate-y-0.5 hover:bg-sentinel-lime/10 max-[760px]:min-w-0 [&_svg]:w-[17px]">
+            <Link href="/dashboard" className="inline-flex min-h-[54px] min-w-[230px] items-center justify-center gap-[22px] rounded-full border border-sentinel-lime bg-sentinel-surface/80 px-[27px] text-sm font-bold transition hover:-translate-y-0.5 hover:bg-sentinel-lime/10 max-[760px]:min-w-0 [&_svg]:w-[17px]">
               Open control center <ArrowUpRight />
             </Link>
           </div>

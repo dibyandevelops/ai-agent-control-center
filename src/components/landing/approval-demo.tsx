@@ -117,7 +117,7 @@ export function ApprovalDemo() {
 
   return (
     <div className="mt-[54px] max-[760px]:mt-9">
-      <div className="grid min-h-[600px] grid-cols-[0.86fr_1.28fr_0.96fr] overflow-hidden rounded-lg border border-sentinel-line-strong bg-sentinel-surface shadow-[0_32px_90px_rgba(0,0,0,0.32)] max-lg:grid-cols-[0.75fr_1.25fr] max-[760px]:grid-cols-1 [&>section]:min-w-0 [&>section]:border-r [&>section]:border-sentinel-line [&>section:last-child]:border-r-0 max-[760px]:[&>section]:border-b max-[760px]:[&>section]:border-r-0">
+      <div className="grid min-h-[600px] grid-cols-[0.86fr_1.28fr_0.96fr] overflow-hidden rounded-3xl border border-sentinel-line-strong bg-sentinel-surface shadow-[0_32px_90px_rgba(0,0,0,0.32)] max-lg:grid-cols-[0.75fr_1.25fr] max-[760px]:grid-cols-1 [&>section]:min-w-0 [&>section]:border-r [&>section]:border-sentinel-line [&>section:last-child]:border-r-0 max-[760px]:[&>section]:border-b max-[760px]:[&>section]:border-r-0">
         <section aria-label="Enforcement timeline">
           <header className={panelHeader}>Event timeline <span className="text-[8px] text-sentinel-lime">Live evaluation</span></header>
           <ol className="m-0 list-none py-3">
@@ -192,8 +192,8 @@ export function ApprovalDemo() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2.5 px-[22px] max-lg:col-start-1">
-              <button className="flex min-h-12 items-center justify-center gap-2.5 rounded border border-sentinel-lime bg-sentinel-lime text-xs font-semibold text-[#081004] transition hover:-translate-y-px [&_svg]:w-4" type="button" onClick={() => setDecision("approved")}><Check /> Approve</button>
-              <button className="flex min-h-12 items-center justify-center gap-2.5 rounded border border-sentinel-line-strong bg-[#121920] text-xs font-semibold transition hover:-translate-y-px hover:border-sentinel-red hover:bg-sentinel-red/10 [&_svg]:w-4" type="button" onClick={() => setDecision("denied")}><X /> Deny</button>
+              <button className="flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-sentinel-lime bg-sentinel-lime text-xs font-bold text-[#081004] transition hover:-translate-y-px [&_svg]:w-4" type="button" onClick={() => setDecision("approved")}><Check /> Approve</button>
+              <button className="flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-sentinel-line-strong bg-[#121920] text-xs font-bold transition hover:-translate-y-px hover:border-sentinel-red hover:bg-sentinel-red/10 [&_svg]:w-4" type="button" onClick={() => setDecision("denied")}><X /> Deny</button>
             </div>
           )}
           <p className="mx-[22px] mb-[18px] mt-[11px] text-[10px] leading-normal text-sentinel-muted max-lg:col-start-1">
@@ -245,7 +245,7 @@ export function ApprovalDemo() {
             <button
               type="button"
               key={id}
-              className={`grid min-h-[70px] grid-cols-[42px_1.25fr_auto_0.7fr_18px] items-center gap-[18px] rounded-[5px] border bg-gradient-to-r from-[#10171d] to-[#0a0f13] px-5 text-left transition hover:translate-x-[3px] hover:border-sentinel-lime/80 hover:from-sentinel-lime/10 max-[760px]:min-h-[94px] max-[760px]:grid-cols-[34px_1fr_18px] max-[760px]:gap-[11px] max-[760px]:p-3 max-[760px]:[&>span:nth-of-type(2)]:hidden ${
+              className={`grid min-h-[70px] grid-cols-[42px_1.25fr_auto_0.7fr_18px] items-center gap-[18px] rounded-2xl border bg-gradient-to-r from-[#10171d] to-[#0a0f13] px-5 text-left transition hover:translate-x-[3px] hover:border-sentinel-lime/80 hover:from-sentinel-lime/10 max-[760px]:min-h-[94px] max-[760px]:grid-cols-[34px_1fr_18px] max-[760px]:gap-[11px] max-[760px]:p-3 max-[760px]:[&>span:nth-of-type(2)]:hidden ${
                 activeId === id ? "translate-x-[3px] border-sentinel-lime/80 from-sentinel-lime/10" : "border-sentinel-line"
               }`}
               onClick={() => selectScenario(id)}

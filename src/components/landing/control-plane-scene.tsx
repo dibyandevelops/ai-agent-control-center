@@ -25,7 +25,7 @@ export function ControlPlaneScene() {
   const selectedAgent = agents.find((agent) => agent.id === selected) ?? agents[0];
 
   return (
-    <div className="relative min-h-[650px] overflow-hidden rounded-[10px] border border-[#4f5d6a]/50 bg-[linear-gradient(135deg,rgba(25,35,44,0.45),rgba(7,10,13,0.8))] bg-sentinel-surface shadow-[-30px_40px_100px_rgba(0,0,0,0.38),inset_0_1px_rgba(255,255,255,0.035)] [transform-style:preserve-3d] [transform:rotateY(-4deg)_rotateX(1deg)] max-xl:min-h-[570px] max-lg:min-h-[630px] max-lg:transform-none">
+    <div className="relative min-h-[650px] overflow-hidden rounded-3xl border border-[#4f5d6a]/50 bg-[linear-gradient(135deg,rgba(25,35,44,0.45),rgba(7,10,13,0.8))] bg-sentinel-surface shadow-[-30px_40px_100px_rgba(0,0,0,0.38),inset_0_1px_rgba(255,255,255,0.035)] [transform-style:preserve-3d] [transform:rotateY(-4deg)_rotateX(1deg)] max-xl:min-h-[570px] max-lg:min-h-[630px] max-lg:transform-none">
       <div className="absolute inset-0 bg-[linear-gradient(rgba(145,163,179,0.042)_1px,transparent_1px),linear-gradient(90deg,rgba(145,163,179,0.042)_1px,transparent_1px)] bg-[length:36px_36px] [mask-image:radial-gradient(circle_at_50%_50%,black,transparent_82%)]" aria-hidden="true" />
       <div className="absolute left-[4%] top-[105px] z-[3] grid w-1/4 gap-[25px]">
         {agents.map(({ id, label, risk, icon: Icon }, index) => (
