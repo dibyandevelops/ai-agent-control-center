@@ -35,7 +35,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   agents as initialAgents,
   approvals as initialApprovals,
@@ -61,6 +61,16 @@ type View =
   | "policies"
   | "audit"
   | "integrations";
+
+type WorkspaceMode = "demo" | "connecting" | "live";
+
+interface LiveControlCenterPayload {
+  mode: "live";
+  agents: Agent[];
+  approvals: Approval[];
+  policies: Policy[];
+  audit: AuditEvent[];
+}
 
 const navItems: Array<{
   id: View;
@@ -94,6 +104,16 @@ function money(value: number) {
 
 function statusLabel(status: AgentStatus) {
   return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function displayTime(value: string) {
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(parsed));
 }
 
 function Status({ status }: { status: AgentStatus }) {
@@ -366,7 +386,7 @@ function RiskPosture({ events }: { events: AuditEvent[] }) {
             <span className={`timeline-marker marker-${event.result.toLowerCase()}`}>
               {event.result === "Blocked" ? <ShieldAlert /> : <Check />}
             </span>
-            <time>{event.time}</time>
+            <time>{displayTime(event.time)}</time>
             <div>
               <strong>{event.action}</strong>
               <span>{event.agent}</span>
@@ -506,7 +526,7 @@ function ApprovalCard({
     <article className="approval-card">
       <div className="approval-meta">
         <Risk risk={approval.risk} />
-        <time>{approval.requestedAt}</time>
+        <time>{displayTime(approval.requestedAt)}</time>
       </div>
       <div className="approval-title">
         <span className="agent-icon">{approval.agentName.includes("GitHub") ? <GitBranch /> : <Bot />}</span>
@@ -739,7 +759,7 @@ function AuditView({ audit }: { audit: AuditEvent[] }) {
             <tbody>
               {filtered.map((event) => (
                 <tr key={event.id}>
-                  <td className="mono">{event.time}</td>
+                  <td className="mono">{displayTime(event.time)}</td>
                   <td><strong className="plain-strong">{event.agent}</strong></td>
                   <td>{event.action}</td>
                   <td><span className={`decision decision-${event.result.toLowerCase()}`}>{event.result}</span></td>
@@ -863,6 +883,157 @@ function RegisterDialog({
   );
 }
 
+function WorkspaceBanner({
+  mode,
+  error,
+  onConnect,
+}: {
+  mode: WorkspaceMode;
+  error: string;
+  onConnect: () => void;
+}) {
+  return (
+    <div className="mx-7 mt-4 flex min-h-12 items-center gap-3 rounded-lg border border-[#2b333c] bg-[#0d1217] px-4 text-xs max-md:mx-4 max-md:items-start max-md:py-3">
+      <span
+        className={`h-2 w-2 shrink-0 rounded-full ${
+          mode === "live"
+            ? "bg-sentinel-lime shadow-[0_0_12px_rgba(183,243,74,0.55)]"
+            : mode === "connecting"
+              ? "animate-pulse bg-sentinel-amber"
+              : "bg-sentinel-muted"
+        }`}
+      />
+      <div className="flex-1">
+        <strong className="font-semibold text-sentinel-text">
+          {mode === "live"
+            ? "Live enforcement workspace"
+            : mode === "connecting"
+              ? "Connecting to live workspace"
+              : "Development preview"}
+        </strong>
+        <span className="ml-2 text-sentinel-muted max-md:ml-0 max-md:mt-1 max-md:block">
+          {error ||
+            (mode === "live"
+              ? "Requests, approvals, policies, and evidence are loaded from PostgreSQL."
+              : "The interface is using local demo data until you connect an operator session.")}
+        </span>
+      </div>
+      {mode !== "live" ? (
+        <button
+          type="button"
+          className="secondary-button shrink-0"
+          onClick={onConnect}
+        >
+          <PlugZap /> Connect live
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function LiveConnectionDialog({
+  open,
+  loading,
+  error,
+  onClose,
+  onConnect,
+}: {
+  open: boolean;
+  loading: boolean;
+  error: string;
+  onClose: () => void;
+  onConnect: (token: string) => Promise<void>;
+}) {
+  const [token, setToken] = useState("");
+  if (!open) return null;
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    await onConnect(token);
+  }
+
+  return (
+    <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
+      <div
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="connect-live-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="dialog-header">
+          <div className="dialog-title">
+            <BrandMark small />
+            <div>
+              <h2 id="connect-live-title">Connect live workspace</h2>
+              <p>
+                Authenticate this browser as an operator. The token becomes an
+                HttpOnly session cookie and is not stored in local storage.
+              </p>
+            </div>
+          </div>
+          <button
+            className="icon-button"
+            onClick={onClose}
+            aria-label="Close dialog"
+          >
+            <X />
+          </button>
+        </div>
+        <form onSubmit={submit}>
+          <label>
+            Operator token
+            <input
+              type="password"
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              placeholder="SENTINELOPS_ADMIN_TOKEN"
+              autoComplete="current-password"
+              autoFocus
+              required
+            />
+          </label>
+          {error ? (
+            <div className="security-note !border-sentinel-red/40 !bg-sentinel-red/10">
+              <ShieldAlert />
+              <div>
+                <strong>Connection failed</strong>
+                <span>{error}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="security-note">
+              <ShieldCheck />
+              <div>
+                <strong>Server-verified session</strong>
+                <span>
+                  Live data remains protected by the configured operator token.
+                </span>
+              </div>
+            </div>
+          )}
+          <div className="dialog-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={loading}
+            >
+              <PlugZap /> {loading ? "Connecting…" : "Connect workspace"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function Toast({
   message,
   onClose,
@@ -887,12 +1058,44 @@ export function ControlCenter() {
   const [view, setView] = useState<View>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [connectLoading, setConnectLoading] = useState(false);
+  const [workspaceMode, setWorkspaceMode] =
+    useState<WorkspaceMode>("connecting");
+  const [workspaceError, setWorkspaceError] = useState("");
   const [agentList, setAgentList] = useState(initialAgents);
   const [approvalList, setApprovalList] = useState(initialApprovals);
   const [policyList, setPolicyList] = useState(initialPolicies);
   const [auditList, setAuditList] = useState(initialAuditEvents);
   const [toast, setToast] = useState("");
   const [hydrated, setHydrated] = useState(false);
+
+  const applyLivePayload = useCallback(
+    (payload: LiveControlCenterPayload) => {
+      setAgentList(payload.agents);
+      setApprovalList(payload.approvals);
+      setPolicyList(payload.policies);
+      setAuditList(payload.audit);
+      setWorkspaceMode("live");
+      setWorkspaceError("");
+    },
+    [],
+  );
+
+  const refreshLiveWorkspace = useCallback(async () => {
+    const response = await fetch("/api/v1/control-center", {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      throw new Error(payload.error || "Unable to load live workspace.");
+    }
+    applyLivePayload(
+      (await response.json()) as LiveControlCenterPayload,
+    );
+  }, [applyLivePayload]);
 
   useEffect(() => {
     const restoreTimer = window.setTimeout(() => {
@@ -921,7 +1124,54 @@ export function ControlCenter() {
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    let cancelled = false;
+
+    async function restoreLiveSession() {
+      try {
+        const response = await fetch("/api/v1/session", {
+          cache: "no-store",
+        });
+        const session = (await response.json()) as {
+          authenticated: boolean;
+          databaseConfigured: boolean;
+          adminTokenConfigured: boolean;
+        };
+        if (cancelled) return;
+
+        if (session.authenticated && session.databaseConfigured) {
+          await refreshLiveWorkspace();
+          return;
+        }
+
+        setWorkspaceMode("demo");
+        if (!session.databaseConfigured) {
+          setWorkspaceError(
+            "DATABASE_URL is not configured; demo data remains active.",
+          );
+        } else if (!session.adminTokenConfigured) {
+          setWorkspaceError(
+            "SENTINELOPS_ADMIN_TOKEN is not configured.",
+          );
+        }
+      } catch (error) {
+        if (cancelled) return;
+        setWorkspaceMode("demo");
+        setWorkspaceError(
+          error instanceof Error
+            ? error.message
+            : "Live workspace is unavailable.",
+        );
+      }
+    }
+
+    void restoreLiveSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshLiveWorkspace]);
+
+  useEffect(() => {
+    if (!hydrated || workspaceMode !== "demo") return;
     window.localStorage.setItem(
       "sentinelops-demo-state",
       JSON.stringify({
@@ -931,14 +1181,84 @@ export function ControlCenter() {
         audit: auditList,
       }),
     );
-  }, [agentList, approvalList, policyList, auditList, hydrated]);
+  }, [
+    agentList,
+    approvalList,
+    policyList,
+    auditList,
+    hydrated,
+    workspaceMode,
+  ]);
 
   const pendingApprovals = useMemo(
     () => approvalList.filter((approval) => approval.status === "pending"),
     [approvalList],
   );
 
-  function decide(approval: Approval, decision: "approved" | "denied") {
+  async function connectLiveWorkspace(token: string) {
+    setConnectLoading(true);
+    setWorkspaceError("");
+    try {
+      const response = await fetch("/api/v1/session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(payload.error || "Operator authentication failed.");
+      }
+      await refreshLiveWorkspace();
+      setConnectOpen(false);
+      setToast("Live enforcement workspace connected.");
+    } catch (error) {
+      setWorkspaceMode("demo");
+      setWorkspaceError(
+        error instanceof Error ? error.message : "Connection failed.",
+      );
+    } finally {
+      setConnectLoading(false);
+    }
+  }
+
+  async function decide(
+    approval: Approval,
+    decision: "approved" | "denied",
+  ) {
+    if (workspaceMode === "live") {
+      try {
+        const response = await fetch(
+          `/api/v1/actions/${approval.id}/decision`,
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              decision,
+              actor: "Maya Patel",
+              reason: `${approval.risk} risk request reviewed in SentinelOps.`,
+            }),
+          },
+        );
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(payload.error || "Decision could not be recorded.");
+        }
+        await refreshLiveWorkspace();
+        setToast(`${approval.request} was ${decision}.`);
+      } catch (error) {
+        setToast(
+          error instanceof Error
+            ? error.message
+            : "Decision could not be recorded.",
+        );
+      }
+      return;
+    }
+
     setApprovalList((current) =>
       current.map((item) =>
         item.id === approval.id ? { ...item, status: decision } : item,
@@ -990,14 +1310,50 @@ export function ControlCenter() {
     setToast(`${agent.name} is registered with permissions locked.`);
   }
 
-  function togglePolicy(id: string) {
+  async function togglePolicy(id: string) {
     const policy = policyList.find((item) => item.id === id);
+    if (workspaceMode === "live" && policy) {
+      try {
+        const response = await fetch(`/api/v1/policies/${id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            enabled: !policy.enabled,
+            actor: "Maya Patel",
+          }),
+        });
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({}))) as {
+            error?: string;
+          };
+          throw new Error(payload.error || "Policy update failed.");
+        }
+        await refreshLiveWorkspace();
+        setToast(`${policy.name} ${policy.enabled ? "disabled" : "enabled"}.`);
+      } catch (error) {
+        setToast(
+          error instanceof Error ? error.message : "Policy update failed.",
+        );
+      }
+      return;
+    }
+
     setPolicyList((current) =>
       current.map((item) =>
         item.id === id ? { ...item, enabled: !item.enabled } : item,
       ),
     );
     if (policy) setToast(`${policy.name} ${policy.enabled ? "disabled" : "enabled"}.`);
+  }
+
+  function openRegisterDialog() {
+    if (workspaceMode === "live") {
+      setToast(
+        "Live agents register automatically when they call the evaluation API.",
+      );
+      return;
+    }
+    setRegisterOpen(true);
   }
 
   return (
@@ -1011,23 +1367,40 @@ export function ControlCenter() {
       />
       <div className="app-content">
         <TopBar view={view} onMenu={() => setSidebarOpen(true)} />
+        <WorkspaceBanner
+          mode={workspaceMode}
+          error={workspaceError}
+          onConnect={() => {
+            setWorkspaceError("");
+            setConnectOpen(true);
+          }}
+        />
         {view === "overview" && (
           <Overview
             agents={agentList}
             approvals={pendingApprovals}
             audit={auditList}
-            onRegister={() => setRegisterOpen(true)}
+            onRegister={openRegisterDialog}
             onDecision={decide}
             onViewApprovals={() => setView("approvals")}
           />
         )}
-        {view === "agents" && <AgentsView agents={agentList} onRegister={() => setRegisterOpen(true)} />}
+        {view === "agents" && (
+          <AgentsView agents={agentList} onRegister={openRegisterDialog} />
+        )}
         {view === "approvals" && <ApprovalsView approvals={pendingApprovals} onDecision={decide} />}
         {view === "policies" && <PoliciesView policies={policyList} onToggle={togglePolicy} />}
         {view === "audit" && <AuditView audit={auditList} />}
         {view === "integrations" && <IntegrationsView />}
       </div>
       <RegisterDialog open={registerOpen} onClose={() => setRegisterOpen(false)} onRegister={register} />
+      <LiveConnectionDialog
+        open={connectOpen}
+        loading={connectLoading}
+        error={workspaceError}
+        onClose={() => setConnectOpen(false)}
+        onConnect={connectLiveWorkspace}
+      />
       {toast && <Toast message={toast} onClose={() => setToast("")} />}
     </div>
   );
