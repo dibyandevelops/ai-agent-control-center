@@ -130,6 +130,18 @@ RELEASE_CHANGE_TICKET=CHG-DRY-RUN-001
 RELEASE_ENVIRONMENT=production
 ```
 
+## Recorded product walkthrough
+
+The repository includes a 22-second local walkthrough of the governed release
+flow:
+
+[Watch the SentinelOps product demo](public/demos/sentinelops-product-demo.webm)
+
+It shows the product introduction, a production release entering the live
+approval queue, operator approval, the resulting audit evidence, and the safe
+dry-run completion state. No production credentials or external systems are
+used in the recording.
+
 ## API behavior
 
 - `POST /api/v1/actions/evaluate` authenticates an agent API key, upserts the
