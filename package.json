@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs",
-    "db:seed": "node --env-file-if-exists=.env.local scripts/seed.mjs"
+    "db:seed": "node --env-file-if-exists=.env.local scripts/seed.mjs",
+    "demo:release": "node --env-file-if-exists=.env.local examples/dry-run-release-agent.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.14.0",

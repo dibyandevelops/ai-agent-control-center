@@ -95,6 +95,41 @@ curl http://localhost:3000/api/v1/actions/REQUEST_ID \
 The agent must not execute while the status is `pending`, `blocked`, or
 `denied`. It may execute only for `allowed` or `approved`.
 
+## Run the safe release-agent demo
+
+The included Release Agent demonstrates the complete enforcement loop without
+calling GitHub or changing an external system.
+
+Add the complete agent key printed by `pnpm db:seed` to `.env.local`:
+
+```bash
+SENTINELOPS_AGENT_API_KEY=sop_live_your_complete_key
+```
+
+Keep SentinelOps running with `pnpm dev`, then open a second terminal:
+
+```bash
+pnpm demo:release
+```
+
+The demo submits a production release and waits while the decision is
+`pending`. Open [http://localhost:3000/dashboard](http://localhost:3000/dashboard),
+connect the live workspace, and approve or deny the request.
+
+After approval, the agent simulates four release steps. After denial or a
+policy block, it stops without executing. It never reads a GitHub token and
+never calls the GitHub API.
+
+Optional `.env.local` values let you customize the demonstration:
+
+```bash
+RELEASE_REPOSITORY=sentinelops/payments-api
+RELEASE_VERSION=v1.0.0-dry-run
+RELEASE_COMMIT_SHA=abc123dryrun
+RELEASE_CHANGE_TICKET=CHG-DRY-RUN-001
+RELEASE_ENVIRONMENT=production
+```
+
 ## API behavior
 
 - `POST /api/v1/actions/evaluate` authenticates an agent API key, upserts the
