@@ -9,6 +9,7 @@ first real vertical slice supports:
 - a human approval queue;
 - PostgreSQL persistence;
 - hash-chained audit evidence;
+- agent-reported execution outcomes;
 - optional Slack approval notifications; and
 - a control center that can switch between preview and live data.
 
@@ -95,6 +96,24 @@ curl http://localhost:3000/api/v1/actions/REQUEST_ID \
 The agent must not execute while the status is `pending`, `blocked`, or
 `denied`. It may execute only for `allowed` or `approved`.
 
+After authorization, the agent reports its real execution lifecycle:
+
+```bash
+curl --request POST \
+  http://localhost:3000/api/v1/actions/REQUEST_ID/outcome \
+  --header "Authorization: Bearer $SENTINELOPS_AGENT_API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "status": "executing",
+    "summary": "Production deployment started.",
+    "externalReference": "https://github.com/example/repository/actions/runs/123"
+  }'
+```
+
+When the work finishes, call the same endpoint with `succeeded`, `failed`, or
+`cancelled`. Failed outcomes may also include an `errorCode`. Completed
+outcomes are terminal and cannot be rewritten.
+
 ## Run the safe release-agent demo
 
 The included Release Agent demonstrates the complete enforcement loop without
@@ -116,9 +135,9 @@ The demo submits a production release and waits while the decision is
 `pending`. Open [http://localhost:3000/dashboard](http://localhost:3000/dashboard),
 connect the live workspace, and approve or deny the request.
 
-After approval, the agent simulates four release steps. After denial or a
-policy block, it stops without executing. It never reads a GitHub token and
-never calls the GitHub API.
+After approval, the agent reports `executing`, simulates four release steps,
+then reports `succeeded`. After denial or a policy block, it stops without
+executing. It never reads a GitHub token and never calls the GitHub API.
 
 Optional `.env.local` values let you customize the demonstration:
 
@@ -151,6 +170,9 @@ used in the recording.
   decision.
 - `POST /api/v1/actions/:requestId/decision` requires an authenticated operator
   session and records an atomic approval or denial.
+- `POST /api/v1/actions/:requestId/outcome` lets the originating organization
+  report `executing`, `succeeded`, `failed`, or `cancelled` and records each
+  transition as audit evidence.
 - `PATCH /api/v1/policies/:policyId` updates enforcement state and records audit
   evidence.
 - `GET /api/v1/control-center` returns live operator data.
@@ -161,6 +183,8 @@ used in the recording.
 - Operator tokens become eight-hour HttpOnly, same-site sessions.
 - Requests are tenant-scoped and idempotent.
 - Pending decisions use conditional updates to prevent double approval.
+- Execution outcomes use row locking and terminal-state protection to prevent
+  concurrent or rewritten completion results.
 - Audit events form an organization-level SHA-256 hash chain.
 - PostgreSQL queries are parameterized and use a bounded connection pool.
 - Slack is disabled unless `SLACK_APPROVAL_WEBHOOK_URL` is configured.

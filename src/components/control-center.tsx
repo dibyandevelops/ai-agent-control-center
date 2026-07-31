@@ -106,6 +106,11 @@ function statusLabel(status: AgentStatus) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function executionLabel(status: Agent["lastExecutionStatus"]) {
+  if (!status || status === "not_started") return null;
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 function displayTime(value: string) {
   const parsed = Date.parse(value);
   if (Number.isNaN(parsed)) return value;
@@ -485,6 +490,19 @@ function AgentTable({
                 <td>
                   <strong className="plain-strong">{agent.lastAction}</strong>
                   <small className="cell-subtext">{agent.lastSeen}</small>
+                  {executionLabel(agent.lastExecutionStatus) ? (
+                    <span
+                      className={`mt-1 inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                        agent.lastExecutionStatus === "succeeded"
+                          ? "border-sentinel-lime/30 bg-sentinel-lime/10 text-sentinel-lime"
+                          : agent.lastExecutionStatus === "executing"
+                            ? "border-sentinel-amber/30 bg-sentinel-amber/10 text-sentinel-amber"
+                            : "border-red-400/30 bg-red-400/10 text-red-300"
+                      }`}
+                    >
+                      {executionLabel(agent.lastExecutionStatus)}
+                    </span>
+                  ) : null}
                 </td>
                 <td>
                   <strong className="plain-strong">{agent.permissions[0]}</strong>

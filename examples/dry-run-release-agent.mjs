@@ -137,6 +137,18 @@ async function simulateRelease() {
   console.log("No GitHub API was called and no external system was changed.");
 }
 
+async function reportOutcome(requestId, outcome) {
+  const result = await requestJson(
+    `/api/v1/actions/${requestId}/outcome`,
+    {
+      method: "POST",
+      body: JSON.stringify(outcome),
+    },
+  );
+  console.log(`SentinelOps execution status: ${result.execution.status}`);
+  return result;
+}
+
 async function main() {
   const idempotencyKey =
     process.env.SENTINELOPS_IDEMPOTENCY_KEY ||
@@ -181,7 +193,36 @@ async function main() {
   }
 
   if (decision.status === "allowed" || decision.status === "approved") {
-    await simulateRelease();
+    await reportOutcome(decision.requestId, {
+      status: "executing",
+      summary: `Started dry-run release ${version}.`,
+      externalReference: `dry-run://${repository}/${version}`,
+    });
+
+    try {
+      await simulateRelease();
+      await reportOutcome(decision.requestId, {
+        status: "succeeded",
+        summary: `Dry-run release ${version} completed successfully.`,
+        externalReference: `dry-run://${repository}/${version}`,
+      });
+    } catch (error) {
+      await reportOutcome(decision.requestId, {
+        status: "failed",
+        summary:
+          error instanceof Error
+            ? `Dry-run release failed: ${error.message}`
+            : "Dry-run release failed unexpectedly.",
+        errorCode: "DRY_RUN_FAILED",
+        externalReference: `dry-run://${repository}/${version}`,
+      }).catch((reportError) => {
+        console.error(
+          "SentinelOps could not record the failed execution outcome:",
+          reportError,
+        );
+      });
+      throw error;
+    }
     return;
   }
 

@@ -2,12 +2,21 @@ import "server-only";
 
 import type { NextRequest } from "next/server";
 import type { PoolClient } from "pg";
-import type { ActionEvaluationInput, DecisionInput } from "./contracts";
+import type {
+  ActionEvaluationInput,
+  DecisionInput,
+  ExecutionOutcomeInput,
+} from "./contracts";
 import { policyConditionsSchema } from "./contracts";
 import { appendAuditEvent } from "./audit";
 import { authenticateApiKey } from "./auth";
 import { evaluatePolicies, type EvaluatedPolicy } from "./policy-engine";
 import { withTransaction } from "./db";
+import {
+  evaluateExecutionTransition,
+  isTerminalExecutionStatus,
+  type ExecutionStatus,
+} from "./execution-state";
 
 export class AuthenticationError extends Error {}
 export class ConflictError extends Error {}
@@ -28,6 +37,12 @@ interface ActionRequestRow {
   decided_by: string | null;
   decided_at: Date | null;
   requested_at: Date;
+  execution_status: ExecutionStatus;
+  execution_started_at: Date | null;
+  execution_completed_at: Date | null;
+  execution_external_reference: string | null;
+  execution_summary: string | null;
+  execution_error_code: string | null;
 }
 
 function serializeRequest(row: ActionRequestRow) {
@@ -44,6 +59,14 @@ function serializeRequest(row: ActionRequestRow) {
     requestedAt: row.requested_at.toISOString(),
     decidedAt: row.decided_at?.toISOString() ?? null,
     decidedBy: row.decided_by,
+    execution: {
+      status: row.execution_status,
+      startedAt: row.execution_started_at?.toISOString() ?? null,
+      completedAt: row.execution_completed_at?.toISOString() ?? null,
+      externalReference: row.execution_external_reference,
+      summary: row.execution_summary,
+      errorCode: row.execution_error_code,
+    },
   };
 }
 
@@ -284,5 +307,92 @@ export async function getActionForAgent(
     );
     if (!result.rows[0]) throw new NotFoundError("Request not found.");
     return serializeRequest(result.rows[0]);
+  });
+}
+
+export async function reportExecutionOutcome(
+  request: NextRequest,
+  requestId: string,
+  input: ExecutionOutcomeInput,
+) {
+  return withTransaction(async (client) => {
+    const identity = await authenticateApiKey(request, client);
+    if (!identity) throw new AuthenticationError("Invalid agent API key.");
+
+    const currentResult = await client.query<ActionRequestRow>(
+      `
+        select *
+        from action_requests
+        where id = $1
+          and organization_id = $2
+        for update
+      `,
+      [requestId, identity.organizationId],
+    );
+    const current = currentResult.rows[0];
+    if (!current) throw new NotFoundError("Request not found.");
+
+    if (!["allowed", "approved"].includes(current.decision_status)) {
+      throw new ConflictError(
+        `Execution cannot be reported while the request is ${current.decision_status}.`,
+      );
+    }
+
+    const transition = evaluateExecutionTransition(
+      current.execution_status,
+      input.status,
+    );
+    if (transition === "replay") {
+      return { replayed: true, ...serializeRequest(current) };
+    }
+
+    if (transition === "conflict") {
+      throw new ConflictError(
+        `Execution is already ${current.execution_status} and cannot be changed.`,
+      );
+    }
+
+    const isTerminal = isTerminalExecutionStatus(input.status);
+    const updateResult = await client.query<ActionRequestRow>(
+      `
+        update action_requests
+        set execution_status = $3,
+            execution_started_at = coalesce(execution_started_at, now()),
+            execution_completed_at =
+              case when $4::boolean then now() else null end,
+            execution_external_reference = $5,
+            execution_summary = $6,
+            execution_error_code = $7
+        where id = $1
+          and organization_id = $2
+        returning *
+      `,
+      [
+        requestId,
+        identity.organizationId,
+        input.status,
+        isTerminal,
+        input.externalReference ?? null,
+        input.summary,
+        input.errorCode ?? null,
+      ],
+    );
+    const actionRequest = updateResult.rows[0];
+
+    await appendAuditEvent(client, {
+      organizationId: identity.organizationId,
+      requestId: actionRequest.id,
+      eventType: `action.execution_${input.status}`,
+      actorType: "agent",
+      actorId: `api-key:${identity.keyId}`,
+      payload: {
+        status: input.status,
+        summary: input.summary,
+        externalReference: input.externalReference ?? null,
+        errorCode: input.errorCode ?? null,
+      },
+    });
+
+    return { replayed: false, ...serializeRequest(actionRequest) };
   });
 }

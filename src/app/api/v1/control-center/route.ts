@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
           status: "healthy" | "review" | "blocked";
           action_count: string;
           last_action: string | null;
+          last_execution_status: string | null;
           last_seen_at: Date;
         }>(`
           select
@@ -41,6 +42,13 @@ export async function GET(request: NextRequest) {
               order by latest.requested_at desc
               limit 1
             ) as last_action,
+            (
+              select latest.execution_status
+              from action_requests latest
+              where latest.agent_id = a.id
+              order by latest.requested_at desc
+              limit 1
+            ) as last_execution_status,
             a.last_seen_at
           from agents a
           left join action_requests ar on ar.agent_id = a.id
@@ -137,6 +145,7 @@ export async function GET(request: NextRequest) {
         actions: Number(row.action_count),
         cost: 0,
         lastAction: row.last_action ?? "Agent registered",
+        lastExecutionStatus: row.last_execution_status ?? "not_started",
         lastSeen: row.last_seen_at.toISOString(),
       })),
       approvals: approvalsResult.rows.map((row) => ({
@@ -177,11 +186,21 @@ export async function GET(request: NextRequest) {
               ? "Allowed"
               : status === "approved"
                 ? "Approved"
+                : status === "executing"
+                  ? "Executing"
+                  : status === "succeeded"
+                    ? "Succeeded"
+                    : status === "failed"
+                      ? "Failed"
+                      : status === "cancelled"
+                        ? "Cancelled"
                 : status === "blocked" || status === "denied"
                   ? "Blocked"
                   : "Changed",
           actor: row.actor_id,
-          detail: String(row.payload.reason ?? row.event_type),
+          detail: String(
+            row.payload.summary ?? row.payload.reason ?? row.event_type,
+          ),
         };
       }),
     });

@@ -1,6 +1,12 @@
 export type AgentStatus = "healthy" | "review" | "blocked";
 export type RiskLevel = "low" | "medium" | "high";
 export type ApprovalStatus = "pending" | "approved" | "denied";
+export type ExecutionStatus =
+  | "not_started"
+  | "executing"
+  | "succeeded"
+  | "failed"
+  | "cancelled";
 
 export interface Agent {
   id: string;
@@ -15,6 +21,7 @@ export interface Agent {
   cost: number;
   lastAction: string;
   lastSeen: string;
+  lastExecutionStatus?: ExecutionStatus;
 }
 
 export interface Approval {
@@ -45,7 +52,15 @@ export interface AuditEvent {
   time: string;
   agent: string;
   action: string;
-  result: "Allowed" | "Approved" | "Blocked" | "Changed";
+  result:
+    | "Allowed"
+    | "Approved"
+    | "Blocked"
+    | "Changed"
+    | "Executing"
+    | "Succeeded"
+    | "Failed"
+    | "Cancelled";
   actor: string;
   detail: string;
 }
