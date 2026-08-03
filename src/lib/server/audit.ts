@@ -1,7 +1,7 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
+import { calculateAuditEventHash } from "./audit-chain";
 
 interface AppendAuditEventInput {
   organizationId: string;
@@ -10,21 +10,6 @@ interface AppendAuditEventInput {
   actorType: "agent" | "policy" | "human" | "system";
   actorId: string;
   payload: Record<string, unknown>;
-}
-
-function stableJson(value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map(stableJson).join(",")}]`;
-  }
-  if (value && typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>).sort(
-      ([left], [right]) => left.localeCompare(right),
-    );
-    return `{${entries
-      .map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`)
-      .join(",")}}`;
-  }
-  return JSON.stringify(value);
 }
 
 export async function appendAuditEvent(
@@ -45,18 +30,7 @@ export async function appendAuditEvent(
     [input.organizationId],
   );
   const previousHash = previousResult.rows[0]?.event_hash ?? null;
-  const eventHash = createHash("sha256")
-    .update(
-      stableJson({
-        previousHash,
-        requestId: input.requestId,
-        eventType: input.eventType,
-        actorType: input.actorType,
-        actorId: input.actorId,
-        payload: input.payload,
-      }),
-    )
-    .digest("hex");
+  const eventHash = calculateAuditEventHash(previousHash, input);
 
   await client.query(
     `

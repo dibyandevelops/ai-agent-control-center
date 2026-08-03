@@ -200,6 +200,9 @@ used in the recording.
 - `POST /api/v1/actions/:requestId/outcome` lets the originating organization
   report `executing`, `succeeded`, `failed`, or `cancelled` and records each
   transition as audit evidence.
+- `GET /api/v1/audit/integrity` requires an authenticated operator session and
+  recomputes every event hash and previous-hash link across organization audit
+  chains. The Audit Log exposes this as **Verify integrity**.
 - `PATCH /api/v1/policies/:policyId` updates enforcement state and records audit
   evidence.
 - `GET /api/v1/control-center` returns live operator data.

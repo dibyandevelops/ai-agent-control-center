@@ -767,15 +767,92 @@ function AuditView({
   onOpenDetails: (requestId: string) => void;
 }) {
   const [query, setQuery] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [integrityError, setIntegrityError] = useState("");
+  const [integrity, setIntegrity] = useState<{
+    verified: boolean;
+    eventsChecked: number;
+    organizationsChecked: number;
+    firstInvalidEventId: string | null;
+    checkedAt: string;
+  } | null>(null);
   const filtered = audit.filter((event) =>
     `${event.agent} ${event.action} ${event.actor}`.toLowerCase().includes(query.toLowerCase()),
   );
+
+  async function verifyIntegrity() {
+    setVerifying(true);
+    setIntegrityError("");
+    try {
+      const response = await fetch("/api/v1/audit/integrity", {
+        cache: "no-store",
+      });
+      const payload = (await response.json()) as NonNullable<typeof integrity> & {
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error || "Audit verification failed.");
+      }
+      setIntegrity(payload);
+    } catch (verificationError) {
+      setIntegrityError(
+        verificationError instanceof Error
+          ? verificationError.message
+          : "Audit verification failed.",
+      );
+    } finally {
+      setVerifying(false);
+    }
+  }
+
   return (
     <main className="page">
       <div className="page-title-row">
         <div><h2>Audit log</h2><p>An immutable record of agent actions, policy decisions, and human approvals.</p></div>
-        <button className="secondary-button"><ArrowDownToLine /> Export CSV</button>
+        <div className="flex items-center gap-3">
+          <button
+            className="primary-button"
+            onClick={verifyIntegrity}
+            disabled={verifying}
+          >
+            {verifying ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />}
+            {verifying ? "Verifying…" : "Verify integrity"}
+          </button>
+          <button className="secondary-button"><ArrowDownToLine /> Export CSV</button>
+        </div>
       </div>
+      {integrity ? (
+        <section
+          className={`mb-5 flex items-start gap-3 rounded-xl border p-4 ${
+            integrity.verified
+              ? "border-sentinel-lime/30 bg-sentinel-lime/10"
+              : "border-red-400/30 bg-red-400/10"
+          }`}
+        >
+          {integrity.verified ? (
+            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-sentinel-lime" />
+          ) : (
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-300" />
+          )}
+          <div>
+            <strong className="text-sm text-sentinel-text">
+              {integrity.verified
+                ? "Audit chain integrity verified"
+                : "Audit chain verification failed"}
+            </strong>
+            <p className="mt-1 text-xs text-sentinel-muted">
+              Checked {integrity.eventsChecked.toLocaleString()} events across {integrity.organizationsChecked.toLocaleString()} organization{integrity.organizationsChecked === 1 ? "" : "s"} at {new Date(integrity.checkedAt).toLocaleString()}.
+              {integrity.firstInvalidEventId
+                ? ` First invalid event: ${integrity.firstInvalidEventId}.`
+                : " Every event hash and previous-hash link is intact."}
+            </p>
+          </div>
+        </section>
+      ) : integrityError ? (
+        <section className="mb-5 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
+          {integrityError}
+        </section>
+      ) : null}
       <section className="panel table-panel audit-table">
         <div className="section-heading table-heading">
           <label className="search-field wide-search"><Search /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search actions, agents, or actors…" /></label>
