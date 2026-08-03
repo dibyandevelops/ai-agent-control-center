@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasAdminSession } from "@/lib/server/auth";
 import { getPool } from "@/lib/server/db";
+import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
 
 export async function GET(request: NextRequest) {
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     const pool = getPool();
+    const env = getServerEnv();
     const [agentsResult, approvalsResult, policiesResult, auditResult] =
       await Promise.all([
         pool.query<{
@@ -131,6 +133,26 @@ export async function GET(request: NextRequest) {
         `),
       ]);
 
+    const latestGitHubEvidence = auditResult.rows.find((row) => {
+      const reference = row.payload.externalReference;
+      return (
+        row.payload.status === "succeeded" &&
+        typeof reference === "string" &&
+        reference.startsWith("https://github.com/")
+      );
+    });
+    const githubTokenConfigured = Boolean(env.GITHUB_TOKEN);
+    const githubRepositoryConfigured = Boolean(env.GITHUB_REPOSITORY);
+    const githubConnected =
+      githubTokenConfigured && githubRepositoryConfigured;
+    const githubStatus = latestGitHubEvidence
+      ? "verified"
+      : githubConnected
+        ? "configured"
+        : githubTokenConfigured || githubRepositoryConfigured
+          ? "attention"
+          : "not_connected";
+
     return NextResponse.json({
       mode: "live",
       agents: agentsResult.rows.map((row) => ({
@@ -210,6 +232,45 @@ export async function GET(request: NextRequest) {
           externalReference,
         };
       }),
+      integrations: [
+        {
+          id: "int-github",
+          name: "GitHub",
+          description:
+            "Govern release creation and preserve execution evidence.",
+          connected: githubConnected,
+          category: "Engineering",
+          events: latestGitHubEvidence
+            ? "Governed draft verified"
+            : githubConnected
+              ? "Ready for validation"
+              : "Not configured",
+          status: githubStatus,
+          repository: env.GITHUB_REPOSITORY,
+          mode:
+            env.GITHUB_DRY_RUN === "false"
+              ? "Draft release"
+              : "Read-only dry run",
+          url: env.GITHUB_REPOSITORY
+            ? `https://github.com/${env.GITHUB_REPOSITORY}`
+            : null,
+        },
+        {
+          id: "int-slack",
+          name: "Slack",
+          description: "Route approval requests to the configured workspace.",
+          connected: Boolean(env.SLACK_APPROVAL_WEBHOOK_URL),
+          category: "Communication",
+          events: env.SLACK_APPROVAL_WEBHOOK_URL
+            ? "Approval notifications enabled"
+            : "Not configured",
+          status: env.SLACK_APPROVAL_WEBHOOK_URL
+            ? "configured"
+            : "not_connected",
+          mode: "Approval notifications",
+          url: null,
+        },
+      ],
     });
   } catch (error) {
     return apiError(error);

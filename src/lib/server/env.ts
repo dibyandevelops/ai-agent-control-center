@@ -8,6 +8,13 @@ const serverEnvSchema = z.object({
   DB_SSL_REJECT_UNAUTHORIZED: z.enum(["true", "false"]).optional(),
   SENTINELOPS_ADMIN_TOKEN: z.string().min(32).optional(),
   SLACK_APPROVAL_WEBHOOK_URL: z.string().url().optional(),
+  GITHUB_TOKEN: z.string().min(1).optional(),
+  GITHUB_REPOSITORY: z
+    .string()
+    .regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/)
+    .optional(),
+  GITHUB_RELEASE_MODE: z.enum(["draft"]).optional(),
+  GITHUB_DRY_RUN: z.enum(["true", "false"]).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -26,6 +33,10 @@ export function getServerEnv(): ServerEnv {
       process.env.SENTINELOPS_ADMIN_TOKEN || undefined,
     SLACK_APPROVAL_WEBHOOK_URL:
       process.env.SLACK_APPROVAL_WEBHOOK_URL || undefined,
+    GITHUB_TOKEN: process.env.GITHUB_TOKEN || undefined,
+    GITHUB_REPOSITORY: process.env.GITHUB_REPOSITORY || undefined,
+    GITHUB_RELEASE_MODE: process.env.GITHUB_RELEASE_MODE || undefined,
+    GITHUB_DRY_RUN: process.env.GITHUB_DRY_RUN || undefined,
   });
 
   if (!result.success) {

@@ -73,4 +73,8 @@ export interface Integration {
   connected: boolean;
   category: string;
   events: string;
+  status?: "verified" | "configured" | "attention" | "not_connected";
+  repository?: string;
+  mode?: string;
+  url?: string | null;
 }

@@ -70,6 +70,7 @@ interface LiveControlCenterPayload {
   approvals: Approval[];
   policies: Policy[];
   audit: AuditEvent[];
+  integrations: Integration[];
 }
 
 const navItems: Array<{
@@ -814,10 +815,24 @@ function IntegrationLogo({ integration }: { integration: Integration }) {
   return <PlugZap />;
 }
 
-function IntegrationsView() {
-  const [items, setItems] = useState(integrations);
+function integrationStatusLabel(integration: Integration) {
+  if (integration.status === "verified") return "Verified";
+  if (integration.status === "configured") return "Configured";
+  if (integration.status === "attention") return "Needs attention";
+  return integration.connected ? "Connected" : "Not connected";
+}
+
+function IntegrationsView({
+  items,
+  live,
+}: {
+  items: Integration[];
+  live: boolean;
+}) {
+  const [demoItems, setDemoItems] = useState(integrations);
+  const visibleItems = live ? items : demoItems;
   function toggle(id: string) {
-    setItems((current) =>
+    setDemoItems((current) =>
       current.map((item) =>
         item.id === id
           ? {
@@ -836,19 +851,60 @@ function IntegrationsView() {
         <button className="secondary-button"><Plus /> Request integration</button>
       </div>
       <div className="integrations-grid">
-        {items.map((integration) => (
+        {visibleItems.map((integration) => (
           <article className="panel integration-card" key={integration.id}>
             <div className="integration-logo"><IntegrationLogo integration={integration} /></div>
             <div className="integration-copy">
-              <div><h3>{integration.name}</h3>{integration.connected && <span className="connected"><Check />Connected</span>}</div>
+              <div>
+                <h3>{integration.name}</h3>
+                {(integration.connected || integration.status === "attention") ? (
+                  <span className="connected">
+                    <Check /> {integrationStatusLabel(integration)}
+                  </span>
+                ) : null}
+              </div>
               <span>{integration.category}</span>
               <p>{integration.description}</p>
+              {integration.repository || integration.mode ? (
+                <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-medium text-sentinel-muted">
+                  {integration.repository ? (
+                    <span className="rounded-md border border-sentinel-border bg-sentinel-panel-soft px-2.5 py-1">
+                      {integration.repository}
+                    </span>
+                  ) : null}
+                  {integration.mode ? (
+                    <span className="rounded-md border border-sentinel-border bg-sentinel-panel-soft px-2.5 py-1">
+                      {integration.mode}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             <div className="integration-footer">
               <span>{integration.events}</span>
-              <button className={integration.connected ? "secondary-button" : "primary-button"} onClick={() => toggle(integration.id)}>
-                {integration.connected ? "Configure" : "Connect"}
-              </button>
+              {live ? (
+                integration.connected && integration.url ? (
+                  <a
+                    className="secondary-button"
+                    href={integration.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open repository
+                  </a>
+                ) : (
+                  <button className="secondary-button" disabled>
+                    {integration.connected ? "Configured" : "Not configured"}
+                  </button>
+                )
+              ) : (
+                <button
+                  className={integration.connected ? "secondary-button" : "primary-button"}
+                  onClick={() => toggle(integration.id)}
+                >
+                  {integration.connected ? "Configure" : "Connect"}
+                </button>
+              )}
             </div>
           </article>
         ))}
@@ -1098,6 +1154,7 @@ export function ControlCenter() {
   const [approvalList, setApprovalList] = useState(initialApprovals);
   const [policyList, setPolicyList] = useState(initialPolicies);
   const [auditList, setAuditList] = useState(initialAuditEvents);
+  const [integrationList, setIntegrationList] = useState(integrations);
   const [toast, setToast] = useState("");
   const [hydrated, setHydrated] = useState(false);
 
@@ -1107,6 +1164,7 @@ export function ControlCenter() {
       setApprovalList(payload.approvals);
       setPolicyList(payload.policies);
       setAuditList(payload.audit);
+      setIntegrationList(payload.integrations);
       setWorkspaceMode("live");
       setWorkspaceError("");
     },
@@ -1422,7 +1480,12 @@ export function ControlCenter() {
         {view === "approvals" && <ApprovalsView approvals={pendingApprovals} onDecision={decide} />}
         {view === "policies" && <PoliciesView policies={policyList} onToggle={togglePolicy} />}
         {view === "audit" && <AuditView audit={auditList} />}
-        {view === "integrations" && <IntegrationsView />}
+        {view === "integrations" && (
+          <IntegrationsView
+            items={integrationList}
+            live={workspaceMode === "live"}
+          />
+        )}
       </div>
       <RegisterDialog open={registerOpen} onClose={() => setRegisterOpen(false)} onRegister={register} />
       <LiveConnectionDialog
