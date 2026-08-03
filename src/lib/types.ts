@@ -63,6 +63,7 @@ export interface AuditEvent {
     | "Cancelled";
   actor: string;
   detail: string;
+  externalReference?: string | null;
 }
 
 export interface Integration {

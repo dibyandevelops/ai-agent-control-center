@@ -176,6 +176,12 @@ export async function GET(request: NextRequest) {
       })),
       audit: auditResult.rows.map((row) => {
         const status = String(row.payload.status ?? row.payload.decision ?? "");
+        const candidateReference = row.payload.externalReference;
+        const externalReference =
+          typeof candidateReference === "string" &&
+          candidateReference.startsWith("https://github.com/")
+            ? candidateReference
+            : null;
         return {
           id: row.id,
           time: row.created_at.toISOString(),
@@ -201,6 +207,7 @@ export async function GET(request: NextRequest) {
           detail: String(
             row.payload.summary ?? row.payload.reason ?? row.event_type,
           ),
+          externalReference,
         };
       }),
     });

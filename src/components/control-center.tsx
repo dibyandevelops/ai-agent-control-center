@@ -782,7 +782,20 @@ function AuditView({ audit }: { audit: AuditEvent[] }) {
                   <td>{event.action}</td>
                   <td><span className={`decision decision-${event.result.toLowerCase()}`}>{event.result}</span></td>
                   <td>{event.actor}</td>
-                  <td><button className="text-button">View event</button></td>
+                  <td>
+                    {event.externalReference ? (
+                      <a
+                        className="text-button"
+                        href={event.externalReference}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open evidence
+                      </a>
+                    ) : (
+                      <span className="text-sentinel-muted">Recorded</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
