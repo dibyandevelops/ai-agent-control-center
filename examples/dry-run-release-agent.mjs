@@ -1,16 +1,23 @@
 import process from "node:process";
+import { createGitHubReleaseClient } from "./github-release-client.mjs";
 
 const apiKey = process.env.SENTINELOPS_AGENT_API_KEY;
 const baseUrl = (process.env.SENTINELOPS_URL || "http://localhost:3000").replace(
   /\/$/,
   "",
 );
+const githubToken = process.env.GITHUB_TOKEN;
+const configuredGitHubRepository = process.env.GITHUB_REPOSITORY;
 const repository =
-  process.env.RELEASE_REPOSITORY || "sentinelops/payments-api";
+  configuredGitHubRepository ||
+  process.env.RELEASE_REPOSITORY ||
+  "sentinelops/payments-api";
 const version = process.env.RELEASE_VERSION || "v1.0.0-dry-run";
-const commitSha = process.env.RELEASE_COMMIT_SHA || "abc123dryrun";
+const configuredCommitish = process.env.RELEASE_COMMIT_SHA;
 const changeTicket = process.env.RELEASE_CHANGE_TICKET || "CHG-DRY-RUN-001";
 const environment = process.env.RELEASE_ENVIRONMENT || "production";
+const githubDryRun = readBoolean("GITHUB_DRY_RUN", true);
+const githubReleaseMode = process.env.GITHUB_RELEASE_MODE || "draft";
 const pollIntervalMs = readPositiveInteger(
   "SENTINELOPS_POLL_INTERVAL_MS",
   2_000,
@@ -33,6 +40,24 @@ if (!["development", "staging", "production"].includes(environment)) {
   );
 }
 
+if (Boolean(githubToken) !== Boolean(configuredGitHubRepository)) {
+  throw new Error(
+    "GITHUB_TOKEN and GITHUB_REPOSITORY must either both be configured or both be omitted.",
+  );
+}
+
+if (githubReleaseMode !== "draft") {
+  throw new Error("GITHUB_RELEASE_MODE must remain draft for the MVP.");
+}
+
+const githubClient =
+  githubToken && configuredGitHubRepository
+    ? createGitHubReleaseClient({
+        token: githubToken,
+        repository: configuredGitHubRepository,
+      })
+    : null;
+
 function readPositiveInteger(name, fallback) {
   const value = process.env[name];
   if (!value) return fallback;
@@ -41,6 +66,14 @@ function readPositiveInteger(name, fallback) {
     throw new Error(`${name} must be a positive integer.`);
   }
   return parsed;
+}
+
+function readBoolean(name, fallback) {
+  const value = process.env[name];
+  if (!value) return fallback;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`${name} must be true or false.`);
 }
 
 function sleep(milliseconds) {
@@ -116,9 +149,9 @@ async function waitForDecision(requestId) {
   );
 }
 
-async function simulateRelease() {
+async function simulateRelease(commitish) {
   const steps = [
-    `Verify commit ${commitSha}`,
+    `Verify release target ${commitish}`,
     `Build release artifact for ${repository}`,
     `Create GitHub release ${version}`,
     `Attach deployment evidence for ${changeTicket}`,
@@ -134,7 +167,38 @@ async function simulateRelease() {
 
   console.log("");
   console.log("Dry run completed successfully.");
-  console.log("No GitHub API was called and no external system was changed.");
+  console.log("No GitHub write API was called and no external system was changed.");
+
+  return {
+    summary: `GitHub release ${version} dry run completed successfully.`,
+    externalReference: `dry-run://${repository}/${version}`,
+  };
+}
+
+async function executeRelease(commitish) {
+  if (!githubClient || githubDryRun) return simulateRelease(commitish);
+
+  console.log("");
+  console.log("Creating an approved GitHub draft release...");
+  const release = await githubClient.createDraftRelease({
+    tagName: version,
+    targetCommitish: commitish,
+    name: `${version} — SentinelOps governed release`,
+    body: `Approved by SentinelOps under change ticket ${changeTicket}.`,
+  });
+  console.log(
+    release.replayed
+      ? "Existing GitHub draft release found; no duplicate was created."
+      : "GitHub draft release created.",
+  );
+  console.log(`Draft URL: ${release.htmlUrl}`);
+
+  return {
+    summary: release.replayed
+      ? `Existing GitHub draft release ${version} verified.`
+      : `GitHub draft release ${version} created successfully.`,
+    externalReference: release.htmlUrl,
+  };
 }
 
 async function reportOutcome(requestId, outcome) {
@@ -150,6 +214,17 @@ async function reportOutcome(requestId, outcome) {
 }
 
 async function main() {
+  let repositoryInfo = null;
+  if (githubClient) {
+    console.log("Validating restricted GitHub repository access...");
+    repositoryInfo = await githubClient.validateRepository();
+    console.log(`GitHub repository verified: ${repositoryInfo.fullName}`);
+    console.log(
+      `GitHub mode: ${githubDryRun ? "read-only dry run" : "draft release"}`,
+    );
+    console.log("");
+  }
+  const commitish = configuredCommitish || repositoryInfo?.defaultBranch || "main";
   const idempotencyKey =
     process.env.SENTINELOPS_IDEMPOTENCY_KEY ||
     `dry-run-release-${repository}-${version}-${Date.now()}`;
@@ -158,6 +233,7 @@ async function main() {
   console.log("-------------------------");
   console.log(`Repository:  ${repository}`);
   console.log(`Version:     ${version}`);
+  console.log(`Target:      ${commitish}`);
   console.log(`Environment: ${environment}`);
   console.log(`Change:      ${changeTicket}`);
   console.log("");
@@ -178,9 +254,10 @@ async function main() {
       resource: `${repository}@${version}`,
       environment,
       context: {
-        commitSha,
+        commitSha: commitish,
         changeTicket,
-        dryRun: true,
+        dryRun: githubDryRun,
+        releaseMode: githubReleaseMode,
       },
     }),
   });
@@ -193,28 +270,30 @@ async function main() {
   }
 
   if (decision.status === "allowed" || decision.status === "approved") {
+    const initialReference =
+      repositoryInfo?.htmlUrl || `dry-run://${repository}/${version}`;
     await reportOutcome(decision.requestId, {
       status: "executing",
-      summary: `Started dry-run release ${version}.`,
-      externalReference: `dry-run://${repository}/${version}`,
+      summary: `Started ${githubDryRun ? "dry-run" : "draft"} release ${version}.`,
+      externalReference: initialReference,
     });
 
     try {
-      await simulateRelease();
+      const result = await executeRelease(commitish);
       await reportOutcome(decision.requestId, {
         status: "succeeded",
-        summary: `Dry-run release ${version} completed successfully.`,
-        externalReference: `dry-run://${repository}/${version}`,
+        summary: result.summary,
+        externalReference: result.externalReference,
       });
     } catch (error) {
       await reportOutcome(decision.requestId, {
         status: "failed",
         summary:
           error instanceof Error
-            ? `Dry-run release failed: ${error.message}`
-            : "Dry-run release failed unexpectedly.",
-        errorCode: "DRY_RUN_FAILED",
-        externalReference: `dry-run://${repository}/${version}`,
+            ? `GitHub release workflow failed: ${error.message}`
+            : "GitHub release workflow failed unexpectedly.",
+        errorCode: githubDryRun ? "DRY_RUN_FAILED" : "GITHUB_RELEASE_FAILED",
+        externalReference: initialReference,
       }).catch((reportError) => {
         console.error(
           "SentinelOps could not record the failed execution outcome:",
@@ -230,7 +309,7 @@ async function main() {
   console.error(
     `Dry run stopped because SentinelOps returned "${decision.status}".`,
   );
-  console.error("No GitHub API was called and no external system was changed.");
+  console.error("No GitHub release was created.");
   process.exitCode = decision.status === "blocked" ? 3 : 2;
 }
 
@@ -239,6 +318,6 @@ main().catch((error) => {
   console.error(
     error instanceof Error ? error.message : "Unexpected dry-run failure.",
   );
-  console.error("No GitHub API was called and no external system was changed.");
+  console.error("No GitHub release was created by this failed run.");
   process.exitCode = 1;
 });

@@ -125,6 +125,25 @@ Add the complete agent key printed by `pnpm db:seed` to `.env.local`:
 SENTINELOPS_AGENT_API_KEY=sop_live_your_complete_key
 ```
 
+For the GitHub sandbox integration, add a fine-grained token restricted to one
+test repository with `Contents: Read and write`:
+
+```bash
+GITHUB_TOKEN=github_pat_your_complete_token
+GITHUB_REPOSITORY=your-account/sentinelops-release-sandbox
+GITHUB_RELEASE_MODE=draft
+GITHUB_DRY_RUN=true
+```
+
+Verify access without changing GitHub:
+
+```bash
+pnpm github:verify
+```
+
+The verification command checks the exact repository, confirms it is not
+archived, and confirms the token has write access. It never prints the token.
+
 Keep SentinelOps running with `pnpm dev`, then open a second terminal:
 
 ```bash
@@ -135,16 +154,21 @@ The demo submits a production release and waits while the decision is
 `pending`. Open [http://localhost:3000/dashboard](http://localhost:3000/dashboard),
 connect the live workspace, and approve or deny the request.
 
-After approval, the agent reports `executing`, simulates four release steps,
-then reports `succeeded`. After denial or a policy block, it stops without
-executing. It never reads a GitHub token and never calls the GitHub API.
+With `GITHUB_DRY_RUN=true`, the agent validates the configured GitHub repository,
+then reports `executing`, simulates four release steps, and reports `succeeded`.
+No GitHub write API is called. After denial or a policy block, it stops without
+executing.
+
+Only after the dry run is verified should `GITHUB_DRY_RUN` be changed to
+`false`. Even then, the client is hard-limited to creating a **draft** release
+in `GITHUB_REPOSITORY`; it cannot publish the release. Existing draft tags are
+treated as idempotent replays, while an existing published tag is rejected.
 
 Optional `.env.local` values let you customize the demonstration:
 
 ```bash
-RELEASE_REPOSITORY=sentinelops/payments-api
 RELEASE_VERSION=v1.0.0-dry-run
-RELEASE_COMMIT_SHA=abc123dryrun
+RELEASE_COMMIT_SHA=main
 RELEASE_CHANGE_TICKET=CHG-DRY-RUN-001
 RELEASE_ENVIRONMENT=production
 ```
