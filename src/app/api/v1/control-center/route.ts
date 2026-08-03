@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
       await Promise.all([
         pool.query<{
           id: string;
+          request_id: string | null;
           name: string;
           owner_email: string;
           team: string;
@@ -110,6 +111,7 @@ export async function GET(request: NextRequest) {
         `),
         pool.query<{
           id: string;
+          request_id: string | null;
           created_at: Date;
           agent_name: string | null;
           action: string | null;
@@ -119,6 +121,7 @@ export async function GET(request: NextRequest) {
         }>(`
           select
             ae.id::text,
+            ae.request_id,
             ae.created_at,
             a.name as agent_name,
             ar.action,
@@ -206,6 +209,7 @@ export async function GET(request: NextRequest) {
             : null;
         return {
           id: row.id,
+          requestId: row.request_id,
           time: row.created_at.toISOString(),
           agent: row.agent_name ?? "SentinelOps",
           action: row.action ?? row.event_type,

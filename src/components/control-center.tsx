@@ -19,9 +19,11 @@ import {
   FileClock,
   FileKey2,
   Filter,
+  ExternalLink,
   GitBranch,
   LayoutDashboard,
   LockKeyhole,
+  LoaderCircle,
   Menu,
   MoreHorizontal,
   PlugZap,
@@ -45,6 +47,7 @@ import {
   policies as initialPolicies,
 } from "@/lib/demo-data";
 import type {
+  ActionDetail,
   Agent,
   AgentStatus,
   Approval,
@@ -756,7 +759,13 @@ function PoliciesView({
   );
 }
 
-function AuditView({ audit }: { audit: AuditEvent[] }) {
+function AuditView({
+  audit,
+  onOpenDetails,
+}: {
+  audit: AuditEvent[];
+  onOpenDetails: (requestId: string) => void;
+}) {
   const [query, setQuery] = useState("");
   const filtered = audit.filter((event) =>
     `${event.agent} ${event.action} ${event.actor}`.toLowerCase().includes(query.toLowerCase()),
@@ -784,18 +793,29 @@ function AuditView({ audit }: { audit: AuditEvent[] }) {
                   <td><span className={`decision decision-${event.result.toLowerCase()}`}>{event.result}</span></td>
                   <td>{event.actor}</td>
                   <td>
-                    {event.externalReference ? (
-                      <a
-                        className="text-button"
-                        href={event.externalReference}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Open evidence
-                      </a>
-                    ) : (
-                      <span className="text-sentinel-muted">Recorded</span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {event.requestId ? (
+                        <button
+                          className="text-button"
+                          onClick={() => onOpenDetails(event.requestId!)}
+                        >
+                          View details
+                        </button>
+                      ) : null}
+                      {event.externalReference ? (
+                        <a
+                          className="text-button"
+                          href={event.externalReference}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label="Open external GitHub evidence"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" /> GitHub
+                        </a>
+                      ) : event.requestId ? null : (
+                        <span className="text-sentinel-muted">Recorded</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -804,6 +824,182 @@ function AuditView({ audit }: { audit: AuditEvent[] }) {
         </div>
       </section>
     </main>
+  );
+}
+
+function ActionDetailDrawer({
+  requestId,
+  onClose,
+}: {
+  requestId: string | null;
+  onClose: () => void;
+}) {
+  const [detail, setDetail] = useState<ActionDetail | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(Boolean(requestId));
+
+  useEffect(() => {
+    if (!requestId) return;
+    const controller = new AbortController();
+
+    async function loadDetail() {
+      try {
+        const response = await fetch(
+          `/api/v1/actions/${requestId}/details`,
+          { cache: "no-store", signal: controller.signal },
+        );
+        const payload = (await response.json()) as ActionDetail & {
+          error?: string;
+        };
+        if (!response.ok) {
+          throw new Error(payload.error || "Unable to load action evidence.");
+        }
+        setDetail(payload);
+      } catch (loadError) {
+        if (controller.signal.aborted) return;
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Unable to load action evidence.",
+        );
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void loadDetail();
+    return () => controller.abort();
+  }, [requestId]);
+
+  useEffect(() => {
+    if (!requestId) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose, requestId]);
+
+  if (!requestId) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-black/65 backdrop-blur-sm"
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <aside
+        className="h-full w-full max-w-2xl overflow-y-auto border-l border-sentinel-border bg-[#0d1217] shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="action-detail-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="sticky top-0 z-10 flex items-start justify-between border-b border-sentinel-border bg-[#0d1217]/95 px-7 py-6 backdrop-blur">
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sentinel-lime">
+              Tamper-evident record
+            </span>
+            <h2 id="action-detail-title" className="mt-2 text-xl font-semibold text-sentinel-text">
+              Action evidence
+            </h2>
+            <p className="mt-1 font-mono text-xs text-sentinel-muted">
+              {requestId}
+            </p>
+          </div>
+          <button className="icon-button" onClick={onClose} aria-label="Close action details">
+            <X />
+          </button>
+        </header>
+
+        <div className="space-y-6 p-7">
+          {loading ? (
+            <div className="flex min-h-64 items-center justify-center gap-3 text-sm text-sentinel-muted">
+              <LoaderCircle className="h-5 w-5 animate-spin text-sentinel-lime" />
+              Loading evidence…
+            </div>
+          ) : error ? (
+            <div className="rounded-xl border border-red-400/30 bg-red-400/10 p-5 text-sm text-red-200">
+              {error}
+            </div>
+          ) : detail ? (
+            <>
+              <section className="rounded-xl border border-sentinel-border bg-sentinel-panel-soft p-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-sentinel-text">{detail.action}</h3>
+                    <p className="mt-1 text-sm text-sentinel-muted">{detail.resource}</p>
+                  </div>
+                  <Risk risk={detail.risk} />
+                </div>
+                <dl className="mt-5 grid grid-cols-2 gap-4 text-xs max-sm:grid-cols-1">
+                  <div><dt className="text-sentinel-muted">Agent</dt><dd className="mt-1 font-semibold text-sentinel-text">{detail.agent.name}</dd></div>
+                  <div><dt className="text-sentinel-muted">Environment</dt><dd className="mt-1 font-semibold capitalize text-sentinel-text">{detail.environment}</dd></div>
+                  <div><dt className="text-sentinel-muted">Owner</dt><dd className="mt-1 font-semibold text-sentinel-text">{detail.agent.owner}</dd></div>
+                  <div><dt className="text-sentinel-muted">Requested</dt><dd className="mt-1 font-semibold text-sentinel-text">{new Date(detail.requestedAt).toLocaleString()}</dd></div>
+                </dl>
+              </section>
+
+              <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+                <section className="rounded-xl border border-sentinel-border bg-sentinel-panel-soft p-5">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sentinel-muted">Decision</span>
+                  <h3 className="mt-2 text-base font-semibold capitalize text-sentinel-text">{detail.decision.status}</h3>
+                  <p className="mt-2 text-xs leading-5 text-sentinel-muted">{detail.decision.reason}</p>
+                  <div className="mt-4 border-t border-sentinel-border pt-3 text-xs text-sentinel-muted">
+                    {detail.decision.policyName || "Safety default"}
+                    {detail.decision.decidedBy ? ` · ${detail.decision.decidedBy}` : ""}
+                  </div>
+                </section>
+                <section className="rounded-xl border border-sentinel-border bg-sentinel-panel-soft p-5">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sentinel-muted">Execution</span>
+                  <h3 className="mt-2 text-base font-semibold capitalize text-sentinel-text">{detail.execution.status.replace("_", " ")}</h3>
+                  <p className="mt-2 text-xs leading-5 text-sentinel-muted">{detail.execution.summary || "No execution outcome reported."}</p>
+                  {detail.execution.externalReference ? (
+                    <a className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-sentinel-lime" href={detail.execution.externalReference} target="_blank" rel="noreferrer">
+                      <ExternalLink className="h-3.5 w-3.5" /> Open GitHub evidence
+                    </a>
+                  ) : null}
+                </section>
+              </div>
+
+              <section>
+                <div className="mb-4 flex items-center gap-2">
+                  <FileClock className="h-4 w-4 text-sentinel-lime" />
+                  <h3 className="text-sm font-semibold text-sentinel-text">Evidence timeline</h3>
+                </div>
+                <div className="space-y-3 border-l border-sentinel-border pl-5">
+                  {detail.timeline.map((event) => (
+                    <article className="relative rounded-lg border border-sentinel-border bg-sentinel-panel-soft p-4" key={event.id}>
+                      <span className="absolute -left-[25px] top-5 h-2 w-2 rounded-full bg-sentinel-lime shadow-[0_0_10px_rgba(183,243,74,0.5)]" />
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <strong className="text-xs font-semibold text-sentinel-text">{event.eventType}</strong>
+                        <time className="font-mono text-[10px] text-sentinel-muted">{new Date(event.time).toLocaleString()}</time>
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-sentinel-muted">{event.detail}</p>
+                      <span className="mt-2 block text-[10px] uppercase tracking-[0.1em] text-sentinel-muted">{event.actorType} · {event.actor}</span>
+                    </article>
+                  ))}
+                </div>
+              </section>
+
+              {Object.keys(detail.context).length > 0 ? (
+                <section className="rounded-xl border border-sentinel-border bg-[#090d11] p-5">
+                  <h3 className="text-sm font-semibold text-sentinel-text">Request context</h3>
+                  <dl className="mt-4 space-y-2 font-mono text-xs">
+                    {Object.entries(detail.context).map(([key, value]) => (
+                      <div className="flex items-start justify-between gap-5" key={key}>
+                        <dt className="text-sentinel-muted">{key}</dt>
+                        <dd className="break-all text-right text-sentinel-text">{String(value)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+      </aside>
+    </div>
   );
 }
 
@@ -1155,6 +1351,7 @@ export function ControlCenter() {
   const [policyList, setPolicyList] = useState(initialPolicies);
   const [auditList, setAuditList] = useState(initialAuditEvents);
   const [integrationList, setIntegrationList] = useState(integrations);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const [hydrated, setHydrated] = useState(false);
 
@@ -1479,7 +1676,12 @@ export function ControlCenter() {
         )}
         {view === "approvals" && <ApprovalsView approvals={pendingApprovals} onDecision={decide} />}
         {view === "policies" && <PoliciesView policies={policyList} onToggle={togglePolicy} />}
-        {view === "audit" && <AuditView audit={auditList} />}
+        {view === "audit" && (
+          <AuditView
+            audit={auditList}
+            onOpenDetails={setSelectedRequestId}
+          />
+        )}
         {view === "integrations" && (
           <IntegrationsView
             items={integrationList}
@@ -1494,6 +1696,11 @@ export function ControlCenter() {
         error={workspaceError}
         onClose={() => setConnectOpen(false)}
         onConnect={connectLiveWorkspace}
+      />
+      <ActionDetailDrawer
+        key={selectedRequestId ?? "closed"}
+        requestId={selectedRequestId}
+        onClose={() => setSelectedRequestId(null)}
       />
       {toast && <Toast message={toast} onClose={() => setToast("")} />}
     </div>

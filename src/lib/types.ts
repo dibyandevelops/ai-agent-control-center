@@ -49,6 +49,7 @@ export interface Policy {
 
 export interface AuditEvent {
   id: string;
+  requestId?: string | null;
   time: string;
   agent: string;
   action: string;
@@ -64,6 +65,49 @@ export interface AuditEvent {
   actor: string;
   detail: string;
   externalReference?: string | null;
+}
+
+export interface ActionDetailEvent {
+  id: string;
+  time: string;
+  eventType: string;
+  actorType: "agent" | "policy" | "human" | "system";
+  actor: string;
+  status: string;
+  detail: string;
+  externalReference?: string | null;
+}
+
+export interface ActionDetail {
+  requestId: string;
+  action: string;
+  resource: string;
+  environment: "development" | "staging" | "production";
+  risk: RiskLevel;
+  requestedAt: string;
+  context: Record<string, unknown>;
+  agent: {
+    name: string;
+    owner: string;
+    team: string;
+    provider: string;
+  };
+  decision: {
+    status: "allowed" | "pending" | "approved" | "denied" | "blocked";
+    reason: string;
+    policyName: string | null;
+    decidedBy: string | null;
+    decidedAt: string | null;
+  };
+  execution: {
+    status: ExecutionStatus;
+    summary: string | null;
+    errorCode: string | null;
+    startedAt: string | null;
+    completedAt: string | null;
+    externalReference: string | null;
+  };
+  timeline: ActionDetailEvent[];
 }
 
 export interface Integration {

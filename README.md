@@ -192,6 +192,9 @@ used in the recording.
   enforcement decision.
 - `GET /api/v1/actions/:requestId` lets the originating organization poll the
   decision.
+- `GET /api/v1/actions/:requestId/details` requires an authenticated operator
+  session and returns the decision, execution state, agent ownership, policy,
+  and ordered audit timeline for the dashboard evidence drawer.
 - `POST /api/v1/actions/:requestId/decision` requires an authenticated operator
   session and records an atomic approval or denial.
 - `POST /api/v1/actions/:requestId/outcome` lets the originating organization
