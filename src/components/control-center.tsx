@@ -29,6 +29,7 @@ import {
   MoreHorizontal,
   PlugZap,
   Plus,
+  RotateCcw,
   Search,
   Shield,
   ShieldAlert,
@@ -1215,11 +1216,16 @@ function integrationStatusLabel(integration: Integration) {
 function IntegrationsView({
   items,
   live,
+  canRetryDeadLetters,
+  onRetryDeadLetters,
 }: {
   items: Integration[];
   live: boolean;
+  canRetryDeadLetters: boolean;
+  onRetryDeadLetters: () => Promise<void>;
 }) {
   const [demoItems, setDemoItems] = useState(integrations);
+  const [retrying, setRetrying] = useState(false);
   const visibleItems = live ? items : demoItems;
   function toggle(id: string) {
     setDemoItems((current) =>
@@ -1233,6 +1239,14 @@ function IntegrationsView({
           : item,
       ),
     );
+  }
+  async function retryFailedNotifications() {
+    setRetrying(true);
+    try {
+      await onRetryDeadLetters();
+    } finally {
+      setRetrying(false);
+    }
   }
   return (
     <main className="page">
@@ -1273,7 +1287,19 @@ function IntegrationsView({
             <div className="integration-footer">
               <span>{integration.events}</span>
               {live ? (
-                integration.connected && integration.url ? (
+                (integration.deadLetters ?? 0) > 0 ? (
+                  <button
+                    className="primary-button"
+                    disabled={!canRetryDeadLetters || retrying}
+                    onClick={() => void retryFailedNotifications()}
+                    title={canRetryDeadLetters ? undefined : "Admin role required"}
+                  >
+                    <RotateCcw className={retrying ? "animate-spin" : undefined} />
+                    {retrying
+                      ? "Requeueing"
+                      : `Retry ${integration.deadLetters} failed`}
+                  </button>
+                ) : integration.connected && integration.url ? (
                   <a
                     className="secondary-button"
                     href={integration.url}
@@ -1790,6 +1816,35 @@ export function ControlCenter() {
     }
   }
 
+  async function retryDeadNotifications() {
+    try {
+      const response = await fetch("/api/v1/notifications/retry-dead", {
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        requeued?: number;
+        remainingDead?: number;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to retry failed alerts.");
+      }
+      await refreshLiveWorkspace();
+      const requeued = payload.requeued ?? 0;
+      setToast(
+        requeued === 1
+          ? "One failed alert was returned to the delivery queue."
+          : `${requeued} failed alerts were returned to the delivery queue.`,
+      );
+    } catch (error) {
+      setToast(
+        error instanceof Error
+          ? error.message
+          : "Unable to retry failed alerts.",
+      );
+    }
+  }
+
   async function decide(
     approval: Approval,
     decision: "approved" | "denied",
@@ -2052,6 +2107,8 @@ export function ControlCenter() {
           <IntegrationsView
             items={integrationList}
             live={workspaceMode === "live"}
+            canRetryDeadLetters={canManagePolicies}
+            onRetryDeadLetters={retryDeadNotifications}
           />
         )}
         {view === "credentials" && operatorIdentity?.role === "admin" && (

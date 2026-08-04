@@ -18,6 +18,7 @@ import {
   type ExecutionStatus,
 } from "./execution-state";
 import { AuthenticationError, ConflictError, NotFoundError } from "./errors";
+import { enqueueActionApprovalNotification } from "./notification-outbox";
 
 interface ActionRequestRow {
   id: string;
@@ -226,6 +227,19 @@ export async function evaluateAction(
     );
     const actionRequest = requestResult.rows[0];
 
+    const notification = status === "pending"
+      ? await enqueueActionApprovalNotification(client, {
+          organizationId: identity.organizationId,
+          payload: {
+            requestId: actionRequest.id,
+            agentName: input.agent.name,
+            action: input.action,
+            resource: input.resource,
+            risk: decision.risk,
+          },
+        })
+      : null;
+
     await appendAuditEvent(client, {
       organizationId: identity.organizationId,
       requestId: actionRequest.id,
@@ -239,6 +253,7 @@ export async function evaluateAction(
         risk: decision.risk,
         reason: decision.reason,
         policyVersionId: decision.policyVersionId,
+        notificationOutboxId: notification?.id ?? null,
       },
     });
 

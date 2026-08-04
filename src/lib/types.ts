@@ -239,4 +239,5 @@ export interface Integration {
   repository?: string;
   mode?: string;
   url?: string | null;
+  deadLetters?: number;
 }

@@ -461,6 +461,7 @@ export async function GET() {
           connected: Boolean(env.SLACK_APPROVAL_WEBHOOK_URL),
           category: "Communication",
           events: `${queuedNotifications} queued · ${deadNotifications} dead-lettered`,
+          deadLetters: deadNotifications,
           status: deadNotifications > 0
             ? "attention"
             : env.SLACK_APPROVAL_WEBHOOK_URL

@@ -281,6 +281,10 @@ used in the recording.
   bearer secret. It reclaims stale worker leases, delivers due notifications in
   bounded batches, schedules exponential retries, and dead-letters terminal
   failures without losing their payload or audit history.
+- `POST /api/v1/notifications/retry-dead` requires an administrator. It returns
+  up to 100 failed notifications to the delivery queue and records each manual
+  recovery in the audit chain. The same recovery control appears on the live
+  Slack integration card whenever failed notifications exist.
 - `POST /api/v1/policies/simulate` requires an `admin` and replays up to 50
   recent organization actions through an unsaved draft and the current enabled
   policy order. It reports matches, cases where the draft wins, and decisions
@@ -341,9 +345,10 @@ used in the recording.
 - Expired activation requests cannot be approved. The previously active policy
   remains unchanged, and reminder, escalation, expiration, and Slack delivery
   outcomes are appended to the hash-chained audit log.
-- Policy notification writes are atomic with the governance event that created
-  them. A unique channel/deduplication key prevents duplicate delivery jobs,
-  and delivery never occurs while policy or outbox row locks are held.
+- Action-approval and policy notification writes are atomic with the event that
+  created them. A unique channel/deduplication key prevents duplicate delivery
+  jobs, and delivery never occurs while action, policy, or outbox row locks are
+  held.
 - Requests are tenant-scoped and idempotent.
 - Pending decisions use conditional updates to prevent double approval.
 - Execution outcomes use row locking and terminal-state protection to prevent

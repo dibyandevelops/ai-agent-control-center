@@ -28,12 +28,12 @@ export async function notifySlackOfApproval(input: {
 }) {
   return postSlackText(
     [
-        `SentinelOps approval required: ${input.action}`,
-        `Agent: ${input.agentName}`,
-        `Resource: ${input.resource}`,
-        `Risk: ${input.risk}`,
-        `Request: ${input.requestId}`,
-      ].join("\n"),
+      `SentinelOps approval required: ${input.action}`,
+      `Agent: ${input.agentName}`,
+      `Resource: ${input.resource}`,
+      `Risk: ${input.risk}`,
+      `Request: ${input.requestId}`,
+    ].join("\n"),
   );
 }
 

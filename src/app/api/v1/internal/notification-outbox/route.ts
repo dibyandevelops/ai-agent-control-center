@@ -6,13 +6,17 @@ import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
 import { hasValidInternalBearer } from "@/lib/server/internal-auth";
 import {
+  actionApprovalNotificationSchema,
   policyActivationNotificationSchema,
 } from "@/lib/server/notification-outbox";
 import {
   notificationFailureStatus,
   retryDelaySeconds,
 } from "@/lib/server/notification-outbox-core";
-import { notifySlackOfPolicyActivation } from "@/lib/server/slack";
+import {
+  notifySlackOfApproval,
+  notifySlackOfPolicyActivation,
+} from "@/lib/server/slack";
 
 interface OutboxRow {
   id: string;
@@ -31,11 +35,22 @@ interface DeliveryResult {
 }
 
 async function deliver(row: OutboxRow): Promise<DeliveryResult> {
-  const parsed = policyActivationNotificationSchema.safeParse(row.payload);
-  if (!parsed.success) {
-    return { row, delivered: false, reason: "invalid_payload" };
-  }
   try {
+    if (row.event_type === "action.approval_requested") {
+      const parsed = actionApprovalNotificationSchema.safeParse(row.payload);
+      if (!parsed.success) {
+        return { row, delivered: false, reason: "invalid_payload" };
+      }
+      const result = await notifySlackOfApproval(parsed.data);
+      return { row, delivered: result.delivered, reason: result.reason };
+    }
+    if (!row.event_type.startsWith("policy.activation_")) {
+      return { row, delivered: false, reason: "unsupported_event_type" };
+    }
+    const parsed = policyActivationNotificationSchema.safeParse(row.payload);
+    if (!parsed.success) {
+      return { row, delivered: false, reason: "invalid_payload" };
+    }
     const result = await notifySlackOfPolicyActivation(parsed.data);
     return { row, delivered: result.delivered, reason: result.reason };
   } catch (error) {
