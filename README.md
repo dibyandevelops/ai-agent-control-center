@@ -66,6 +66,18 @@ Open [http://localhost:3000](http://localhost:3000) for the landing page and
 control center. Select **Connect live** and sign in with the operator email and
 password created above.
 
+Run the complete isolated approval journey before a pilot or release:
+
+```bash
+pnpm test:e2e
+```
+
+The command migrates and builds the application, starts it on an available
+local port, creates a temporary organization, and verifies action evaluation,
+idempotent replay, durable notification creation, operator approval, execution
+reporting, action details, and audit-chain integrity. It removes the temporary
+organization and stops the server even when a check fails.
+
 Policy activation reviews expire after 24 hours and receive a reminder every
 four hours by default. Override those windows with
 `POLICY_ACTIVATION_TTL_HOURS` and `POLICY_ACTIVATION_REMINDER_MINUTES`. For
