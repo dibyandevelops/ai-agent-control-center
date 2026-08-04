@@ -75,6 +75,11 @@ jobs:
           --retry-delay 3
           "${{ steps.deploy.outputs.url }}/api/health"
 
+      - name: Run live staging approval journey
+        env:
+          SENTINELOPS_E2E_BASE_URL: ${{ steps.deploy.outputs.url }}
+        run: pnpm test:e2e:staging
+
       - name: Publish deployment summary
         run: |
           echo "## SentinelOps staging" >> "$GITHUB_STEP_SUMMARY"

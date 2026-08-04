@@ -10,6 +10,13 @@ import { Pool } from "pg";
 const scrypt = promisify(scryptCallback);
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error("DATABASE_URL is required.");
+const remoteBaseUrl = process.env.SENTINELOPS_E2E_BASE_URL?.replace(/\/+$/, "");
+if (remoteBaseUrl) {
+  const target = new URL(remoteBaseUrl);
+  if (target.protocol !== "https:" && target.hostname !== "127.0.0.1" && target.hostname !== "localhost") {
+    throw new Error("SENTINELOPS_E2E_BASE_URL must use HTTPS for a remote deployment.");
+  }
+}
 
 const pool = new Pool({
   connectionString,
@@ -351,9 +358,13 @@ async function cleanup() {
 
 try {
   await setupTenant();
-  const baseUrl = await startServer();
+  const baseUrl = remoteBaseUrl || await startServer();
   const result = await exerciseJourney(baseUrl);
-  console.log("Enterprise approval journey passed.");
+  console.log(
+    remoteBaseUrl
+      ? `Remote enterprise approval journey passed against ${new URL(baseUrl).host}.`
+      : "Enterprise approval journey passed.",
+  );
   console.log(`Request: ${result.requestId}`);
   console.log(`Audit events verified: ${result.auditEvents}`);
   console.log(`Deduplicated notification jobs: ${result.notificationJobs}`);

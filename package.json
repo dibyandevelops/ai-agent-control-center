@@ -14,6 +14,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "pnpm db:migrate && pnpm build && node --env-file-if-exists=.env.local scripts/e2e-approval-journey.mjs",
+    "test:e2e:staging": "node --env-file-if-exists=.env.local scripts/e2e-approval-journey.mjs",
     "test:watch": "vitest",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs",
     "db:seed": "node --env-file-if-exists=.env.local scripts/seed.mjs",
