@@ -25,6 +25,7 @@ jobs:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_TELEMETRY_DISABLED: "1"
+      STAGING_BASE_URL: https://sentinelops-staging.vercel.app
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -73,16 +74,17 @@ jobs:
           --fail
           --retry 10
           --retry-delay 3
-          "${{ steps.deploy.outputs.url }}/api/health"
+          "$STAGING_BASE_URL/api/health"
 
       - name: Run live staging approval journey
         env:
-          SENTINELOPS_E2E_BASE_URL: ${{ steps.deploy.outputs.url }}
+          SENTINELOPS_E2E_BASE_URL: ${{ env.STAGING_BASE_URL }}
         run: pnpm test:e2e:staging
 
       - name: Publish deployment summary
         run: |
           echo "## SentinelOps staging" >> "$GITHUB_STEP_SUMMARY"
-          echo "- URL: ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: $STAGING_BASE_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Deployment artifact: ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Health check: passed" >> "$GITHUB_STEP_SUMMARY"

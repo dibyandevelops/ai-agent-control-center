@@ -223,7 +223,11 @@ async function exerciseJourney(baseUrl) {
     headers: agentHeaders,
     body: JSON.stringify(evaluationBody),
   });
-  assert.equal(evaluated.response.status, 201);
+  assert.equal(
+    evaluated.response.status,
+    201,
+    `Action evaluation failed: ${JSON.stringify(evaluated.payload)}`,
+  );
   assert.equal(evaluated.payload.status, "pending");
   assert.equal(evaluated.payload.risk, "high");
   const requestId = evaluated.payload.requestId;
