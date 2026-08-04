@@ -49,6 +49,11 @@ import {
   integrations,
   policies as initialPolicies,
 } from "@/lib/demo-data";
+import {
+  buildSevenDayActivity,
+  summarizePolicyDecisions,
+  type ActivityPoint,
+} from "@/lib/dashboard-metrics";
 import type {
   ActionDetail,
   Agent,
@@ -343,19 +348,32 @@ function Metric({
   );
 }
 
-function ActivityChart() {
+function chartMaximum(data: ActivityPoint[]) {
+  const rawMaximum = Math.max(
+    1,
+    ...data.flatMap((point) => [point.allowed, point.approved, point.blocked]),
+  );
+  if (rawMaximum <= 4) return 4;
+  const magnitude = 10 ** Math.floor(Math.log10(rawMaximum));
+  const normalized = rawMaximum / magnitude;
+  const rounded = normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return rounded * magnitude;
+}
+
+function ActivityChart({ data }: { data: ActivityPoint[] }) {
   const width = 760;
   const height = 210;
   const padding = { left: 38, right: 12, top: 10, bottom: 24 };
-  const max = 1000;
+  const max = chartMaximum(data);
+  const ticks = [0, max / 4, max / 2, (max * 3) / 4, max];
   const x = (index: number) =>
     padding.left +
-    (index * (width - padding.left - padding.right)) / (chartData.length - 1);
+    (index * (width - padding.left - padding.right)) / (data.length - 1);
   const y = (value: number) =>
     padding.top +
     (1 - value / max) * (height - padding.top - padding.bottom);
   const points = (key: "allowed" | "approved" | "blocked") =>
-    chartData.map((item, index) => `${x(index)},${y(item[key])}`).join(" ");
+    data.map((item, index) => `${x(index)},${y(item[key])}`).join(" ");
 
   return (
     <section className="panel chart-panel">
@@ -380,7 +398,7 @@ function ActivityChart() {
           role="img"
           aria-label="Seven day chart of allowed, approved, and blocked agent actions"
         >
-          {[0, 250, 500, 750, 1000].map((value) => (
+          {ticks.map((value) => (
             <g key={value}>
               <line
                 x1={padding.left}
@@ -389,14 +407,14 @@ function ActivityChart() {
                 y2={y(value)}
                 className="chart-grid-line"
               />
-              <text x={0} y={y(value) + 3} className="chart-axis-label">{value.toLocaleString()}</text>
+              <text x={0} y={y(value) + 3} className="chart-axis-label">{Math.round(value).toLocaleString()}</text>
             </g>
           ))}
           <polyline points={points("allowed")} className="chart-line chart-line-allowed" />
           <polyline points={points("approved")} className="chart-line chart-line-approved" />
           <polyline points={points("blocked")} className="chart-line chart-line-blocked" />
           {(["allowed", "approved", "blocked"] as const).flatMap((key) =>
-            chartData.map((item, index) => (
+            data.map((item, index) => (
               <circle
                 key={`${key}-${item.day}`}
                 cx={x(index)}
@@ -406,7 +424,7 @@ function ActivityChart() {
               />
             )),
           )}
-          {chartData.map((item, index) => (
+          {data.map((item, index) => (
             <text
               key={item.day}
               x={x(index)}
@@ -650,6 +668,8 @@ function Overview({
   agents,
   approvals,
   audit,
+  operator,
+  live,
   onRegister,
   onDecision,
   onViewApprovals,
@@ -658,33 +678,44 @@ function Overview({
   agents: Agent[];
   approvals: Approval[];
   audit: AuditEvent[];
+  operator: OperatorIdentity | null;
+  live: boolean;
   onRegister: () => void;
   onDecision: (approval: Approval, decision: "approved" | "denied") => void;
   onViewApprovals: () => void;
   canDecide: boolean;
 }) {
   const totalSpend = agents.reduce((sum, agent) => sum + agent.cost, 0);
+  const healthyAgents = agents.filter((agent) => agent.status === "healthy").length;
+  const policySummary = useMemo(() => summarizePolicyDecisions(audit), [audit]);
+  const activityData = useMemo(
+    () => (live ? buildSevenDayActivity(audit) : chartData),
+    [audit, live],
+  );
+  const compliance = policySummary.compliancePercent === null
+    ? "—"
+    : `${policySummary.compliancePercent.toFixed(1)}%`;
   return (
     <main className="page overview-page">
       <div className="page-title-row">
         <div>
-          <h2>Good morning, Maya</h2>
-          <p>Your AI workforce is operating within policy.</p>
+          <h2>{operator ? `Welcome, ${operator.displayName}` : "Welcome to SentinelOps"}</h2>
+          <p>{live ? "Your live AI workforce and governance activity." : "Explore the AI governance control center in demo mode."}</p>
         </div>
         <button className="primary-button primary-large" onClick={onRegister}>
           <Bot /> Register agent
         </button>
       </div>
       <section className="metrics-band">
-        <Metric icon={Bot} label="Active agents" value="24" detail={`${agents.filter((a) => a.status === "healthy").length} registered here`} />
-        <Metric icon={ShieldCheck} label="Policy compliance" value="98.4%" detail="Last 7 days" />
+        <Metric icon={Bot} label="Registered agents" value={String(agents.length)} detail={`${healthyAgents} healthy`} />
+        <Metric icon={ShieldCheck} label="Policy compliance" value={compliance} detail={policySummary.total ? `${policySummary.total} decisions in the current audit window` : "No policy decisions yet"} />
         <Metric icon={ClipboardCheck} label="Pending approvals" value={String(approvals.length)} detail="Requires review" />
-        <Metric icon={CircleDollarSign} label="Monthly AI spend" value="$18.6k" detail={`${money(totalSpend)} across visible agents`} />
+        <Metric icon={CircleDollarSign} label="Recorded AI spend" value={money(totalSpend)} detail={`Across ${agents.length} registered agent${agents.length === 1 ? "" : "s"}`} />
       </section>
       <div className="dashboard-grid">
         <div className="dashboard-main">
           <div className="analytics-grid">
-            <ActivityChart />
+            <ActivityChart data={activityData} />
             <RiskPosture events={audit} />
           </div>
           <AgentTable agents={agents} compact />
@@ -757,6 +788,7 @@ function ApprovalsView({
 function PoliciesView({
   policies,
   activations,
+  audit,
   operatorId,
   onToggle,
   onSaved,
@@ -766,6 +798,7 @@ function PoliciesView({
 }: {
   policies: Policy[];
   activations: PolicyActivationRequest[];
+  audit: AuditEvent[];
   operatorId: string;
   onToggle: (id: string) => void;
   onSaved: (policy: Policy) => void;
@@ -780,6 +813,12 @@ function PoliciesView({
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [historyPolicy, setHistoryPolicy] = useState<Policy | null>(null);
+  const policySummary = useMemo(() => summarizePolicyDecisions(audit), [audit]);
+  const compliance = policySummary.compliancePercent === null
+    ? "—"
+    : `${policySummary.compliancePercent.toFixed(1)}%`;
+  const decisionWidth = (count: number) =>
+    policySummary.total ? `${Math.max((count / policySummary.total) * 100, count ? 8 : 0)}%` : "0%";
 
   function openEditor(policy: Policy | null) {
     setEditingPolicy(policy);
@@ -844,13 +883,13 @@ function PoliciesView({
           />
           <section className="panel policy-insight">
             <div className="insight-icon"><ShieldCheck /></div>
-            <h2>98.4%</h2>
+            <h2>{compliance}</h2>
             <strong>Policy compliance</strong>
-            <p>Controls evaluated 4,118 actions this week. 103 risky actions were blocked automatically.</p>
+            <p>{policySummary.total ? `Controls recorded ${policySummary.total} policy decisions in the current audit window.` : "No completed policy decisions have been recorded yet."}</p>
             <div className="insight-bars">
-              <span><i style={{ width: "96%" }} />Allowed <b>3,561</b></span>
-              <span><i style={{ width: "42%" }} />Approved <b>454</b></span>
-              <span><i style={{ width: "18%" }} />Blocked <b>103</b></span>
+              <span><i style={{ width: decisionWidth(policySummary.allowed) }} />Allowed <b>{policySummary.allowed}</b></span>
+              <span><i style={{ width: decisionWidth(policySummary.approved) }} />Approved <b>{policySummary.approved}</b></span>
+              <span><i style={{ width: decisionWidth(policySummary.blocked) }} />Blocked <b>{policySummary.blocked}</b></span>
             </div>
           </section>
         </aside>
@@ -2069,6 +2108,8 @@ export function ControlCenter() {
             agents={agentList}
             approvals={pendingApprovals}
             audit={auditList}
+            operator={operatorIdentity}
+            live={workspaceMode === "live"}
             onRegister={openRegisterDialog}
             onDecision={decide}
             onViewApprovals={() => setView("approvals")}
@@ -2089,6 +2130,7 @@ export function ControlCenter() {
           <PoliciesView
             policies={policyList}
             activations={policyActivationList}
+            audit={auditList}
             operatorId={operatorIdentity?.id ?? "demo-operator"}
             onToggle={togglePolicy}
             onSaved={savePolicy}
