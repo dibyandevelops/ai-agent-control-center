@@ -53,6 +53,7 @@ import type {
   Approval,
   AuditEvent,
   Integration,
+  OperatorIdentity,
   Policy,
   RiskLevel,
 } from "@/lib/types";
@@ -69,6 +70,7 @@ type WorkspaceMode = "demo" | "connecting" | "live";
 
 interface LiveControlCenterPayload {
   mode: "live";
+  operator: OperatorIdentity;
   agents: Agent[];
   approvals: Approval[];
   policies: Policy[];
@@ -172,10 +174,18 @@ function EmptyState({
 function TopBar({
   view,
   onMenu,
+  operator,
 }: {
   view: View;
   onMenu: () => void;
+  operator: OperatorIdentity | null;
 }) {
+  const initials = operator?.displayName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "SO";
   return (
     <header className="topbar">
       <button className="icon-button menu-button" onClick={onMenu} aria-label="Open navigation">
@@ -185,7 +195,7 @@ function TopBar({
       <div className="topbar-actions">
         <button className="organization-control">
           <Building2 />
-          <span>Aperture Labs</span>
+          <span>{operator?.organizationName || "Aperture Labs"}</span>
           <ChevronDown />
         </button>
         <button className="command-control" aria-label="Search or run command">
@@ -200,8 +210,13 @@ function TopBar({
           <span />
         </button>
         <button className="profile-control">
-          <span className="avatar">MP</span>
-          <span className="profile-name">Maya Patel</span>
+          <span className="avatar">{initials}</span>
+          <span className="profile-name">
+            {operator?.displayName || "SentinelOps Operator"}
+            {operator ? (
+              <small className="ml-2 capitalize text-sentinel-muted">{operator.role}</small>
+            ) : null}
+          </span>
           <ChevronDown />
         </button>
       </div>
@@ -540,9 +555,11 @@ function AgentTable({
 function ApprovalCard({
   approval,
   onDecision,
+  canDecide,
 }: {
   approval: Approval;
   onDecision: (approval: Approval, decision: "approved" | "denied") => void;
+  canDecide: boolean;
 }) {
   return (
     <article className="approval-card">
@@ -559,10 +576,10 @@ function ApprovalCard({
         <div><dt>Context</dt><dd>{approval.context}</dd></div>
       </dl>
       <div className="approval-actions">
-        <button className="primary-button" onClick={() => onDecision(approval, "approved")}>
+        <button className="primary-button" disabled={!canDecide} onClick={() => onDecision(approval, "approved")}>
           <Check /> Approve
         </button>
-        <button className="secondary-button" onClick={() => onDecision(approval, "denied")}>
+        <button className="secondary-button" disabled={!canDecide} onClick={() => onDecision(approval, "denied")}>
           <XCircle /> Deny
         </button>
       </div>
@@ -574,10 +591,12 @@ function ApprovalRail({
   approvals,
   onDecision,
   onViewAll,
+  canDecide,
 }: {
   approvals: Approval[];
   onDecision: (approval: Approval, decision: "approved" | "denied") => void;
   onViewAll: () => void;
+  canDecide: boolean;
 }) {
   return (
     <aside className="approval-rail panel">
@@ -588,7 +607,7 @@ function ApprovalRail({
       <div className="approval-list">
         {approvals.length ? (
           approvals.slice(0, 3).map((approval) => (
-            <ApprovalCard key={approval.id} approval={approval} onDecision={onDecision} />
+            <ApprovalCard key={approval.id} approval={approval} onDecision={onDecision} canDecide={canDecide} />
           ))
         ) : (
           <EmptyState icon={CheckCircle2} title="Queue cleared" description="There are no actions waiting for review." />
@@ -605,6 +624,7 @@ function Overview({
   onRegister,
   onDecision,
   onViewApprovals,
+  canDecide,
 }: {
   agents: Agent[];
   approvals: Approval[];
@@ -612,6 +632,7 @@ function Overview({
   onRegister: () => void;
   onDecision: (approval: Approval, decision: "approved" | "denied") => void;
   onViewApprovals: () => void;
+  canDecide: boolean;
 }) {
   const totalSpend = agents.reduce((sum, agent) => sum + agent.cost, 0);
   return (
@@ -639,7 +660,7 @@ function Overview({
           </div>
           <AgentTable agents={agents} compact />
         </div>
-        <ApprovalRail approvals={approvals} onDecision={onDecision} onViewAll={onViewApprovals} />
+        <ApprovalRail approvals={approvals} onDecision={onDecision} onViewAll={onViewApprovals} canDecide={canDecide} />
       </div>
     </main>
   );
@@ -672,9 +693,11 @@ function AgentsView({
 function ApprovalsView({
   approvals,
   onDecision,
+  canDecide,
 }: {
   approvals: Approval[];
   onDecision: (approval: Approval, decision: "approved" | "denied") => void;
+  canDecide: boolean;
 }) {
   return (
     <main className="page">
@@ -690,7 +713,7 @@ function ApprovalsView({
       {approvals.length ? (
         <div className="approvals-grid">
           {approvals.map((approval) => (
-            <ApprovalCard key={approval.id} approval={approval} onDecision={onDecision} />
+            <ApprovalCard key={approval.id} approval={approval} onDecision={onDecision} canDecide={canDecide} />
           ))}
         </div>
       ) : (
@@ -705,9 +728,11 @@ function ApprovalsView({
 function PoliciesView({
   policies,
   onToggle,
+  canManage,
 }: {
   policies: Policy[];
   onToggle: (id: string) => void;
+  canManage: boolean;
 }) {
   return (
     <main className="page">
@@ -736,6 +761,7 @@ function PoliciesView({
                 aria-checked={policy.enabled}
                 aria-label={`${policy.enabled ? "Disable" : "Enable"} ${policy.name}`}
                 className={`toggle ${policy.enabled ? "toggle-on" : ""}`}
+                disabled={!canManage}
                 onClick={() => onToggle(policy.id)}
               >
                 <span />
@@ -1302,14 +1328,15 @@ function LiveConnectionDialog({
   loading: boolean;
   error: string;
   onClose: () => void;
-  onConnect: (token: string) => Promise<void>;
+  onConnect: (email: string, password: string) => Promise<void>;
 }) {
-  const [token, setToken] = useState("");
+  const [email, setEmail] = useState("admin@sentinelops.local");
+  const [password, setPassword] = useState("");
   if (!open) return null;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    await onConnect(token);
+    await onConnect(email, password);
   }
 
   return (
@@ -1325,10 +1352,10 @@ function LiveConnectionDialog({
           <div className="dialog-title">
             <BrandMark small />
             <div>
-              <h2 id="connect-live-title">Connect live workspace</h2>
+              <h2 id="connect-live-title">Sign in to SentinelOps</h2>
               <p>
-                Authenticate this browser as an operator. The token becomes an
-                HttpOnly session cookie and is not stored in local storage.
+                Use your organization operator account. The browser receives an
+                opaque, revocable HttpOnly session.
               </p>
             </div>
           </div>
@@ -1342,14 +1369,26 @@ function LiveConnectionDialog({
         </div>
         <form onSubmit={submit}>
           <label>
-            Operator token
+            Email
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="operator@company.com"
+              autoComplete="username"
+              autoFocus
+              required
+            />
+          </label>
+          <label>
+            Password
             <input
               type="password"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              placeholder="SENTINELOPS_ADMIN_TOKEN"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="At least 12 characters"
               autoComplete="current-password"
-              autoFocus
+              minLength={12}
               required
             />
           </label>
@@ -1367,7 +1406,7 @@ function LiveConnectionDialog({
               <div>
                 <strong>Server-verified session</strong>
                 <span>
-                  Live data remains protected by the configured operator token.
+                  Live data is protected by a revocable, role-scoped account.
                 </span>
               </div>
             </div>
@@ -1385,7 +1424,7 @@ function LiveConnectionDialog({
               type="submit"
               disabled={loading}
             >
-              <PlugZap /> {loading ? "Connecting…" : "Connect workspace"}
+              <PlugZap /> {loading ? "Signing in…" : "Sign in"}
             </button>
           </div>
         </form>
@@ -1423,6 +1462,8 @@ export function ControlCenter() {
   const [workspaceMode, setWorkspaceMode] =
     useState<WorkspaceMode>("connecting");
   const [workspaceError, setWorkspaceError] = useState("");
+  const [operatorIdentity, setOperatorIdentity] =
+    useState<OperatorIdentity | null>(null);
   const [agentList, setAgentList] = useState(initialAgents);
   const [approvalList, setApprovalList] = useState(initialApprovals);
   const [policyList, setPolicyList] = useState(initialPolicies);
@@ -1439,6 +1480,7 @@ export function ControlCenter() {
       setPolicyList(payload.policies);
       setAuditList(payload.audit);
       setIntegrationList(payload.integrations);
+      setOperatorIdentity(payload.operator);
       setWorkspaceMode("live");
       setWorkspaceError("");
     },
@@ -1497,7 +1539,8 @@ export function ControlCenter() {
         const session = (await response.json()) as {
           authenticated: boolean;
           databaseConfigured: boolean;
-          adminTokenConfigured: boolean;
+          operatorAccountsConfigured: boolean;
+          operator: OperatorIdentity | null;
         };
         if (cancelled) return;
 
@@ -1511,9 +1554,9 @@ export function ControlCenter() {
           setWorkspaceError(
             "DATABASE_URL is not configured; demo data remains active.",
           );
-        } else if (!session.adminTokenConfigured) {
+        } else if (!session.operatorAccountsConfigured) {
           setWorkspaceError(
-            "SENTINELOPS_ADMIN_TOKEN is not configured.",
+            "No operator account exists. Run pnpm operator:create.",
           );
         }
       } catch (error) {
@@ -1557,15 +1600,21 @@ export function ControlCenter() {
     () => approvalList.filter((approval) => approval.status === "pending"),
     [approvalList],
   );
+  const canApprove =
+    workspaceMode !== "live" ||
+    operatorIdentity?.role === "admin" ||
+    operatorIdentity?.role === "approver";
+  const canManagePolicies =
+    workspaceMode !== "live" || operatorIdentity?.role === "admin";
 
-  async function connectLiveWorkspace(token: string) {
+  async function connectLiveWorkspace(email: string, password: string) {
     setConnectLoading(true);
     setWorkspaceError("");
     try {
       const response = await fetch("/api/v1/session", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ email, password }),
       });
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as {
@@ -1575,7 +1624,7 @@ export function ControlCenter() {
       }
       await refreshLiveWorkspace();
       setConnectOpen(false);
-      setToast("Live enforcement workspace connected.");
+      setToast("Signed in to the live enforcement workspace.");
     } catch (error) {
       setWorkspaceMode("demo");
       setWorkspaceError(
@@ -1599,7 +1648,6 @@ export function ControlCenter() {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               decision,
-              actor: "Maya Patel",
               reason: `${approval.risk} risk request reviewed in SentinelOps.`,
             }),
           },
@@ -1682,7 +1730,6 @@ export function ControlCenter() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             enabled: !policy.enabled,
-            actor: "Maya Patel",
           }),
         });
         if (!response.ok) {
@@ -1729,7 +1776,11 @@ export function ControlCenter() {
         onClose={() => setSidebarOpen(false)}
       />
       <div className="app-content">
-        <TopBar view={view} onMenu={() => setSidebarOpen(true)} />
+        <TopBar
+          view={view}
+          operator={operatorIdentity}
+          onMenu={() => setSidebarOpen(true)}
+        />
         <WorkspaceBanner
           mode={workspaceMode}
           error={workspaceError}
@@ -1746,13 +1797,26 @@ export function ControlCenter() {
             onRegister={openRegisterDialog}
             onDecision={decide}
             onViewApprovals={() => setView("approvals")}
+            canDecide={canApprove}
           />
         )}
         {view === "agents" && (
           <AgentsView agents={agentList} onRegister={openRegisterDialog} />
         )}
-        {view === "approvals" && <ApprovalsView approvals={pendingApprovals} onDecision={decide} />}
-        {view === "policies" && <PoliciesView policies={policyList} onToggle={togglePolicy} />}
+        {view === "approvals" && (
+          <ApprovalsView
+            approvals={pendingApprovals}
+            onDecision={decide}
+            canDecide={canApprove}
+          />
+        )}
+        {view === "policies" && (
+          <PoliciesView
+            policies={policyList}
+            onToggle={togglePolicy}
+            canManage={canManagePolicies}
+          />
+        )}
         {view === "audit" && (
           <AuditView
             audit={auditList}

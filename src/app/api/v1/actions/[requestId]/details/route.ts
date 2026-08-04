@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasAdminSession } from "@/lib/server/auth";
+import { getOperatorSession } from "@/lib/server/auth";
 import { getPool } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 
@@ -10,11 +10,12 @@ function safeGitHubReference(value: unknown) {
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ requestId: string }> },
 ) {
   try {
-    if (!(await hasAdminSession(request))) {
+    const operator = await getOperatorSession();
+    if (!operator) {
       return NextResponse.json(
         { error: "Operator authentication required." },
         { status: 401 },
@@ -76,9 +77,10 @@ export async function GET(
           join agents a on a.id = ar.agent_id
           left join policies p on p.id = ar.policy_id
           where ar.id = $1
+            and ar.organization_id = $2
           limit 1
         `,
-        [requestId],
+        [requestId, operator.organizationId],
       ),
       pool.query<{
         id: string;
@@ -98,9 +100,10 @@ export async function GET(
             payload
           from audit_events
           where request_id = $1
+            and organization_id = $2
           order by id asc
         `,
-        [requestId],
+        [requestId, operator.organizationId],
       ),
     ]);
 

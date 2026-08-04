@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { verifyAuditChain, type AuditChainEvent } from "@/lib/server/audit-chain";
-import { hasAdminSession } from "@/lib/server/auth";
+import { getOperatorSession } from "@/lib/server/auth";
 import { getPool } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    if (!(await hasAdminSession(request))) {
+    const operator = await getOperatorSession();
+    if (!operator) {
       return NextResponse.json(
         { error: "Operator authentication required." },
         { status: 401 },
@@ -35,8 +36,9 @@ export async function GET(request: NextRequest) {
         previous_hash,
         event_hash
       from audit_events ae
+      where ae.organization_id = $1
       order by ae.organization_id, ae.id asc
-    `);
+    `, [operator.organizationId]);
 
     const chains = new Map<string, AuditChainEvent[]>();
     for (const row of result.rows) {

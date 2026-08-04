@@ -1,6 +1,16 @@
 export type AgentStatus = "healthy" | "review" | "blocked";
 export type RiskLevel = "low" | "medium" | "high";
 export type ApprovalStatus = "pending" | "approved" | "denied";
+export type OperatorRole = "admin" | "approver" | "auditor";
+
+export interface OperatorIdentity {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  email: string;
+  displayName: string;
+  role: OperatorRole;
+}
 export type ExecutionStatus =
   | "not_started"
   | "executing"

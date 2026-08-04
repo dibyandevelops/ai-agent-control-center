@@ -7,6 +7,7 @@ first real vertical slice supports:
 - idempotent action evaluation;
 - deterministic allow, approval, and block decisions;
 - a human approval queue;
+- database-backed operator accounts with role-based access;
 - PostgreSQL persistence;
 - hash-chained audit evidence;
 - agent-reported execution outcomes;
@@ -27,20 +28,13 @@ ESLint, Lucide, and pnpm.
    cp .env.example .env.local
    ```
 
-2. Generate a strong operator token and place it in
-   `SENTINELOPS_ADMIN_TOKEN`:
-
-   ```bash
-   openssl rand -base64 36
-   ```
-
-3. Start PostgreSQL. If Docker is available:
+2. Start PostgreSQL. If Docker is available:
 
    ```bash
    docker compose up -d postgres
    ```
 
-4. Install dependencies, migrate, and seed:
+3. Install dependencies, migrate, and seed:
 
    ```bash
    pnpm install
@@ -50,6 +44,16 @@ ESLint, Lucide, and pnpm.
 
    The seed command prints an agent API key once. Store it securely.
 
+4. Set `SENTINELOPS_OPERATOR_EMAIL`, `SENTINELOPS_OPERATOR_NAME`, and a strong
+   `SENTINELOPS_OPERATOR_PASSWORD` in `.env.local`, then create the first admin:
+
+   ```bash
+   pnpm operator:create
+   ```
+
+   The password is hashed with scrypt before it is stored. Running the command
+   again updates the named account, so it can also reset a local password.
+
 5. Start the application:
 
    ```bash
@@ -58,7 +62,14 @@ ESLint, Lucide, and pnpm.
 
 Open [http://localhost:3000](http://localhost:3000) for the landing page and
 [http://localhost:3000/dashboard](http://localhost:3000/dashboard) for the
-control center. Select **Connect live** and enter the operator token.
+control center. Select **Connect live** and sign in with the operator email and
+password created above.
+
+Operator roles are deliberately small for the MVP:
+
+- `admin` can view data, decide actions, manage policies, and manage operators;
+- `approver` can view data and approve or deny pending actions; and
+- `auditor` has read-only access to operational and audit evidence.
 
 ## Evaluate an agent action
 
@@ -196,21 +207,27 @@ used in the recording.
   session and returns the decision, execution state, agent ownership, policy,
   and ordered audit timeline for the dashboard evidence drawer.
 - `POST /api/v1/actions/:requestId/decision` requires an authenticated operator
-  session and records an atomic approval or denial.
+  with the `admin` or `approver` role and records an atomic approval or denial.
 - `POST /api/v1/actions/:requestId/outcome` lets the originating organization
   report `executing`, `succeeded`, `failed`, or `cancelled` and records each
   transition as audit evidence.
 - `GET /api/v1/audit/integrity` requires an authenticated operator session and
   recomputes every event hash and previous-hash link across organization audit
   chains. The Audit Log exposes this as **Verify integrity**.
-- `PATCH /api/v1/policies/:policyId` updates enforcement state and records audit
-  evidence.
-- `GET /api/v1/control-center` returns live operator data.
+- `PATCH /api/v1/policies/:policyId` requires an `admin`, updates enforcement
+  state, and records audit evidence.
+- `GET /api/v1/operators` and `POST /api/v1/operators` let an `admin` list and
+  create organization-scoped operator accounts.
+- `GET /api/v1/control-center` returns organization-scoped live operator data.
 
 ## Security boundaries
 
 - Agent API keys are stored as SHA-256 hashes, never plaintext.
-- Operator tokens become eight-hour HttpOnly, same-site sessions.
+- Operator passwords are stored as salted scrypt hashes.
+- Successful login creates an opaque, revocable, eight-hour HttpOnly,
+  same-site session; only its SHA-256 hash is stored.
+- Operator permissions are enforced server-side with `admin`, `approver`, and
+  read-only `auditor` roles.
 - Requests are tenant-scoped and idempotent.
 - Pending decisions use conditional updates to prevent double approval.
 - Execution outcomes use row locking and terminal-state protection to prevent

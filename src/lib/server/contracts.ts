@@ -24,7 +24,6 @@ export const actionEvaluationSchema = z.object({
 
 export const decisionSchema = z.object({
   decision: z.enum(["approved", "denied"]),
-  actor: z.string().min(2).max(160),
   reason: z.string().min(3).max(1_000),
 });
 

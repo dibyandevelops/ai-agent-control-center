@@ -34,9 +34,7 @@ export function apiError(error: unknown) {
   const message =
     error instanceof Error ? error.message : "Unexpected server error.";
   console.error("SentinelOps API error", error);
-  const configurationError =
-    message.includes("DATABASE_URL") ||
-    message.includes("SENTINELOPS_ADMIN_TOKEN");
+  const configurationError = message.includes("DATABASE_URL");
   return NextResponse.json(
     {
       error: configurationError

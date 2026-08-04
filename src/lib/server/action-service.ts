@@ -239,6 +239,7 @@ export async function evaluateAction(
 export async function decideAction(
   requestId: string,
   input: DecisionInput,
+  operator: { organizationId: string; email: string },
 ) {
   return withTransaction(async (client) => {
     const result = await client.query<ActionRequestRow>(
@@ -249,6 +250,7 @@ export async function decideAction(
             decided_by = $4,
             decided_at = now()
         where id = $1
+          and organization_id = $5
           and decision_status = 'pending'
           and (expires_at is null or expires_at > now())
         returning *
@@ -257,14 +259,15 @@ export async function decideAction(
         requestId,
         input.decision,
         input.reason,
-        input.actor,
+        operator.email,
+        operator.organizationId,
       ],
     );
     const actionRequest = result.rows[0];
     if (!actionRequest) {
       const current = await client.query<ActionRequestRow>(
-        "select * from action_requests where id = $1",
-        [requestId],
+        "select * from action_requests where id = $1 and organization_id = $2",
+        [requestId, operator.organizationId],
       );
       if (!current.rows[0]) throw new NotFoundError("Request not found.");
       throw new ConflictError(
@@ -277,7 +280,7 @@ export async function decideAction(
       requestId: actionRequest.id,
       eventType: `action.${input.decision}`,
       actorType: "human",
-      actorId: input.actor,
+      actorId: operator.email,
       payload: {
         decision: input.decision,
         reason: input.reason,

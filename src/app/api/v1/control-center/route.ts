@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { hasAdminSession } from "@/lib/server/auth";
+import { NextResponse } from "next/server";
+import { getOperatorSession } from "@/lib/server/auth";
 import { getPool } from "@/lib/server/db";
 import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    if (!(await hasAdminSession(request))) {
+    const operator = await getOperatorSession();
+    if (!operator) {
       return NextResponse.json(
         { error: "Operator authentication required." },
         { status: 401 },
@@ -19,7 +20,6 @@ export async function GET(request: NextRequest) {
       await Promise.all([
         pool.query<{
           id: string;
-          request_id: string | null;
           name: string;
           owner_email: string;
           team: string;
@@ -55,10 +55,11 @@ export async function GET(request: NextRequest) {
             a.last_seen_at
           from agents a
           left join action_requests ar on ar.agent_id = a.id
+          where a.organization_id = $1
           group by a.id
           order by a.last_seen_at desc
           limit 100
-        `),
+        `, [operator.organizationId]),
         pool.query<{
           id: string;
           agent_id: string;
@@ -83,10 +84,11 @@ export async function GET(request: NextRequest) {
           from action_requests ar
           join agents a on a.id = ar.agent_id
           where ar.decision_status = 'pending'
+            and ar.organization_id = $1
             and (ar.expires_at is null or ar.expires_at > now())
           order by ar.requested_at desc
           limit 100
-        `),
+        `, [operator.organizationId]),
         pool.query<{
           id: string;
           name: string;
@@ -106,9 +108,10 @@ export async function GET(request: NextRequest) {
           left join action_requests ar
             on ar.policy_id = p.id
             and ar.requested_at >= now() - interval '7 days'
+          where p.organization_id = $1
           group by p.id
           order by p.priority asc
-        `),
+        `, [operator.organizationId]),
         pool.query<{
           id: string;
           request_id: string | null;
@@ -131,9 +134,10 @@ export async function GET(request: NextRequest) {
           from audit_events ae
           left join action_requests ar on ar.id = ae.request_id
           left join agents a on a.id = ar.agent_id
+          where ae.organization_id = $1
           order by ae.created_at desc, ae.id desc
           limit 100
-        `),
+        `, [operator.organizationId]),
       ]);
 
     const latestGitHubEvidence = auditResult.rows.find((row) => {
@@ -158,6 +162,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       mode: "live",
+      operator,
       agents: agentsResult.rows.map((row) => ({
         id: row.id,
         name: row.name,

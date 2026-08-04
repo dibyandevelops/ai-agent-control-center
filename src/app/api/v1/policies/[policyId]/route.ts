@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { appendAuditEvent } from "@/lib/server/audit";
-import { hasAdminSession } from "@/lib/server/auth";
+import { getOperatorSession } from "@/lib/server/auth";
+import { operatorCan } from "@/lib/server/operator-roles";
 import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 
 const updatePolicySchema = z.object({
   enabled: z.boolean(),
-  actor: z.string().min(2).max(160),
 });
 
 export async function PATCH(
@@ -15,10 +15,17 @@ export async function PATCH(
   context: { params: Promise<{ policyId: string }> },
 ) {
   try {
-    if (!(await hasAdminSession(request))) {
+    const operator = await getOperatorSession();
+    if (!operator) {
       return NextResponse.json(
         { error: "Operator authentication required." },
         { status: 401 },
+      );
+    }
+    if (!operatorCan(operator.role, "manage_policies")) {
+      return NextResponse.json(
+        { error: "Admin role required." },
+        { status: 403 },
       );
     }
     const { policyId } = await context.params;
@@ -34,9 +41,10 @@ export async function PATCH(
           update policies
           set enabled = $2, updated_at = now()
           where id = $1
+            and organization_id = $3
           returning id, organization_id, name, enabled
         `,
-        [policyId, input.enabled],
+        [policyId, input.enabled, operator.organizationId],
       );
       const policy = updateResult.rows[0];
       if (!policy) return null;
@@ -46,7 +54,7 @@ export async function PATCH(
         requestId: null,
         eventType: "policy.updated",
         actorType: "human",
-        actorId: input.actor,
+        actorId: operator.email,
         payload: {
           policyId: policy.id,
           policyName: policy.name,
