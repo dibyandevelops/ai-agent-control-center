@@ -17,16 +17,14 @@ import {
   isTerminalExecutionStatus,
   type ExecutionStatus,
 } from "./execution-state";
-
-export class AuthenticationError extends Error {}
-export class ConflictError extends Error {}
-export class NotFoundError extends Error {}
+import { AuthenticationError, ConflictError, NotFoundError } from "./errors";
 
 interface ActionRequestRow {
   id: string;
   organization_id: string;
   agent_id: string;
   policy_id: string | null;
+  policy_version_id: string | null;
   action: string;
   resource: string;
   environment: "development" | "staging" | "production";
@@ -55,6 +53,7 @@ function serializeRequest(row: ActionRequestRow) {
     status: row.decision_status,
     reason: row.decision_reason,
     policyId: row.policy_id,
+    policyVersionId: row.policy_version_id,
     context: row.context,
     requestedAt: row.requested_at.toISOString(),
     decidedAt: row.decided_at?.toISOString() ?? null,
@@ -76,23 +75,35 @@ async function loadPolicies(
 ): Promise<EvaluatedPolicy[]> {
   const result = await client.query<{
     id: string;
+    version_id: string;
     name: string;
     effect: "allow" | "approval" | "block";
     priority: number;
     conditions: unknown;
   }>(
     `
-      select id, name, effect, priority, conditions
-      from policies
-      where organization_id = $1
-        and enabled = true
-      order by priority asc
+      select
+        p.id,
+        pv.id as version_id,
+        pv.name,
+        pv.effect,
+        pv.priority,
+        pv.conditions
+      from policies p
+      join policy_versions pv on pv.id = p.active_version_id
+      where p.organization_id = $1
+        and p.enabled = true
+      order by pv.priority asc, p.id asc
     `,
     [organizationId],
   );
 
   return result.rows.map((row) => ({
-    ...row,
+    id: row.id,
+    versionId: row.version_id,
+    name: row.name,
+    effect: row.effect,
+    priority: row.priority,
     conditions: policyConditionsSchema.parse(row.conditions),
   }));
 }
@@ -175,6 +186,7 @@ export async function evaluateAction(
           organization_id,
           agent_id,
           policy_id,
+          policy_version_id,
           idempotency_key,
           action,
           resource,
@@ -188,11 +200,11 @@ export async function evaluateAction(
           expires_at
         )
         values (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb,
-          $10, $11,
-          case when $10 in ('allowed', 'blocked') then 'Policy engine' end,
-          case when $10 in ('allowed', 'blocked') then now() end,
-          $12
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb,
+          $11, $12,
+          case when $11 in ('allowed', 'blocked') then 'Policy engine' end,
+          case when $11 in ('allowed', 'blocked') then now() end,
+          $13
         )
         returning *
       `,
@@ -200,6 +212,7 @@ export async function evaluateAction(
         identity.organizationId,
         agentId,
         decision.policyId,
+        decision.policyVersionId,
         input.idempotencyKey,
         input.action,
         input.resource,
@@ -225,6 +238,7 @@ export async function evaluateAction(
         status,
         risk: decision.risk,
         reason: decision.reason,
+        policyVersionId: decision.policyVersionId,
       },
     });
 

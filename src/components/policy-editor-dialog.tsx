@@ -262,7 +262,7 @@ export function PolicyEditorDialog({
             <PolicySimulationPanel draft={simulationDraft} />
 
             <label className="flex items-center justify-between gap-4 rounded-xl border border-sentinel-line bg-sentinel-raised/40 px-4 py-3">
-              <span><strong className="block text-xs font-semibold text-sentinel-text">Activate after saving</strong><small className="mt-1 block text-[10px] text-sentinel-muted">Leave off to review the saved draft first.</small></span>
+              <span><strong className="block text-xs font-semibold text-sentinel-text">Request activation after saving</strong><small className="mt-1 block text-[10px] text-sentinel-muted">A different administrator must approve before enforcement changes.</small></span>
               <input className="h-4 w-4 accent-sentinel-lime" type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
             </label>
           </div>
@@ -290,8 +290,8 @@ export function PolicyEditorDialog({
           </aside>
 
           <div className="sticky bottom-0 flex min-w-0 items-center justify-between gap-3 border-t border-sentinel-line bg-sentinel-surface/95 px-6 py-4 backdrop-blur lg:col-span-2">
-            <span className="hidden text-[10px] text-sentinel-muted sm:block">{enabled ? "This policy will enforce immediately." : "This policy will be saved as an inactive draft."}</span>
-            <div className="ml-auto flex gap-3"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" disabled={submitting}>{submitting ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />}{submitting ? "Saving…" : policy ? "Save changes" : enabled ? "Create & activate" : "Save draft"}</button></div>
+            <span className="hidden text-[10px] text-sentinel-muted sm:block">{enabled ? "This version will wait for independent approval." : "This version will be saved as a draft."}</span>
+            <div className="ml-auto flex gap-3"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" disabled={submitting}>{submitting ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />}{submitting ? "Saving…" : enabled ? "Save & request approval" : "Save draft"}</button></div>
           </div>
           {error ? <div className="border-t border-sentinel-red/30 bg-sentinel-red/10 px-6 py-3 text-xs text-red-200 lg:col-span-2">{error}</div> : null}
         </form>

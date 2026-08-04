@@ -72,10 +72,11 @@ export async function GET(
             a.owner_email,
             a.team,
             a.provider,
-            p.name as policy_name
+            coalesce(pv.name, p.name) as policy_name
           from action_requests ar
           join agents a on a.id = ar.agent_id
           left join policies p on p.id = ar.policy_id
+          left join policy_versions pv on pv.id = ar.policy_version_id
           where ar.id = $1
             and ar.organization_id = $2
           limit 1

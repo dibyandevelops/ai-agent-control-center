@@ -4,6 +4,12 @@ import { getOperatorSession } from "@/lib/server/auth";
 import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
+import {
+  createActivationRequest,
+  insertPolicyVersion,
+  policyResponse,
+  type LockedPolicy,
+} from "@/lib/server/policy-governance";
 import { policyWriteSchema } from "@/lib/server/policy-input";
 
 export async function POST(request: NextRequest) {
@@ -23,21 +29,13 @@ export async function POST(request: NextRequest) {
     }
     const input = policyWriteSchema.parse(await request.json());
     const created = await withTransaction(async (client) => {
-      const result = await client.query<{
-        id: string;
-        name: string;
-        description: string;
-        priority: number;
-        effect: "allow" | "approval" | "block";
-        enabled: boolean;
-        conditions: { all: Array<{ field: string; operator: string; value: unknown }> };
-      }>(
+      const policyResult = await client.query<LockedPolicy>(
         `
           insert into policies (
             organization_id, name, description, priority, effect, enabled, conditions
           )
-          values ($1, $2, $3, $4, $5, $6, $7::jsonb)
-          returning id, name, description, priority, effect, enabled, conditions
+          values ($1, $2, $3, $4, $5, false, $6::jsonb)
+          returning id, organization_id, enabled, active_version_id
         `,
         [
           operator.organizationId,
@@ -45,46 +43,61 @@ export async function POST(request: NextRequest) {
           input.description,
           input.priority,
           input.effect,
-          input.enabled,
           JSON.stringify(input.conditions),
         ],
       );
-      const policy = result.rows[0];
+      const policy = policyResult.rows[0];
+      const version = await insertPolicyVersion(client, {
+        policy,
+        configuration: input,
+        operator,
+        changeType: "created",
+      });
+      const activationRequest = input.enabled
+        ? await createActivationRequest(client, { policy, version, operator })
+        : null;
+
       await appendAuditEvent(client, {
         organizationId: operator.organizationId,
         requestId: null,
-        eventType: "policy.created",
+        eventType: "policy.version_created",
         actorType: "human",
         actorId: operator.email,
         payload: {
           policyId: policy.id,
-          policyName: policy.name,
-          effect: policy.effect,
-          enabled: policy.enabled,
-          priority: policy.priority,
-          conditionCount: policy.conditions.all.length,
+          policyName: version.name,
+          versionId: version.id,
+          versionNumber: version.version_number,
+          changeType: version.change_type,
         },
       });
-      return policy;
+      if (activationRequest) {
+        await appendAuditEvent(client, {
+          organizationId: operator.organizationId,
+          requestId: null,
+          eventType: "policy.activation_requested",
+          actorType: "human",
+          actorId: operator.email,
+          payload: {
+            policyId: policy.id,
+            policyName: version.name,
+            versionId: version.id,
+            versionNumber: version.version_number,
+            activationRequestId: activationRequest.id,
+          },
+        });
+      }
+      return { policy, version, activationRequest };
     });
+
     return NextResponse.json(
-      {
-        id: created.id,
-        name: created.name,
-        description: created.description,
-        scope: "Live organization",
-        mode:
-          created.effect === "block"
-            ? "Block"
-            : created.effect === "approval"
-              ? "Approval"
-              : "Monitor",
-        effect: created.effect,
-        priority: created.priority,
-        conditions: created.conditions.all,
-        enabled: created.enabled,
-        matches: 0,
-      },
+      policyResponse({
+        policyId: created.policy.id,
+        version: created.version,
+        enabled: false,
+        activeVersionNumber: null,
+        activationRequest: created.activationRequest,
+      }),
       { status: 201 },
     );
   } catch (error) {

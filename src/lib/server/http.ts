@@ -2,11 +2,7 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import {
-  AuthenticationError,
-  ConflictError,
-  NotFoundError,
-} from "./action-service";
+import { AuthenticationError, ConflictError, NotFoundError } from "./errors";
 
 export function apiError(error: unknown) {
   if (error instanceof ZodError) {

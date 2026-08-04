@@ -16,7 +16,13 @@ export async function GET() {
 
     const pool = getPool();
     const env = getServerEnv();
-    const [agentsResult, approvalsResult, policiesResult, auditResult] =
+    const [
+      agentsResult,
+      approvalsResult,
+      policiesResult,
+      auditResult,
+      policyActivationsResult,
+    ] =
       await Promise.all([
         pool.query<{
           id: string;
@@ -102,23 +108,51 @@ export async function GET() {
             value: string | number | boolean | Array<string | number | boolean>;
           }> };
           matches: string;
+          active_version_number: number | null;
+          latest_version_number: number;
+          pending_request_id: string | null;
+          pending_requested_by_operator_id: string | null;
+          pending_requested_by_email: string | null;
+          pending_requested_at: Date | null;
         }>(`
           select
             p.id,
-            p.name,
-            p.description,
-            p.effect,
-            p.priority,
+            latest.name,
+            latest.description,
+            latest.effect,
+            latest.priority,
             p.enabled,
-            p.conditions,
-            count(ar.id)::text as matches
+            latest.conditions,
+            coalesce(stats.matches, 0)::text as matches,
+            active.version_number as active_version_number,
+            latest.version_number as latest_version_number,
+            pending.id as pending_request_id,
+            pending.requested_by_operator_id as pending_requested_by_operator_id,
+            pending.requested_by_email as pending_requested_by_email,
+            pending.requested_at as pending_requested_at
           from policies p
-          left join action_requests ar
-            on ar.policy_id = p.id
-            and ar.requested_at >= now() - interval '7 days'
+          join lateral (
+            select *
+            from policy_versions pv
+            where pv.policy_id = p.id
+            order by pv.version_number desc
+            limit 1
+          ) latest on true
+          left join policy_versions active on active.id = p.active_version_id
+          left join lateral (
+            select *
+            from policy_activation_requests par
+            where par.policy_id = p.id and par.status = 'pending'
+            limit 1
+          ) pending on true
+          left join lateral (
+            select count(*) as matches
+            from action_requests ar
+            where ar.policy_id = p.id
+              and ar.requested_at >= now() - interval '7 days'
+          ) stats on true
           where p.organization_id = $1
-          group by p.id
-          order by p.priority asc
+          order by latest.priority asc, p.id asc
         `, [operator.organizationId]),
         pool.query<{
           id: string;
@@ -144,6 +178,37 @@ export async function GET() {
           left join agents a on a.id = ar.agent_id
           where ae.organization_id = $1
           order by ae.created_at desc, ae.id desc
+          limit 100
+        `, [operator.organizationId]),
+        pool.query<{
+          id: string;
+          policy_id: string;
+          policy_name: string;
+          version_id: string;
+          version_number: number;
+          effect: "allow" | "approval" | "block";
+          requested_by_operator_id: string | null;
+          requested_by_email: string;
+          requested_at: Date;
+          active_version_number: number | null;
+        }>(`
+          select
+            par.id,
+            par.policy_id,
+            pv.name as policy_name,
+            par.version_id,
+            pv.version_number,
+            pv.effect,
+            par.requested_by_operator_id,
+            par.requested_by_email,
+            par.requested_at,
+            active.version_number as active_version_number
+          from policy_activation_requests par
+          join policy_versions pv on pv.id = par.version_id
+          join policies p on p.id = par.policy_id
+          left join policy_versions active on active.id = p.active_version_id
+          where par.organization_id = $1 and par.status = 'pending'
+          order by par.requested_at asc
           limit 100
         `, [operator.organizationId]),
       ]);
@@ -214,6 +279,33 @@ export async function GET() {
         conditions: row.conditions.all,
         enabled: row.enabled,
         matches: Number(row.matches),
+        activeVersionNumber: row.active_version_number,
+        latestVersionNumber: row.latest_version_number,
+        activationStatus: row.pending_request_id
+          ? "pending"
+          : row.enabled && row.active_version_number === row.latest_version_number
+            ? "active"
+            : "draft",
+        pendingActivation: row.pending_request_id
+          ? {
+              id: row.pending_request_id,
+              requestedByOperatorId: row.pending_requested_by_operator_id,
+              requestedBy: row.pending_requested_by_email,
+              requestedAt: row.pending_requested_at?.toISOString() ?? null,
+            }
+          : null,
+      })),
+      policyActivations: policyActivationsResult.rows.map((row) => ({
+        id: row.id,
+        policyId: row.policy_id,
+        policyName: row.policy_name,
+        versionId: row.version_id,
+        versionNumber: row.version_number,
+        activeVersionNumber: row.active_version_number,
+        effect: row.effect,
+        requestedByOperatorId: row.requested_by_operator_id,
+        requestedBy: row.requested_by_email,
+        requestedAt: row.requested_at.toISOString(),
       })),
       audit: auditResult.rows.map((row) => {
         const status = String(row.payload.status ?? row.payload.decision ?? "");

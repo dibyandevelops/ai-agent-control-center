@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ConflictError } from "@/lib/server/errors";
 import { appendAuditEvent } from "@/lib/server/audit";
 import { getOperatorSession } from "@/lib/server/auth";
-import { operatorCan } from "@/lib/server/operator-roles";
 import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
+import { operatorCan } from "@/lib/server/operator-roles";
+import {
+  createActivationRequest,
+  ensureNoPendingActivation,
+  insertPolicyVersion,
+  loadLatestPolicyVersion,
+  lockPolicy,
+  policyResponse,
+} from "@/lib/server/policy-governance";
 import { policyWriteSchema } from "@/lib/server/policy-input";
 
 const updatePolicySchema = policyWriteSchema.partial().refine(
@@ -31,82 +40,183 @@ export async function PATCH(
     }
     const { policyId } = await context.params;
     const input = updatePolicySchema.parse(await request.json());
+    const inputFields = Object.keys(input);
+    const toggleOnly = inputFields.length === 1 && inputFields[0] === "enabled";
+
     const result = await withTransaction(async (client) => {
-      const updateResult = await client.query<{
-        id: string;
-        organization_id: string;
-        name: string;
-        description: string;
-        priority: number;
-        effect: "allow" | "approval" | "block";
-        enabled: boolean;
-        conditions: { all: Array<{ field: string; operator: string; value: unknown }> };
-      }>(
-        `
-          update policies
-          set name = coalesce($2, name),
-              description = coalesce($3, description),
-              priority = coalesce($4, priority),
-              effect = coalesce($5, effect),
-              enabled = coalesce($6, enabled),
-              conditions = coalesce($7::jsonb, conditions),
-              updated_at = now()
-          where id = $1
-            and organization_id = $8
-          returning id, organization_id, name, description, priority,
-                    effect, enabled, conditions
-        `,
-        [
-          policyId,
-          input.name ?? null,
-          input.description ?? null,
-          input.priority ?? null,
-          input.effect ?? null,
-          input.enabled ?? null,
-          input.conditions ? JSON.stringify(input.conditions) : null,
-          operator.organizationId,
-        ],
+      const policy = await lockPolicy(
+        client,
+        policyId,
+        operator.organizationId,
       );
-      const policy = updateResult.rows[0];
-      if (!policy) return null;
+      const latestVersion = await loadLatestPolicyVersion(
+        client,
+        policyId,
+        operator.organizationId,
+      );
+      const activeVersionResult = policy.active_version_id
+        ? await client.query<{ version_number: number }>(
+            "select version_number from policy_versions where id = $1",
+            [policy.active_version_id],
+          )
+        : null;
+      const activeVersionNumber =
+        activeVersionResult?.rows[0]?.version_number ?? null;
+
+      if (toggleOnly) {
+        if (input.enabled) {
+          if (
+            policy.enabled &&
+            policy.active_version_id === latestVersion.id
+          ) {
+            throw new ConflictError("This policy version is already active.");
+          }
+          const activationRequest = await createActivationRequest(client, {
+            policy,
+            version: latestVersion,
+            operator,
+          });
+          await appendAuditEvent(client, {
+            organizationId: operator.organizationId,
+            requestId: null,
+            eventType: "policy.activation_requested",
+            actorType: "human",
+            actorId: operator.email,
+            payload: {
+              policyId,
+              policyName: latestVersion.name,
+              versionId: latestVersion.id,
+              versionNumber: latestVersion.version_number,
+              activationRequestId: activationRequest.id,
+            },
+          });
+          return {
+            policy,
+            version: latestVersion,
+            activeVersionNumber,
+            activationRequest,
+          };
+        }
+
+        await client.query(
+          `
+            update policies
+            set enabled = false, updated_at = now()
+            where id = $1 and organization_id = $2
+          `,
+          [policyId, operator.organizationId],
+        );
+        await appendAuditEvent(client, {
+          organizationId: operator.organizationId,
+          requestId: null,
+          eventType: "policy.disabled",
+          actorType: "human",
+          actorId: operator.email,
+          payload: {
+            policyId,
+            policyName: latestVersion.name,
+            activeVersionId: policy.active_version_id,
+          },
+        });
+        return {
+          policy: { ...policy, enabled: false },
+          version: latestVersion,
+          activeVersionNumber,
+          activationRequest: null,
+        };
+      }
+
+      await ensureNoPendingActivation(client, policyId);
+      const merged = policyWriteSchema.parse({
+        name: input.name ?? latestVersion.name,
+        description: input.description ?? latestVersion.description,
+        priority: input.priority ?? latestVersion.priority,
+        effect: input.effect ?? latestVersion.effect,
+        conditions: input.conditions ?? latestVersion.conditions,
+        enabled: input.enabled ?? false,
+      });
+      const version = await insertPolicyVersion(client, {
+        policy,
+        configuration: merged,
+        operator,
+        changeType: "edited",
+      });
+
+      if (!policy.enabled) {
+        await client.query(
+          `
+            update policies
+            set name = $2,
+                description = $3,
+                priority = $4,
+                effect = $5,
+                conditions = $6::jsonb,
+                updated_at = now()
+            where id = $1 and organization_id = $7
+          `,
+          [
+            policyId,
+            version.name,
+            version.description,
+            version.priority,
+            version.effect,
+            JSON.stringify(version.conditions),
+            operator.organizationId,
+          ],
+        );
+      }
+      const activationRequest = merged.enabled
+        ? await createActivationRequest(client, { policy, version, operator })
+        : null;
 
       await appendAuditEvent(client, {
-        organizationId: policy.organization_id,
+        organizationId: operator.organizationId,
         requestId: null,
-        eventType: "policy.updated",
+        eventType: "policy.version_created",
         actorType: "human",
         actorId: operator.email,
         payload: {
-          policyId: policy.id,
-          policyName: policy.name,
-          changedFields: Object.keys(input).sort(),
-          effect: policy.effect,
-          priority: policy.priority,
-          enabled: policy.enabled,
+          policyId,
+          policyName: version.name,
+          versionId: version.id,
+          versionNumber: version.version_number,
+          changeType: version.change_type,
+          basedOnVersionId: latestVersion.id,
         },
       });
-      return policy;
+      if (activationRequest) {
+        await appendAuditEvent(client, {
+          organizationId: operator.organizationId,
+          requestId: null,
+          eventType: "policy.activation_requested",
+          actorType: "human",
+          actorId: operator.email,
+          payload: {
+            policyId,
+            policyName: version.name,
+            versionId: version.id,
+            versionNumber: version.version_number,
+            activationRequestId: activationRequest.id,
+          },
+        });
+      }
+      return {
+        policy,
+        version,
+        activeVersionNumber,
+        activationRequest,
+      };
     });
 
-    if (!result) {
-      return NextResponse.json({ error: "Policy not found." }, { status: 404 });
-    }
-    return NextResponse.json({
-      id: result.id,
-      name: result.name,
-      description: result.description,
-      scope: "Live organization",
-      mode:
-        result.effect === "block"
-          ? "Block"
-          : result.effect === "approval"
-            ? "Approval"
-            : "Monitor",
-      effect: result.effect,
-      priority: result.priority,
-      conditions: result.conditions.all,
-      enabled: result.enabled,
-    });
+    return NextResponse.json(
+      policyResponse({
+        policyId,
+        version: result.version,
+        enabled: result.policy.enabled,
+        activeVersionNumber: result.activeVersionNumber,
+        activationRequest: result.activationRequest,
+      }),
+    );
   } catch (error) {
     if (
       error &&

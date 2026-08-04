@@ -57,12 +57,17 @@ import type {
   Integration,
   OperatorIdentity,
   Policy,
+  PolicyActivationRequest,
   RiskLevel,
 } from "@/lib/types";
 import { OperatorManagement } from "@/components/operator-management";
 import { PasswordChangeDialog } from "@/components/password-change-dialog";
 import { ApiKeyManagement } from "@/components/api-key-management";
 import { PolicyEditorDialog } from "@/components/policy-editor-dialog";
+import {
+  PolicyActivationQueue,
+  PolicyHistoryDialog,
+} from "@/components/policy-governance";
 
 type View =
   | "overview"
@@ -82,6 +87,7 @@ interface LiveControlCenterPayload {
   agents: Agent[];
   approvals: Approval[];
   policies: Policy[];
+  policyActivations: PolicyActivationRequest[];
   audit: AuditEvent[];
   integrations: Integration[];
 }
@@ -749,17 +755,30 @@ function ApprovalsView({
 
 function PoliciesView({
   policies,
+  activations,
+  operatorId,
   onToggle,
   onSaved,
+  onActivationDecision,
+  onRefresh,
   canManage,
 }: {
   policies: Policy[];
+  activations: PolicyActivationRequest[];
+  operatorId: string;
   onToggle: (id: string) => void;
   onSaved: (policy: Policy) => void;
+  onActivationDecision: (
+    requestId: string,
+    decision: "approved" | "rejected",
+    reason: string,
+  ) => Promise<void>;
+  onRefresh: () => Promise<void>;
   canManage: boolean;
 }) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
+  const [historyPolicy, setHistoryPolicy] = useState<Policy | null>(null);
 
   function openEditor(policy: Policy | null) {
     setEditingPolicy(policy);
@@ -784,10 +803,16 @@ function PoliciesView({
                 {policy.mode === "Block" ? <LockKeyhole /> : policy.mode === "Approval" ? <ClipboardCheck /> : <Activity />}
               </div>
               <div className="policy-copy">
-                <div><h3>{policy.name}</h3><span className={`mode mode-${policy.mode.toLowerCase()}`}>{policy.mode}</span></div>
+                <div><h3>{policy.name}</h3><span className={`mode mode-${policy.mode.toLowerCase()}`}>{policy.mode}</span>{policy.activationStatus === "pending" ? <span className="mode mode-approval">Awaiting approval</span> : policy.activationStatus === "draft" ? <span className="mode mode-block">Draft v{policy.latestVersionNumber}</span> : null}</div>
                 <p>{policy.description}</p>
-                <small>{policy.scope} · {policy.matches} matches in 7 days</small>
+                <small>{policy.scope} · active v{policy.activeVersionNumber ?? "none"} · latest v{policy.latestVersionNumber ?? 1} · {policy.matches} matches in 7 days</small>
               </div>
+              <button
+                className="rounded-lg border border-sentinel-line px-3 py-2 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text"
+                onClick={() => setHistoryPolicy(policy)}
+              >
+                History
+              </button>
               <button
                 className="rounded-lg border border-sentinel-line px-3 py-2 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text disabled:opacity-40"
                 onClick={() => openEditor(policy)}
@@ -798,9 +823,9 @@ function PoliciesView({
               <button
                 role="switch"
                 aria-checked={policy.enabled}
-                aria-label={`${policy.enabled ? "Disable" : "Enable"} ${policy.name}`}
+                aria-label={`${policy.enabled ? "Disable" : "Request activation for"} ${policy.name}`}
                 className={`toggle ${policy.enabled ? "toggle-on" : ""}`}
-                disabled={!canManage}
+                disabled={!canManage || policy.activationStatus === "pending"}
                 onClick={() => onToggle(policy.id)}
               >
                 <span />
@@ -808,16 +833,23 @@ function PoliciesView({
             </article>
           ))}
         </section>
-        <aside className="panel policy-insight">
-          <div className="insight-icon"><ShieldCheck /></div>
-          <h2>98.4%</h2>
-          <strong>Policy compliance</strong>
-          <p>Controls evaluated 4,118 actions this week. 103 risky actions were blocked automatically.</p>
-          <div className="insight-bars">
-            <span><i style={{ width: "96%" }} />Allowed <b>3,561</b></span>
-            <span><i style={{ width: "42%" }} />Approved <b>454</b></span>
-            <span><i style={{ width: "18%" }} />Blocked <b>103</b></span>
-          </div>
+        <aside className="space-y-4">
+          <PolicyActivationQueue
+            requests={activations}
+            operatorId={operatorId}
+            onDecision={onActivationDecision}
+          />
+          <section className="panel policy-insight">
+            <div className="insight-icon"><ShieldCheck /></div>
+            <h2>98.4%</h2>
+            <strong>Policy compliance</strong>
+            <p>Controls evaluated 4,118 actions this week. 103 risky actions were blocked automatically.</p>
+            <div className="insight-bars">
+              <span><i style={{ width: "96%" }} />Allowed <b>3,561</b></span>
+              <span><i style={{ width: "42%" }} />Approved <b>454</b></span>
+              <span><i style={{ width: "18%" }} />Blocked <b>103</b></span>
+            </div>
+          </section>
         </aside>
       </div>
       {editorOpen ? (
@@ -828,6 +860,14 @@ function PoliciesView({
             onSaved(savedPolicy);
             setEditorOpen(false);
           }}
+        />
+      ) : null}
+      {historyPolicy ? (
+        <PolicyHistoryDialog
+          policy={historyPolicy}
+          canManage={canManage}
+          onClose={() => setHistoryPolicy(null)}
+          onChanged={onRefresh}
         />
       ) : null}
     </main>
@@ -1520,6 +1560,7 @@ export function ControlCenter() {
   const [agentList, setAgentList] = useState(initialAgents);
   const [approvalList, setApprovalList] = useState(initialApprovals);
   const [policyList, setPolicyList] = useState(initialPolicies);
+  const [policyActivationList, setPolicyActivationList] = useState<PolicyActivationRequest[]>([]);
   const [auditList, setAuditList] = useState(initialAuditEvents);
   const [integrationList, setIntegrationList] = useState(integrations);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
@@ -1531,6 +1572,7 @@ export function ControlCenter() {
       setAgentList(payload.agents);
       setApprovalList(payload.approvals);
       setPolicyList(payload.policies);
+      setPolicyActivationList(payload.policyActivations);
       setAuditList(payload.audit);
       setIntegrationList(payload.integrations);
       setOperatorIdentity(payload.operator);
@@ -1849,8 +1891,15 @@ export function ControlCenter() {
           };
           throw new Error(payload.error || "Policy update failed.");
         }
+        const updated = (await response.json()) as Policy;
         await refreshLiveWorkspace();
-        setToast(`${policy.name} ${policy.enabled ? "disabled" : "enabled"}.`);
+        setToast(
+          policy.enabled
+            ? `${policy.name} was disabled.`
+            : updated.activationStatus === "pending"
+              ? `${policy.name} activation was submitted for independent review.`
+              : `${policy.name} was updated.`,
+        );
       } catch (error) {
         setToast(
           error instanceof Error ? error.message : "Policy update failed.",
@@ -1877,7 +1926,45 @@ export function ControlCenter() {
         (left, right) => (left.priority ?? 100) - (right.priority ?? 100),
       );
     });
-    setToast(`${policy.name} was saved${policy.enabled ? " and activated" : " as a draft"}.`);
+    if (workspaceMode === "live") void refreshLiveWorkspace();
+    setToast(
+      policy.activationStatus === "pending"
+        ? `${policy.name} was saved and submitted for independent approval.`
+        : `${policy.name} was saved as version ${policy.latestVersionNumber ?? 1}.`,
+    );
+  }
+
+  async function decidePolicyActivation(
+    requestId: string,
+    decision: "approved" | "rejected",
+    reason: string,
+  ) {
+    try {
+      const response = await fetch(
+        `/api/v1/policies/activation-requests/${requestId}/decision`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ decision, reason }),
+        },
+      );
+      const payload = (await response.json()) as {
+        policyName?: string;
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error || "Policy review could not be recorded.");
+      }
+      await refreshLiveWorkspace();
+      setToast(`${payload.policyName ?? "Policy"} activation was ${decision}.`);
+    } catch (error) {
+      setToast(
+        error instanceof Error
+          ? error.message
+          : "Policy review could not be recorded.",
+      );
+      throw error;
+    }
   }
 
   function openRegisterDialog() {
@@ -1944,8 +2031,12 @@ export function ControlCenter() {
         {view === "policies" && (
           <PoliciesView
             policies={policyList}
+            activations={policyActivationList}
+            operatorId={operatorIdentity?.id ?? "demo-operator"}
             onToggle={togglePolicy}
             onSaved={savePolicy}
+            onActivationDecision={decidePolicyActivation}
+            onRefresh={refreshLiveWorkspace}
             canManage={canManagePolicies}
           />
         )}

@@ -29,17 +29,25 @@ export async function POST(request: NextRequest) {
     const [policiesResult, actionsResult] = await Promise.all([
       pool.query<{
         id: string;
+        version_id: string;
         name: string;
         effect: PolicyEffect;
         priority: number;
         conditions: PolicyConditions;
       }>(
         `
-          select id, name, effect, priority, conditions
-          from policies
-          where organization_id = $1
-            and enabled = true
-          order by priority asc, id asc
+          select
+            p.id,
+            pv.id as version_id,
+            pv.name,
+            pv.effect,
+            pv.priority,
+            pv.conditions
+          from policies p
+          join policy_versions pv on pv.id = p.active_version_id
+          where p.organization_id = $1
+            and p.enabled = true
+          order by pv.priority asc, p.id asc
         `,
         [operator.organizationId],
       ),
@@ -88,7 +96,14 @@ export async function POST(request: NextRequest) {
       priority: input.priority,
       conditions: input.conditions,
     };
-    const currentPolicies: EvaluatedPolicy[] = policiesResult.rows;
+    const currentPolicies: EvaluatedPolicy[] = policiesResult.rows.map((row) => ({
+      id: row.id,
+      versionId: row.version_id,
+      name: row.name,
+      effect: row.effect,
+      priority: row.priority,
+      conditions: row.conditions,
+    }));
     const actions = actionsResult.rows.map((row) => ({
       requestId: row.id,
       agentName: row.agent_name,

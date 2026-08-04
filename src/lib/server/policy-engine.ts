@@ -7,6 +7,7 @@ export type PolicyEffect = "allow" | "approval" | "block";
 
 export interface EvaluatedPolicy {
   id: string;
+  versionId?: string;
   name: string;
   effect: PolicyEffect;
   priority: number;
@@ -17,6 +18,7 @@ export interface PolicyDecision {
   effect: PolicyEffect;
   risk: "low" | "medium" | "high";
   policyId: string | null;
+  policyVersionId: string | null;
   policyName: string;
   reason: string;
 }
@@ -107,6 +109,7 @@ export function evaluatePolicies(
       effect: matched.effect,
       risk,
       policyId: matched.id,
+      policyVersionId: matched.versionId ?? null,
       policyName: matched.name,
       reason: `Matched policy: ${matched.name}`,
     };
@@ -117,6 +120,7 @@ export function evaluatePolicies(
       effect: "approval",
       risk,
       policyId: null,
+      policyVersionId: null,
       policyName: "High-risk safety default",
       reason: "High-risk actions require human approval by default.",
     };
@@ -126,6 +130,7 @@ export function evaluatePolicies(
     effect: "allow",
     risk,
     policyId: null,
+    policyVersionId: null,
     policyName: "Least-friction safety default",
     reason: "No blocking policy matched and the resolved risk is not high.",
   };

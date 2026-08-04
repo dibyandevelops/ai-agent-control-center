@@ -7,6 +7,7 @@ first real vertical slice supports:
 - idempotent action evaluation;
 - deterministic allow, approval, and block decisions;
 - a human approval queue;
+- immutable policy version history with four-eyes activation and rollback;
 - database-backed operator accounts with role-based access;
 - PostgreSQL persistence;
 - hash-chained audit evidence;
@@ -230,12 +231,21 @@ used in the recording.
   recomputes every event hash and previous-hash link across organization audit
   chains. The Audit Log exposes this as **Verify integrity**.
 - `POST /api/v1/policies` requires an `admin`, validates a guided set of
-  conditions, and creates an organization-scoped policy. New policies can be
-  saved as inactive drafts before they begin enforcing actions.
-- `PATCH /api/v1/policies/:policyId` requires an `admin`, validates any changed
-  policy fields, updates the organization-scoped rule, and records the exact
-  changed fields as audit evidence. The Policies screen provides create/edit
-  controls and a first-match decision preview before activation.
+  conditions, and creates an organization-scoped policy with an immutable
+  version-one snapshot. Requesting activation creates a pending review; it does
+  not make the policy live immediately.
+- `PATCH /api/v1/policies/:policyId` requires an `admin`. Configuration changes
+  create a new immutable version while the currently approved version continues
+  to enforce. An active policy can still be disabled immediately as a safe
+  shutdown action.
+- `GET /api/v1/policies/:policyId/versions` returns the organization-scoped
+  version timeline, activation state, requester, reviewer, and review reason.
+- `POST /api/v1/policies/activation-requests/:requestId/decision` requires a
+  review note from a second `admin`. The requesting administrator is prevented
+  from approving or rejecting their own activation request.
+- `POST /api/v1/policies/:policyId/rollback` creates a new version from the
+  selected historical snapshot and sends that version through the same
+  independent activation review; history is never rewritten.
 - `POST /api/v1/policies/simulate` requires an `admin` and replays up to 50
   recent organization actions through an unsaved draft and the current enabled
   policy order. It reports matches, cases where the draft wins, and decisions
@@ -284,6 +294,12 @@ used in the recording.
   is deliberately excluded from audit payloads.
 - Operator permissions are enforced server-side with `admin`, `approver`, and
   read-only `auditor` roles.
+- Policy activation uses maker-checker governance: only an independent
+  administrator can approve or reject a requested version, and the database
+  prevents multiple pending activations for the same policy.
+- Policy edits and rollback requests never replace the active rule before
+  approval. Every evaluated action records the exact active policy version used
+  for its decision.
 - Requests are tenant-scoped and idempotent.
 - Pending decisions use conditional updates to prevent double approval.
 - Execution outcomes use row locking and terminal-state protection to prevent

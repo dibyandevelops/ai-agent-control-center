@@ -85,6 +85,52 @@ export interface Policy {
   }>;
   enabled: boolean;
   matches: number;
+  activeVersionNumber?: number | null;
+  latestVersionNumber?: number;
+  activationStatus?: "draft" | "pending" | "active";
+  pendingActivation?: {
+    id: string;
+    requestedByOperatorId?: string | null;
+    requestedBy?: string;
+    requestedAt: string | null;
+  } | null;
+}
+
+export interface PolicyActivationRequest {
+  id: string;
+  policyId: string;
+  policyName: string;
+  versionId: string;
+  versionNumber: number;
+  activeVersionNumber: number | null;
+  effect: "block" | "approval" | "allow";
+  requestedByOperatorId: string | null;
+  requestedBy: string;
+  requestedAt: string;
+}
+
+export interface PolicyVersion {
+  id: string;
+  versionNumber: number;
+  name: string;
+  description: string;
+  priority: number;
+  effect: "block" | "approval" | "allow";
+  conditions: NonNullable<Policy["conditions"]>;
+  changeType: "created" | "edited" | "rollback";
+  sourceVersionId: string | null;
+  createdBy: string;
+  createdAt: string;
+  active: boolean;
+  activation: {
+    id: string;
+    status: "pending" | "approved" | "rejected";
+    requestedBy: string | null;
+    requestedAt: string | null;
+    reviewedBy: string | null;
+    reviewedAt: string | null;
+    reason: string | null;
+  } | null;
 }
 
 export interface AuditEvent {

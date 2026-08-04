@@ -83,7 +83,7 @@ async function seed() {
     const organizationId = organizationResult.rows[0].id;
 
     for (const policy of policies) {
-      await client.query(
+      const policyResult = await client.query(
         `
           insert into policies (
             organization_id, name, description, priority, effect, conditions
@@ -95,6 +95,8 @@ async function seed() {
               effect = excluded.effect,
               conditions = excluded.conditions,
               updated_at = now()
+          returning id, organization_id, enabled, name, description,
+                    priority, effect, conditions
         `,
         [
           organizationId,
@@ -105,6 +107,48 @@ async function seed() {
           JSON.stringify(policy.conditions),
         ],
       );
+      const policyRow = policyResult.rows[0];
+      const versionResult = await client.query(
+        `
+          insert into policy_versions (
+            organization_id,
+            policy_id,
+            version_number,
+            name,
+            description,
+            priority,
+            effect,
+            conditions,
+            change_type,
+            created_by_email
+          )
+          select $1, $2, 1, $3, $4, $5, $6, $7::jsonb, 'created',
+                 'seed@sentinelops.system'
+          where not exists (
+            select 1 from policy_versions where policy_id = $2
+          )
+          returning id
+        `,
+        [
+          organizationId,
+          policyRow.id,
+          policy.name,
+          policy.description,
+          policy.priority,
+          policy.effect,
+          JSON.stringify(policy.conditions),
+        ],
+      );
+      if (versionResult.rows[0] && policyRow.enabled) {
+        await client.query(
+          `
+            update policies
+            set active_version_id = $2
+            where id = $1 and active_version_id is null
+          `,
+          [policyRow.id, versionResult.rows[0].id],
+        );
+      }
     }
 
     await client.query(
