@@ -65,11 +65,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          deployment_dir="$(mktemp -d)"
-          mkdir -p "$deployment_dir/.vercel"
-          cp -R .vercel/output "$deployment_dir/.vercel/output"
-          cp .vercel/project.json "$deployment_dir/.vercel/project.json"
-          deployment_url="$(pnpm dlx vercel@58.5.1 deploy "$deployment_dir" --prebuilt --prod --token="$VERCEL_TOKEN" | tail -n 1)"
+          git_metadata_dir="$RUNNER_TEMP/sentinelops-git-metadata"
+          mv .git "$git_metadata_dir"
+          trap 'mv "$git_metadata_dir" .git' EXIT
+          deployment_url="$(pnpm dlx vercel@58.5.1 deploy --prebuilt --prod --token="$VERCEL_TOKEN" | tail -n 1)"
           echo "url=${deployment_url}" >> "$GITHUB_OUTPUT"
 
       - name: Verify deployed health
