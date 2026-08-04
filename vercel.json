@@ -3,11 +3,11 @@
   "crons": [
     {
       "path": "/api/v1/internal/policy-activation-reminders",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/v1/internal/notification-outbox",
-      "schedule": "* * * * *"
+      "schedule": "15 0 * * *"
     }
   ]
 }
