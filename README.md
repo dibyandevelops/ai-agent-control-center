@@ -78,6 +78,48 @@ idempotent replay, durable notification creation, operator approval, execution
 reporting, action details, and audit-chain integrity. It removes the temporary
 organization and stops the server even when a check fails.
 
+## Staging deployment
+
+SentinelOps uses a separate staging project so testing cannot touch production.
+Create a Neon database/branch dedicated to staging and a dedicated Vercel
+project, then configure these Vercel production-scoped variables:
+
+```text
+DATABASE_URL=<Neon pooled staging connection string>
+DB_SSL=true
+DB_SSL_REJECT_UNAUTHORIZED=true
+DB_POOL_MAX=5
+CRON_SECRET=<at least 32 random characters>
+POLICY_ACTIVATION_TTL_HOURS=24
+POLICY_ACTIVATION_REMINDER_MINUTES=240
+SLACK_APPROVAL_WEBHOOK_URL=<optional staging-only webhook>
+```
+
+`CRON_SECRET` can be generated with `openssl rand -hex 32`. Vercel uses it to
+authenticate the two scheduled routes declared in `vercel.json`. Preview and
+production databases must never share the same connection string. The outbox
+runs every minute so approval alerts are prompt; the reminder dispatcher runs
+every five minutes. Use a Vercel plan that supports these cron frequencies, or
+configure an external scheduler to call the same authenticated routes.
+
+Create a GitHub environment named `staging` and add four environment secrets:
+
+- `STAGING_DATABASE_URL` — the same isolated Neon staging database;
+- `VERCEL_TOKEN` — a Vercel account or team deployment token;
+- `VERCEL_ORG_ID` — the team ID from the staging project link; and
+- `VERCEL_PROJECT_ID` — the dedicated staging project ID.
+
+The **Deploy staging** GitHub workflow is manual. It runs the isolated
+enterprise journey against staging, builds a Vercel artifact, deploys that exact
+artifact to the staging project, and requires `/api/health` to report a reachable
+database. The normal **Quality gate** workflow runs on every pull request and
+push to `main` using an isolated PostgreSQL service with no deployment secrets.
+
+After the first staging deployment, point a temporary local environment at the
+staging database and run `pnpm db:seed` and `pnpm operator:create` once to create
+the persistent pilot organization and first administrator. Never run the seed
+command in CI because it prints the newly generated agent key once.
+
 Policy activation reviews expire after 24 hours and receive a reminder every
 four hours by default. Override those windows with
 `POLICY_ACTIVATION_TTL_HOURS` and `POLICY_ACTIVATION_REMINDER_MINUTES`. For

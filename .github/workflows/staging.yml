@@ -1,0 +1,83 @@
+name: Deploy staging
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sentinelops-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Verify and deploy staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    env:
+      DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      DB_SSL: "true"
+      DB_SSL_REJECT_UNAUTHORIZED: "true"
+      DB_POOL_MAX: "5"
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.23.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run isolated enterprise journey
+        run: pnpm test:e2e
+
+      - name: Pull staging project configuration
+        run: >-
+          pnpm dlx vercel@58.5.1 pull
+          --yes
+          --environment=production
+          --token="$VERCEL_TOKEN"
+
+      - name: Build staging artifact
+        run: >-
+          pnpm dlx vercel@58.5.1 build
+          --prod
+          --token="$VERCEL_TOKEN"
+
+      - name: Deploy tested artifact
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          deployment_url="$(pnpm dlx vercel@58.5.1 deploy --prebuilt --prod --token="$VERCEL_TOKEN" | tail -n 1)"
+          echo "url=${deployment_url}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify deployed health
+        run: >-
+          curl
+          --fail
+          --retry 10
+          --retry-delay 3
+          "${{ steps.deploy.outputs.url }}/api/health"
+
+      - name: Publish deployment summary
+        run: |
+          echo "## SentinelOps staging" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Health check: passed" >> "$GITHUB_STEP_SUMMARY"

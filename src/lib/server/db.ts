@@ -11,7 +11,7 @@ function createPool() {
   const env = getServerEnv();
   return new Pool({
     connectionString: requireDatabaseUrl(),
-    max: 10,
+    max: env.DB_POOL_MAX,
     connectionTimeoutMillis: 8_000,
     idleTimeoutMillis: 30_000,
     keepAlive: true,

@@ -6,6 +6,7 @@ const serverEnvSchema = z.object({
   DATABASE_URL: z.string().url().optional(),
   DB_SSL: z.enum(["true", "false", "1", "0"]).optional(),
   DB_SSL_REJECT_UNAUTHORIZED: z.enum(["true", "false"]).optional(),
+  DB_POOL_MAX: z.coerce.number().int().min(1).max(20).default(5),
   SENTINELOPS_ADMIN_TOKEN: z.string().min(32).optional(),
   SLACK_APPROVAL_WEBHOOK_URL: z.string().url().optional(),
   SENTINELOPS_CRON_SECRET: z.string().min(32).optional(),
@@ -32,12 +33,15 @@ export function getServerEnv(): ServerEnv {
     DB_SSL: process.env.DB_SSL || undefined,
     DB_SSL_REJECT_UNAUTHORIZED:
       process.env.DB_SSL_REJECT_UNAUTHORIZED || undefined,
+    DB_POOL_MAX: process.env.DB_POOL_MAX || undefined,
     SENTINELOPS_ADMIN_TOKEN:
       process.env.SENTINELOPS_ADMIN_TOKEN || undefined,
     SLACK_APPROVAL_WEBHOOK_URL:
       process.env.SLACK_APPROVAL_WEBHOOK_URL || undefined,
     SENTINELOPS_CRON_SECRET:
-      process.env.SENTINELOPS_CRON_SECRET || undefined,
+      process.env.CRON_SECRET ||
+      process.env.SENTINELOPS_CRON_SECRET ||
+      undefined,
     POLICY_ACTIVATION_TTL_HOURS:
       process.env.POLICY_ACTIVATION_TTL_HOURS || undefined,
     POLICY_ACTIVATION_REMINDER_MINUTES:

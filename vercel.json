@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/v1/internal/policy-activation-reminders",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/v1/internal/notification-outbox",
+      "schedule": "* * * * *"
+    }
+  ]
+}

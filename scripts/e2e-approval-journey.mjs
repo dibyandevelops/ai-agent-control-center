@@ -175,7 +175,7 @@ async function startServer() {
       throw new Error(`SentinelOps server exited early.\n${output.join("")}`);
     }
     try {
-      const response = await fetch(`${baseUrl}/api/v1/session`);
+      const response = await fetch(`${baseUrl}/api/health`);
       if (response.ok) return baseUrl;
     } catch {
       // The production server is still starting.

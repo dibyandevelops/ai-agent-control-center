@@ -6,6 +6,8 @@ import { apiError } from "@/lib/server/http";
 import { hasValidInternalBearer } from "@/lib/server/internal-auth";
 import { enqueuePolicyActivationNotification } from "@/lib/server/notification-outbox";
 
+export const maxDuration = 60;
+
 type NotificationKind = "reminder" | "escalation" | "expired";
 
 interface PolicyNotification {

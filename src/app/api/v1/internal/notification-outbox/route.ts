@@ -18,6 +18,8 @@ import {
   notifySlackOfPolicyActivation,
 } from "@/lib/server/slack";
 
+export const maxDuration = 60;
+
 interface OutboxRow {
   id: string;
   organization_id: string;
