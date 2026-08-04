@@ -38,6 +38,9 @@ export interface ExpiredPolicyActivation {
   id: string;
   version_id: string;
   expires_at: Date;
+  requested_by_email: string;
+  policy_name: string;
+  version_number: number;
 }
 
 export interface PolicyVersionRow extends PolicyConfiguration {
@@ -168,10 +171,17 @@ export async function ensureNoPendingActivation(
       set status = 'expired',
           reviewed_at = now(),
           review_reason = 'Activation request expired before independent review.'
-      where policy_id = $1
-        and status = 'pending'
-        and expires_at <= now()
-      returning id, version_id, expires_at
+      from policy_versions pv
+      where policy_activation_requests.policy_id = $1
+        and policy_activation_requests.status = 'pending'
+        and policy_activation_requests.expires_at <= now()
+        and policy_activation_requests.version_id = pv.id
+      returning policy_activation_requests.id,
+                policy_activation_requests.version_id,
+                policy_activation_requests.expires_at,
+                policy_activation_requests.requested_by_email,
+                pv.name as policy_name,
+                pv.version_number
     `,
     [policyId],
   );

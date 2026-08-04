@@ -77,12 +77,19 @@ server scheduler call the dispatcher every five minutes:
 curl --fail --request POST \
   --header "Authorization: Bearer $SENTINELOPS_CRON_SECRET" \
   http://localhost:3000/api/v1/internal/policy-activation-reminders
+
+curl --fail --request POST \
+  --header "Authorization: Bearer $SENTINELOPS_CRON_SECRET" \
+  http://localhost:3000/api/v1/internal/notification-outbox
 ```
 
 The dispatcher is disabled when the secret is absent. It marks overdue reviews
-expired, sends a reminder on the first due interval, escalates subsequent due
-intervals, and records delivery results in the audit chain. Slack delivery is
-enabled only when `SLACK_APPROVAL_WEBHOOK_URL` is configured.
+expired, queues a reminder on the first due interval, and escalates subsequent
+due intervals. The outbox worker claims up to 50 notifications without blocking
+other workers, performs Slack delivery after committing the claim, and retries
+failures with exponential backoff. After five failed attempts, the notification
+is retained in a dead-letter state for investigation. Slack delivery is enabled
+only when `SLACK_APPROVAL_WEBHOOK_URL` is configured.
 
 Operator roles are deliberately small for the MVP:
 
@@ -268,8 +275,12 @@ used in the recording.
   independent activation review; history is never rewritten.
 - `GET` or `POST /api/v1/internal/policy-activation-reminders` requires the
   cron bearer secret. It processes bounded reminder batches using row locks
-  with `SKIP LOCKED`, expires overdue requests, and delivers Slack reminders
-  outside the database transaction.
+  with `SKIP LOCKED`, expires overdue requests, and atomically writes
+  deduplicated notification-outbox records.
+- `GET` or `POST /api/v1/internal/notification-outbox` requires the same cron
+  bearer secret. It reclaims stale worker leases, delivers due notifications in
+  bounded batches, schedules exponential retries, and dead-letters terminal
+  failures without losing their payload or audit history.
 - `POST /api/v1/policies/simulate` requires an `admin` and replays up to 50
   recent organization actions through an unsaved draft and the current enabled
   policy order. It reports matches, cases where the draft wins, and decisions
@@ -330,6 +341,9 @@ used in the recording.
 - Expired activation requests cannot be approved. The previously active policy
   remains unchanged, and reminder, escalation, expiration, and Slack delivery
   outcomes are appended to the hash-chained audit log.
+- Policy notification writes are atomic with the governance event that created
+  them. A unique channel/deduplication key prevents duplicate delivery jobs,
+  and delivery never occurs while policy or outbox row locks are held.
 - Requests are tenant-scoped and idempotent.
 - Pending decisions use conditional updates to prevent double approval.
 - Execution outcomes use row locking and terminal-state protection to prevent

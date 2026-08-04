@@ -1,9 +1,10 @@
-import { after, NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { appendAuditEvent } from "@/lib/server/audit";
 import { getOperatorSession } from "@/lib/server/auth";
 import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
+import { enqueuePolicyActivationNotification } from "@/lib/server/notification-outbox";
 import { getPolicyActivationSchedule } from "@/lib/server/policy-activation-schedule";
 import {
   createActivationRequest,
@@ -12,7 +13,6 @@ import {
   type LockedPolicy,
 } from "@/lib/server/policy-governance";
 import { policyWriteSchema } from "@/lib/server/policy-input";
-import { notifySlackOfPolicyActivation } from "@/lib/server/slack";
 
 export async function POST(request: NextRequest) {
   try {
@@ -79,6 +79,21 @@ export async function POST(request: NextRequest) {
         },
       });
       if (activationRequest) {
+        const outbox = await enqueuePolicyActivationNotification(client, {
+          organizationId: operator.organizationId,
+          sequence: 0,
+          payload: {
+            kind: "requested",
+            requestId: activationRequest.id,
+            policyId: policy.id,
+            policyName: version.name,
+            versionId: version.id,
+            versionNumber: version.version_number,
+            requestedBy: operator.email,
+            expiresAt: activationRequest.expires_at.toISOString(),
+            reminderCount: 0,
+          },
+        });
         await appendAuditEvent(client, {
           organizationId: operator.organizationId,
           requestId: null,
@@ -91,26 +106,12 @@ export async function POST(request: NextRequest) {
             versionId: version.id,
             versionNumber: version.version_number,
             activationRequestId: activationRequest.id,
+            notificationOutboxId: outbox.id,
           },
         });
       }
       return { policy, version, activationRequest };
     });
-
-    if (created.activationRequest) {
-      after(async () => {
-        await notifySlackOfPolicyActivation({
-          kind: "requested",
-          requestId: created.activationRequest!.id,
-          policyName: created.version.name,
-          versionNumber: created.version.version_number,
-          requestedBy: operator.email,
-          expiresAt: created.activationRequest!.expires_at.toISOString(),
-        }).catch((error) => {
-          console.error("Slack policy activation notification failed", error);
-        });
-      });
-    }
 
     return NextResponse.json(
       policyResponse({

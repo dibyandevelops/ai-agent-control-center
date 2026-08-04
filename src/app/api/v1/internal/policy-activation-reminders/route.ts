@@ -1,10 +1,10 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { appendAuditEvent } from "@/lib/server/audit";
 import { withTransaction } from "@/lib/server/db";
 import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
-import { notifySlackOfPolicyActivation } from "@/lib/server/slack";
+import { hasValidInternalBearer } from "@/lib/server/internal-auth";
+import { enqueuePolicyActivationNotification } from "@/lib/server/notification-outbox";
 
 type NotificationKind = "reminder" | "escalation" | "expired";
 
@@ -21,19 +21,6 @@ interface PolicyNotification {
   reminderCount: number;
 }
 
-function authorized(request: NextRequest, secret: string) {
-  const authorization = request.headers.get("authorization") ?? "";
-  const candidate = authorization.startsWith("Bearer ")
-    ? authorization.slice(7)
-    : "";
-  const expectedBuffer = Buffer.from(secret);
-  const candidateBuffer = Buffer.from(candidate);
-  return (
-    expectedBuffer.length === candidateBuffer.length &&
-    timingSafeEqual(expectedBuffer, candidateBuffer)
-  );
-}
-
 async function dispatchPolicyActivationReminders(request: NextRequest) {
   try {
     const env = getServerEnv();
@@ -43,7 +30,7 @@ async function dispatchPolicyActivationReminders(request: NextRequest) {
         { status: 503 },
       );
     }
-    if (!authorized(request, env.SENTINELOPS_CRON_SECRET)) {
+    if (!hasValidInternalBearer(request, env.SENTINELOPS_CRON_SECRET)) {
       return NextResponse.json({ error: "Invalid dispatcher credential." }, { status: 401 });
     }
 
@@ -150,62 +137,58 @@ async function dispatchPolicyActivationReminders(request: NextRequest) {
         expiresAt: row.expires_at,
         reminderCount: row.reminder_count + 1,
       }));
-      return [...expired, ...reminders];
+      const notifications = [...expired, ...reminders];
+      let enqueued = 0;
+      for (const notification of notifications) {
+        const outbox = await enqueuePolicyActivationNotification(client, {
+          organizationId: notification.organizationId,
+          sequence: notification.kind === "expired" ? 0 : notification.reminderCount,
+          payload: {
+            kind: notification.kind,
+            requestId: notification.requestId,
+            policyId: notification.policyId,
+            policyName: notification.policyName,
+            versionId: notification.versionId,
+            versionNumber: notification.versionNumber,
+            requestedBy: notification.requestedBy,
+            expiresAt: notification.expiresAt.toISOString(),
+            reminderCount: notification.reminderCount,
+          },
+        });
+        if (outbox.enqueued) enqueued += 1;
+        await appendAuditEvent(client, {
+          organizationId: notification.organizationId,
+          requestId: null,
+          eventType:
+            notification.kind === "expired"
+              ? "policy.activation_expired"
+              : notification.kind === "escalation"
+                ? "policy.activation_escalated"
+                : "policy.activation_reminder_queued",
+          actorType: "system",
+          actorId: "policy-reminder-dispatcher",
+          payload: {
+            activationRequestId: notification.requestId,
+            policyId: notification.policyId,
+            policyName: notification.policyName,
+            versionId: notification.versionId,
+            versionNumber: notification.versionNumber,
+            expiresAt: notification.expiresAt.toISOString(),
+            reminderCount: notification.reminderCount,
+            notificationOutboxId: outbox.id,
+            notificationEnqueued: outbox.enqueued,
+          },
+        });
+      }
+      return { notifications, enqueued };
     });
 
-    const deliveries = await Promise.all(
-      notifications.map(async (notification) => ({
-        notification,
-        delivery: await notifySlackOfPolicyActivation({
-          kind: notification.kind,
-          requestId: notification.requestId,
-          policyName: notification.policyName,
-          versionNumber: notification.versionNumber,
-          requestedBy: notification.requestedBy,
-          expiresAt: notification.expiresAt.toISOString(),
-        }).catch((error) => ({
-          delivered: false,
-          reason: error instanceof Error ? error.message : "delivery_failed",
-        })),
-      })),
-    );
-
-    if (deliveries.length) {
-      await withTransaction(async (client) => {
-        for (const { notification, delivery } of deliveries) {
-          await appendAuditEvent(client, {
-            organizationId: notification.organizationId,
-            requestId: null,
-            eventType:
-              notification.kind === "expired"
-                ? "policy.activation_expired"
-                : notification.kind === "escalation"
-                  ? "policy.activation_escalated"
-                  : "policy.activation_reminder_dispatched",
-            actorType: "system",
-            actorId: "policy-reminder-dispatcher",
-            payload: {
-              activationRequestId: notification.requestId,
-              policyId: notification.policyId,
-              policyName: notification.policyName,
-              versionId: notification.versionId,
-              versionNumber: notification.versionNumber,
-              expiresAt: notification.expiresAt.toISOString(),
-              reminderCount: notification.reminderCount,
-              slackDelivered: delivery.delivered,
-              deliveryReason: delivery.reason,
-            },
-          });
-        }
-      });
-    }
-
     return NextResponse.json({
-      processed: deliveries.length,
-      reminders: deliveries.filter(({ notification }) => notification.kind === "reminder").length,
-      escalations: deliveries.filter(({ notification }) => notification.kind === "escalation").length,
-      expired: deliveries.filter(({ notification }) => notification.kind === "expired").length,
-      slackDelivered: deliveries.filter(({ delivery }) => delivery.delivered).length,
+      processed: notifications.notifications.length,
+      enqueued: notifications.enqueued,
+      reminders: notifications.notifications.filter((notification) => notification.kind === "reminder").length,
+      escalations: notifications.notifications.filter((notification) => notification.kind === "escalation").length,
+      expired: notifications.notifications.filter((notification) => notification.kind === "expired").length,
     });
   } catch (error) {
     return apiError(error);

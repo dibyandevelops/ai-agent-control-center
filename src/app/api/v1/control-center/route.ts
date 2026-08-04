@@ -23,6 +23,7 @@ export async function GET() {
       policiesResult,
       auditResult,
       policyActivationsResult,
+      notificationOutboxResult,
     ] =
       await Promise.all([
         pool.query<{
@@ -250,6 +251,23 @@ export async function GET() {
           order by par.requested_at asc
           limit 100
         `, [operator.organizationId]),
+        pool.query<{
+          pending: string;
+          processing: string;
+          delivered: string;
+          dead: string;
+        }>(
+          `
+            select
+              count(*) filter (where status = 'pending')::text as pending,
+              count(*) filter (where status = 'processing')::text as processing,
+              count(*) filter (where status = 'delivered')::text as delivered,
+              count(*) filter (where status = 'dead')::text as dead
+            from notification_outbox
+            where organization_id = $1
+          `,
+          [operator.organizationId],
+        ),
       ]);
 
     const latestGitHubEvidence = auditResult.rows.find((row) => {
@@ -271,6 +289,11 @@ export async function GET() {
         : githubTokenConfigured || githubRepositoryConfigured
           ? "attention"
           : "not_connected";
+    const notificationOutbox = notificationOutboxResult.rows[0];
+    const queuedNotifications =
+      Number(notificationOutbox?.pending ?? 0) +
+      Number(notificationOutbox?.processing ?? 0);
+    const deadNotifications = Number(notificationOutbox?.dead ?? 0);
 
     return NextResponse.json({
       mode: "live",
@@ -437,12 +460,12 @@ export async function GET() {
           description: "Route action and policy activation reviews to the configured workspace.",
           connected: Boolean(env.SLACK_APPROVAL_WEBHOOK_URL),
           category: "Communication",
-          events: env.SLACK_APPROVAL_WEBHOOK_URL
-            ? "Approval and escalation notifications enabled"
-            : "Not configured",
-          status: env.SLACK_APPROVAL_WEBHOOK_URL
-            ? "configured"
-            : "not_connected",
+          events: `${queuedNotifications} queued · ${deadNotifications} dead-lettered`,
+          status: deadNotifications > 0
+            ? "attention"
+            : env.SLACK_APPROVAL_WEBHOOK_URL
+              ? "configured"
+              : "not_connected",
           mode: "Approvals and escalations",
           url: null,
         },

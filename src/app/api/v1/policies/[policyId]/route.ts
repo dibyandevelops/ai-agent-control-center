@@ -1,10 +1,11 @@
-import { after, NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { ConflictError } from "@/lib/server/errors";
 import { appendAuditEvent } from "@/lib/server/audit";
 import { getOperatorSession } from "@/lib/server/auth";
 import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
+import { enqueuePolicyActivationNotification } from "@/lib/server/notification-outbox";
 import { getPolicyActivationSchedule } from "@/lib/server/policy-activation-schedule";
 import {
   createActivationRequest,
@@ -13,9 +14,9 @@ import {
   loadLatestPolicyVersion,
   lockPolicy,
   policyResponse,
+  type ExpiredPolicyActivation,
 } from "@/lib/server/policy-governance";
 import { policyWriteSchema } from "@/lib/server/policy-input";
-import { notifySlackOfPolicyActivation } from "@/lib/server/slack";
 
 const updatePolicySchema = policyWriteSchema.partial().refine(
   (input) => Object.keys(input).length > 0,
@@ -51,12 +52,25 @@ export async function PATCH(
         policyId,
         operator.organizationId,
       );
-      const auditExpiredActivation = (expired: {
-        id: string;
-        version_id: string;
-        expires_at: Date;
-      }) =>
-        appendAuditEvent(client, {
+      const auditExpiredActivation = async (
+        expired: ExpiredPolicyActivation,
+      ) => {
+        const outbox = await enqueuePolicyActivationNotification(client, {
+          organizationId: operator.organizationId,
+          sequence: 0,
+          payload: {
+            kind: "expired",
+            requestId: expired.id,
+            policyId,
+            policyName: expired.policy_name,
+            versionId: expired.version_id,
+            versionNumber: expired.version_number,
+            requestedBy: expired.requested_by_email,
+            expiresAt: expired.expires_at.toISOString(),
+            reminderCount: 0,
+          },
+        });
+        await appendAuditEvent(client, {
           organizationId: operator.organizationId,
           requestId: null,
           eventType: "policy.activation_expired",
@@ -67,6 +81,31 @@ export async function PATCH(
             policyId,
             versionId: expired.version_id,
             expiredAt: expired.expires_at.toISOString(),
+            notificationOutboxId: outbox.id,
+          },
+        });
+      };
+      const enqueueRequestedActivation = (
+        activation: { id: string; expires_at: Date },
+        version: {
+          id: string;
+          name: string;
+          version_number: number;
+        },
+      ) =>
+        enqueuePolicyActivationNotification(client, {
+          organizationId: operator.organizationId,
+          sequence: 0,
+          payload: {
+            kind: "requested",
+            requestId: activation.id,
+            policyId,
+            policyName: version.name,
+            versionId: version.id,
+            versionNumber: version.version_number,
+            requestedBy: operator.email,
+            expiresAt: activation.expires_at.toISOString(),
+            reminderCount: 0,
           },
         });
       const latestVersion = await loadLatestPolicyVersion(
@@ -98,6 +137,10 @@ export async function PATCH(
             schedule: getPolicyActivationSchedule(),
             onExpired: auditExpiredActivation,
           });
+          const outbox = await enqueueRequestedActivation(
+            activationRequest,
+            latestVersion,
+          );
           await appendAuditEvent(client, {
             organizationId: operator.organizationId,
             requestId: null,
@@ -110,6 +153,7 @@ export async function PATCH(
               versionId: latestVersion.id,
               versionNumber: latestVersion.version_number,
               activationRequestId: activationRequest.id,
+              notificationOutboxId: outbox.id,
             },
           });
           return {
@@ -213,6 +257,10 @@ export async function PATCH(
         },
       });
       if (activationRequest) {
+        const outbox = await enqueueRequestedActivation(
+          activationRequest,
+          version,
+        );
         await appendAuditEvent(client, {
           organizationId: operator.organizationId,
           requestId: null,
@@ -225,6 +273,7 @@ export async function PATCH(
             versionId: version.id,
             versionNumber: version.version_number,
             activationRequestId: activationRequest.id,
+            notificationOutboxId: outbox.id,
           },
         });
       }
@@ -235,21 +284,6 @@ export async function PATCH(
         activationRequest,
       };
     });
-
-    if (result.activationRequest) {
-      after(async () => {
-        await notifySlackOfPolicyActivation({
-          kind: "requested",
-          requestId: result.activationRequest!.id,
-          policyName: result.version.name,
-          versionNumber: result.version.version_number,
-          requestedBy: operator.email,
-          expiresAt: result.activationRequest!.expires_at.toISOString(),
-        }).catch((error) => {
-          console.error("Slack policy activation notification failed", error);
-        });
-      });
-    }
 
     return NextResponse.json(
       policyResponse({

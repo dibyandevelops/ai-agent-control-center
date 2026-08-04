@@ -6,6 +6,7 @@ import type { PolicyConditions } from "@/lib/server/contracts";
 import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
+import { enqueuePolicyActivationNotification } from "@/lib/server/notification-outbox";
 import { canReviewPolicyActivation } from "@/lib/server/policy-governance";
 import { policyActivationDecisionSchema } from "@/lib/server/policy-input";
 
@@ -96,6 +97,21 @@ export async function POST(
           `,
           [requestId],
         );
+        const outbox = await enqueuePolicyActivationNotification(client, {
+          organizationId: operator.organizationId,
+          sequence: 0,
+          payload: {
+            kind: "expired",
+            requestId: activation.id,
+            policyId: activation.policy_id,
+            policyName: activation.name,
+            versionId: activation.version_id,
+            versionNumber: activation.version_number,
+            requestedBy: activation.requested_by_email,
+            expiresAt: activation.expires_at.toISOString(),
+            reminderCount: 0,
+          },
+        });
         await appendAuditEvent(client, {
           organizationId: operator.organizationId,
           requestId: null,
@@ -109,6 +125,7 @@ export async function POST(
             versionId: activation.version_id,
             versionNumber: activation.version_number,
             expiredAt: activation.expires_at.toISOString(),
+            notificationOutboxId: outbox.id,
           },
         });
         return {
