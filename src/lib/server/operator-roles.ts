@@ -3,10 +3,17 @@ export type OperatorCapability =
   | "read"
   | "approve"
   | "manage_policies"
-  | "manage_operators";
+  | "manage_operators"
+  | "manage_api_keys";
 
 const capabilities: Record<OperatorRole, ReadonlySet<OperatorCapability>> = {
-  admin: new Set(["read", "approve", "manage_policies", "manage_operators"]),
+  admin: new Set([
+    "read",
+    "approve",
+    "manage_policies",
+    "manage_operators",
+    "manage_api_keys",
+  ]),
   approver: new Set(["read", "approve"]),
   auditor: new Set(["read"]),
 };

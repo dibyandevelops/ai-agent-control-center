@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import type { PoolClient } from "pg";
+import { hashAgentApiKey } from "./agent-api-key";
 import { appendAuditEvent } from "./audit";
 import { getPool, withTransaction } from "./db";
 import { hashPassword, verifyPassword } from "./password";
@@ -402,7 +403,7 @@ export async function authenticateApiKey(
     : request.headers.get("x-sentinel-api-key");
 
   if (!token?.startsWith("sop_live_")) return null;
-  const keyHash = createHash("sha256").update(token).digest("hex");
+  const keyHash = hashAgentApiKey(token);
   const result = await client.query<{
     key_id: string;
     organization_id: string;

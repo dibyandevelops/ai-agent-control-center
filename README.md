@@ -67,7 +67,8 @@ password created above.
 
 Operator roles are deliberately small for the MVP:
 
-- `admin` can view data, decide actions, manage policies, and manage operators;
+- `admin` can view data, decide actions, manage policies, manage agent API
+  keys, and manage operators;
 - `approver` can view data and approve or deny pending actions; and
 - `auditor` has read-only access to operational and audit evidence.
 
@@ -75,6 +76,11 @@ Accounts created from **Team access** receive a temporary password. On first
 login, SentinelOps blocks protected workspace requests until the operator
 replaces it. Operators can later open their profile control to change the
 password again.
+
+Administrators can create agent credentials from **Credentials**. SentinelOps
+shows the complete key only after creation or rotation, so copy it directly to
+the workload's secret manager before closing the dialog. Rotation revokes the
+previous credential atomically; revocation takes effect on the next request.
 
 ## Evaluate an agent action
 
@@ -221,6 +227,14 @@ used in the recording.
   chains. The Audit Log exposes this as **Verify integrity**.
 - `PATCH /api/v1/policies/:policyId` requires an `admin`, updates enforcement
   state, and records audit evidence.
+- `GET /api/v1/api-keys` lets an `admin` list safe credential metadata without
+  exposing plaintext keys or stored hashes.
+- `POST /api/v1/api-keys` creates an organization-scoped agent credential and
+  returns its plaintext once with no-store response headers.
+- `POST /api/v1/api-keys/:keyId/rotate` atomically revokes the selected key,
+  creates its replacement, and returns the new plaintext once.
+- `DELETE /api/v1/api-keys/:keyId` immediately revokes an active credential.
+  Creation, rotation, and revocation are recorded in the audit chain.
 - `GET /api/v1/operators` and `POST /api/v1/operators` let an `admin` list and
   create organization-scoped operator accounts.
 - `PATCH /api/v1/operators/:operatorId` lets an `admin` change another
@@ -237,7 +251,9 @@ used in the recording.
 
 ## Security boundaries
 
-- Agent API keys are stored as SHA-256 hashes, never plaintext.
+- Agent API keys use 256 bits of server-generated randomness and are stored as
+  SHA-256 hashes, never plaintext. Lists expose only a short non-sensitive
+  prefix; create and rotate responses are explicitly non-cacheable.
 - Operator passwords are stored as salted scrypt hashes.
 - Successful login creates an opaque, revocable, eight-hour HttpOnly,
   same-site session; only its SHA-256 hash is stored.
@@ -264,5 +280,5 @@ used in the recording.
 - Slack is disabled unless `SLACK_APPROVAL_WEBHOOK_URL` is configured.
 
 This MVP is not yet a complete enterprise security product. SSO, SCIM,
-fine-grained operator roles, key rotation UI, webhook signing, audit export,
-retention controls, and formal compliance work remain later milestones.
+fine-grained operator roles, expiring credentials, webhook signing, audit
+export, retention controls, and formal compliance work remain later milestones.

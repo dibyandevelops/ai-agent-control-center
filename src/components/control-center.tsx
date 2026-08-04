@@ -61,6 +61,7 @@ import type {
 } from "@/lib/types";
 import { OperatorManagement } from "@/components/operator-management";
 import { PasswordChangeDialog } from "@/components/password-change-dialog";
+import { ApiKeyManagement } from "@/components/api-key-management";
 
 type View =
   | "overview"
@@ -69,6 +70,7 @@ type View =
   | "policies"
   | "audit"
   | "integrations"
+  | "credentials"
   | "team";
 
 type WorkspaceMode = "demo" | "connecting" | "live";
@@ -95,6 +97,7 @@ const navItems: Array<{
   { id: "policies", label: "Policies", icon: Shield },
   { id: "audit", label: "Audit log", icon: FileClock },
   { id: "integrations", label: "Integrations", icon: PlugZap },
+  { id: "credentials", label: "Credentials", icon: KeyRound, adminOnly: true },
   { id: "team", label: "Team access", icon: UsersRound, adminOnly: true },
 ];
 
@@ -105,6 +108,7 @@ const titles: Record<View, string> = {
   policies: "Policy engine",
   audit: "Audit log",
   integrations: "Integrations",
+  credentials: "Agent credentials",
   team: "Team access",
 };
 
@@ -1913,6 +1917,12 @@ export function ControlCenter() {
           <IntegrationsView
             items={integrationList}
             live={workspaceMode === "live"}
+          />
+        )}
+        {view === "credentials" && operatorIdentity?.role === "admin" && (
+          <ApiKeyManagement
+            organizationName={operatorIdentity.organizationName}
+            onNotify={setToast}
           />
         )}
         {view === "team" && operatorIdentity?.role === "admin" && (

@@ -24,6 +24,16 @@ export interface OperatorAccount {
   lastLoginAt: string | null;
   createdAt: string;
 }
+
+export interface AgentApiKey {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  status: "active" | "revoked";
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
 export type ExecutionStatus =
   | "not_started"
   | "executing"
