@@ -23,9 +23,12 @@ export interface OperatorIdentity {
   email: string;
   displayName: string;
   role: OperatorRole;
+  mustChangePassword: boolean;
 }
 
-export async function getOperatorSession(): Promise<OperatorIdentity | null> {
+export async function getOperatorSession(options?: {
+  allowPasswordChangeRequired?: boolean;
+}): Promise<OperatorIdentity | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(sessionCookieName)?.value;
   if (!token?.startsWith("sos_session_")) return null;
@@ -37,6 +40,7 @@ export async function getOperatorSession(): Promise<OperatorIdentity | null> {
     email: string;
     display_name: string;
     role: OperatorRole;
+    password_change_required: boolean;
     session_id: string;
   }>(
     `
@@ -47,6 +51,7 @@ export async function getOperatorSession(): Promise<OperatorIdentity | null> {
         op.email,
         op.display_name,
         op.role,
+        op.password_change_required,
         os.id as session_id
       from operator_sessions os
       join operators op on op.id = os.operator_id
@@ -61,6 +66,12 @@ export async function getOperatorSession(): Promise<OperatorIdentity | null> {
   );
   const row = result.rows[0];
   if (!row) return null;
+  if (
+    row.password_change_required &&
+    !options?.allowPasswordChangeRequired
+  ) {
+    return null;
+  }
 
   void getPool()
     .query(
@@ -81,6 +92,7 @@ export async function getOperatorSession(): Promise<OperatorIdentity | null> {
     email: row.email,
     displayName: row.display_name,
     role: row.role,
+    mustChangePassword: row.password_change_required,
   };
 }
 
@@ -94,6 +106,7 @@ export async function loginOperator(email: string, password: string) {
     display_name: string;
     role: OperatorRole;
     password_hash: string;
+    password_change_required: boolean;
     status: "active" | "disabled";
   }>(
     `
@@ -105,6 +118,7 @@ export async function loginOperator(email: string, password: string) {
         op.display_name,
         op.role,
         op.password_hash,
+        op.password_change_required,
         op.status
       from operators op
       join organizations org on org.id = op.organization_id
@@ -161,7 +175,105 @@ export async function loginOperator(email: string, password: string) {
     email: row.email,
     displayName: row.display_name,
     role: row.role,
+    mustChangePassword: row.password_change_required,
   } satisfies OperatorIdentity;
+}
+
+export type PasswordChangeResult =
+  | { ok: true; operator: OperatorIdentity }
+  | { ok: false; reason: "invalid_current" | "same_password" | "conflict" };
+
+export async function changeOperatorPassword(
+  operator: OperatorIdentity,
+  currentPassword: string,
+  newPassword: string,
+): Promise<PasswordChangeResult> {
+  const result = await getPool().query<{
+    password_hash: string;
+    status: "active" | "disabled";
+  }>(
+    `
+      select password_hash, status
+      from operators
+      where id = $1
+        and organization_id = $2
+      limit 1
+    `,
+    [operator.id, operator.organizationId],
+  );
+  const account = result.rows[0];
+  if (
+    !account ||
+    account.status !== "active" ||
+    !(await verifyPassword(currentPassword, account.password_hash))
+  ) {
+    return { ok: false, reason: "invalid_current" };
+  }
+  if (currentPassword === newPassword) {
+    return { ok: false, reason: "same_password" };
+  }
+
+  const newPasswordHash = await hashPassword(newPassword);
+  const token = `sos_session_${randomBytes(32).toString("base64url")}`;
+  const expiresAt = new Date(Date.now() + sessionDurationMs);
+  const changed = await withTransaction(async (client) => {
+    const updateResult = await client.query<{ id: string }>(
+      `
+        update operators
+        set password_hash = $3,
+            password_change_required = false,
+            password_changed_at = now(),
+            updated_at = now()
+        where id = $1
+          and organization_id = $2
+          and password_hash = $4
+          and status = 'active'
+        returning id
+      `,
+      [operator.id, operator.organizationId, newPasswordHash, account.password_hash],
+    );
+    if (!updateResult.rows[0]) return false;
+
+    await client.query(
+      `
+        update operator_sessions
+        set revoked_at = now()
+        where operator_id = $1
+          and revoked_at is null
+      `,
+      [operator.id],
+    );
+    await client.query(
+      `
+        insert into operator_sessions (operator_id, token_hash, expires_at)
+        values ($1, $2, $3)
+      `,
+      [operator.id, hashSessionToken(token), expiresAt],
+    );
+    await appendAuditEvent(client, {
+      organizationId: operator.organizationId,
+      requestId: null,
+      eventType: "operator.password_changed",
+      actorType: "human",
+      actorId: operator.email,
+      payload: { sessionsRotated: true },
+    });
+    return true;
+  });
+  if (!changed) return { ok: false, reason: "conflict" };
+
+  const cookieStore = await cookies();
+  cookieStore.set(sessionCookieName, token, {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    expires: expiresAt,
+    path: "/",
+  });
+  return {
+    ok: true,
+    operator: { ...operator, mustChangePassword: false },
+  };
 }
 
 export async function clearOperatorSession() {

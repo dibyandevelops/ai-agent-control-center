@@ -71,6 +71,11 @@ Operator roles are deliberately small for the MVP:
 - `approver` can view data and approve or deny pending actions; and
 - `auditor` has read-only access to operational and audit evidence.
 
+Accounts created from **Team access** receive a temporary password. On first
+login, SentinelOps blocks protected workspace requests until the operator
+replaces it. Operators can later open their profile control to change the
+password again.
+
 ## Evaluate an agent action
 
 ```bash
@@ -221,6 +226,9 @@ used in the recording.
 - `PATCH /api/v1/operators/:operatorId` lets an `admin` change another
   operator's role or account status. Disabling an account immediately revokes
   its active sessions.
+- `PATCH /api/v1/session/password` verifies the current password, replaces it,
+  clears the first-login restriction, rotates the current session, and revokes
+  every other active session for that operator.
 - `GET /api/v1/control-center` returns organization-scoped live operator data.
 
 ## Security boundaries
@@ -229,6 +237,10 @@ used in the recording.
 - Operator passwords are stored as salted scrypt hashes.
 - Successful login creates an opaque, revocable, eight-hour HttpOnly,
   same-site session; only its SHA-256 hash is stored.
+- Temporary-password sessions cannot access protected operator APIs until the
+  password is replaced.
+- Password changes use a conditional database update and rotate all sessions,
+  preventing concurrent changes from silently overwriting one another.
 - Operator permissions are enforced server-side with `admin`, `approver`, and
   read-only `auditor` roles.
 - Requests are tenant-scoped and idempotent.

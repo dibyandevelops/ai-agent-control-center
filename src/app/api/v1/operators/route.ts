@@ -40,11 +40,13 @@ export async function GET() {
         display_name: string;
         role: "admin" | "approver" | "auditor";
         status: "active" | "disabled";
+        password_change_required: boolean;
         last_login_at: Date | null;
         created_at: Date;
       }>(
         `
-          select id, email, display_name, role, status, last_login_at, created_at
+          select id, email, display_name, role, status,
+                 password_change_required, last_login_at, created_at
           from operators
           where organization_id = $1
           order by created_at asc
@@ -60,6 +62,7 @@ export async function GET() {
         displayName: operator.display_name,
         role: operator.role,
         status: operator.status,
+        mustChangePassword: operator.password_change_required,
         lastLoginAt: operator.last_login_at?.toISOString() ?? null,
         createdAt: operator.created_at.toISOString(),
       })),
@@ -83,6 +86,7 @@ export async function POST(request: NextRequest) {
         display_name: string;
         role: "admin" | "approver" | "auditor";
         status: "active" | "disabled";
+        password_change_required: boolean;
         created_at: Date;
       }>(
         `
@@ -90,7 +94,8 @@ export async function POST(request: NextRequest) {
             organization_id, email, display_name, role, password_hash
           )
           values ($1, $2, $3, $4, $5)
-          returning id, email, display_name, role, status, created_at
+          returning id, email, display_name, role, status,
+                    password_change_required, created_at
         `,
         [
           authorization.operator.organizationId,
@@ -123,6 +128,7 @@ export async function POST(request: NextRequest) {
         displayName: created.display_name,
         role: created.role,
         status: created.status,
+        mustChangePassword: created.password_change_required,
         lastLoginAt: null,
         createdAt: created.created_at.toISOString(),
       },

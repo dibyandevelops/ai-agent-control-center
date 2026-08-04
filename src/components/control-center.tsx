@@ -21,6 +21,7 @@ import {
   Filter,
   ExternalLink,
   GitBranch,
+  KeyRound,
   LayoutDashboard,
   LockKeyhole,
   LoaderCircle,
@@ -59,6 +60,7 @@ import type {
   RiskLevel,
 } from "@/lib/types";
 import { OperatorManagement } from "@/components/operator-management";
+import { PasswordChangeDialog } from "@/components/password-change-dialog";
 
 type View =
   | "overview"
@@ -181,10 +183,12 @@ function TopBar({
   view,
   onMenu,
   operator,
+  onChangePassword,
 }: {
   view: View;
   onMenu: () => void;
   operator: OperatorIdentity | null;
+  onChangePassword: () => void;
 }) {
   const initials = operator?.displayName
     .split(" ")
@@ -215,7 +219,12 @@ function TopBar({
           <Bell />
           <span />
         </button>
-        <button className="profile-control">
+        <button
+          className="profile-control"
+          onClick={onChangePassword}
+          disabled={!operator}
+          aria-label={operator ? "Change your password" : "Operator profile"}
+        >
           <span className="avatar">{initials}</span>
           <span className="profile-name">
             {operator?.displayName || "SentinelOps Operator"}
@@ -223,7 +232,7 @@ function TopBar({
               <small className="ml-2 capitalize text-sentinel-muted">{operator.role}</small>
             ) : null}
           </span>
-          <ChevronDown />
+          <KeyRound aria-hidden="true" />
         </button>
       </div>
     </header>
@@ -1467,6 +1476,10 @@ export function ControlCenter() {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
   const [connectLoading, setConnectLoading] = useState(false);
+  const [passwordChangeOpen, setPasswordChangeOpen] = useState(false);
+  const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
+  const [passwordChangeLoading, setPasswordChangeLoading] = useState(false);
+  const [passwordChangeError, setPasswordChangeError] = useState("");
   const [workspaceMode, setWorkspaceMode] =
     useState<WorkspaceMode>("connecting");
   const [workspaceError, setWorkspaceError] = useState("");
@@ -1552,6 +1565,18 @@ export function ControlCenter() {
         };
         if (cancelled) return;
 
+        if (
+          session.authenticated &&
+          session.databaseConfigured &&
+          session.operator?.mustChangePassword
+        ) {
+          setOperatorIdentity(session.operator);
+          setWorkspaceMode("demo");
+          setPasswordChangeRequired(true);
+          setPasswordChangeOpen(true);
+          return;
+        }
+
         if (session.authenticated && session.databaseConfigured) {
           await refreshLiveWorkspace();
           return;
@@ -1626,11 +1651,21 @@ export function ControlCenter() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        operator?: OperatorIdentity;
+      };
       if (!response.ok) {
-        const payload = (await response.json().catch(() => ({}))) as {
-          error?: string;
-        };
         throw new Error(payload.error || "Operator authentication failed.");
+      }
+      if (payload.operator?.mustChangePassword) {
+        setOperatorIdentity(payload.operator);
+        setWorkspaceMode("demo");
+        setConnectOpen(false);
+        setPasswordChangeRequired(true);
+        setPasswordChangeError("");
+        setPasswordChangeOpen(true);
+        return;
       }
       await refreshLiveWorkspace();
       setConnectOpen(false);
@@ -1642,6 +1677,40 @@ export function ControlCenter() {
       );
     } finally {
       setConnectLoading(false);
+    }
+  }
+
+  async function changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ) {
+    setPasswordChangeLoading(true);
+    setPasswordChangeError("");
+    try {
+      const response = await fetch("/api/v1/session/password", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        operator?: OperatorIdentity;
+      };
+      if (!response.ok || !payload.operator) {
+        throw new Error(payload.error || "Password change failed.");
+      }
+
+      setOperatorIdentity(payload.operator);
+      setPasswordChangeOpen(false);
+      setPasswordChangeRequired(false);
+      await refreshLiveWorkspace();
+      setToast("Password changed and other sessions were signed out.");
+    } catch (error) {
+      setPasswordChangeError(
+        error instanceof Error ? error.message : "Password change failed.",
+      );
+    } finally {
+      setPasswordChangeLoading(false);
     }
   }
 
@@ -1791,6 +1860,12 @@ export function ControlCenter() {
           view={view}
           operator={operatorIdentity}
           onMenu={() => setSidebarOpen(true)}
+          onChangePassword={() => {
+            if (!operatorIdentity) return;
+            setPasswordChangeRequired(operatorIdentity.mustChangePassword);
+            setPasswordChangeError("");
+            setPasswordChangeOpen(true);
+          }}
         />
         <WorkspaceBanner
           mode={workspaceMode}
@@ -1855,6 +1930,18 @@ export function ControlCenter() {
         onClose={() => setConnectOpen(false)}
         onConnect={connectLiveWorkspace}
       />
+      {passwordChangeOpen ? (
+        <PasswordChangeDialog
+          key={passwordChangeRequired ? "required" : "voluntary"}
+          required={passwordChangeRequired}
+          loading={passwordChangeLoading}
+          serverError={passwordChangeError}
+          onClose={() => {
+            if (!passwordChangeRequired) setPasswordChangeOpen(false);
+          }}
+          onSubmit={changePassword}
+        />
+      ) : null}
       <ActionDetailDrawer
         key={selectedRequestId ?? "closed"}
         requestId={selectedRequestId}

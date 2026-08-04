@@ -223,6 +223,9 @@ export function OperatorManagement({
                               {isCurrent ? (
                                 <span className="rounded-md bg-sentinel-lime/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-sentinel-lime">You</span>
                               ) : null}
+                              {operator.mustChangePassword ? (
+                                <span className="rounded-md bg-sentinel-amber/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-sentinel-amber">Password update required</span>
+                              ) : null}
                             </div>
                             <span className="mt-1 flex items-center gap-1.5 text-xs text-sentinel-muted">
                               <Mail className="h-3 w-3" /> {operator.email}
@@ -303,6 +306,9 @@ export function OperatorManagement({
                         <strong className="truncate text-sm font-medium text-sentinel-text">{operator.displayName}</strong>
                         {isCurrent ? (
                           <span className="rounded-md bg-sentinel-lime/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-sentinel-lime">You</span>
+                        ) : null}
+                        {operator.mustChangePassword ? (
+                          <span className="rounded-md bg-sentinel-amber/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-sentinel-amber">Password update required</span>
                         ) : null}
                       </div>
                       <span className="mt-1 flex items-center gap-1.5 truncate text-xs text-sentinel-muted">
@@ -452,7 +458,7 @@ function CreateOperatorDialog({
               <KeyRound className="pointer-events-none absolute left-3.5 top-[22px] h-4 w-4 text-sentinel-dim" />
               <input className={`${fieldClass} pl-10`} type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 12 characters" autoComplete="new-password" required minLength={12} maxLength={256} />
             </span>
-            <span className="mt-2 block text-[11px] font-normal leading-4 text-sentinel-dim">Share it through a secure channel. A password-change flow is the next security milestone.</span>
+            <span className="mt-2 block text-[11px] font-normal leading-4 text-sentinel-dim">Share it through a secure channel. The operator must replace it before accessing protected workspace data.</span>
           </label>
           {error ? (
             <div className="flex items-start gap-2 rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-200">

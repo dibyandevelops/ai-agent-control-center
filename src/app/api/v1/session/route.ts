@@ -19,7 +19,7 @@ export async function GET() {
     const env = getServerEnv();
     const databaseConfigured = Boolean(env.DATABASE_URL);
     const [operator, countResult] = await Promise.all([
-      getOperatorSession(),
+      getOperatorSession({ allowPasswordChangeRequired: true }),
       databaseConfigured
         ? getPool().query<{ count: string }>(
             "select count(*)::text as count from operators where status = 'active'",

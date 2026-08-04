@@ -62,15 +62,18 @@ try {
   const result = await pool.query(
     `
       insert into operators (
-        organization_id, email, display_name, role, password_hash
+        organization_id, email, display_name, role, password_hash,
+        password_change_required, password_changed_at
       )
-      select id, $2, $3, $4, $5
+      select id, $2, $3, $4, $5, false, now()
       from organizations
       where slug = $1
       on conflict (organization_id, email) do update
       set display_name = excluded.display_name,
           role = excluded.role,
           password_hash = excluded.password_hash,
+          password_change_required = false,
+          password_changed_at = now(),
           status = 'active',
           updated_at = now()
       returning id, email, display_name, role

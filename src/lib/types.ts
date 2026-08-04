@@ -10,6 +10,7 @@ export interface OperatorIdentity {
   email: string;
   displayName: string;
   role: OperatorRole;
+  mustChangePassword: boolean;
 }
 
 export interface OperatorAccount {
@@ -18,6 +19,7 @@ export interface OperatorAccount {
   displayName: string;
   role: OperatorRole;
   status: "active" | "disabled";
+  mustChangePassword: boolean;
   lastLoginAt: string | null;
   createdAt: string;
 }

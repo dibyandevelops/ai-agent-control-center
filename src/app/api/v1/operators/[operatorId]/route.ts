@@ -50,6 +50,7 @@ export async function PATCH(
         display_name: string;
         role: "admin" | "approver" | "auditor";
         status: "active" | "disabled";
+        password_change_required: boolean;
         last_login_at: Date | null;
         created_at: Date;
       }>(
@@ -60,7 +61,8 @@ export async function PATCH(
               updated_at = now()
           where id = $1
             and organization_id = $2
-          returning id, email, display_name, role, status, last_login_at, created_at
+          returning id, email, display_name, role, status,
+                    password_change_required, last_login_at, created_at
         `,
         [operatorId, actor.organizationId, input.role ?? null, input.status ?? null],
       );
@@ -103,6 +105,7 @@ export async function PATCH(
       displayName: updated.display_name,
       role: updated.role,
       status: updated.status,
+      mustChangePassword: updated.password_change_required,
       lastLoginAt: updated.last_login_at?.toISOString() ?? null,
       createdAt: updated.created_at.toISOString(),
     });
