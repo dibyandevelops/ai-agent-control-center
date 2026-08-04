@@ -83,13 +83,14 @@ export async function POST(request: NextRequest) {
         display_name: string;
         role: "admin" | "approver" | "auditor";
         status: "active" | "disabled";
+        created_at: Date;
       }>(
         `
           insert into operators (
             organization_id, email, display_name, role, password_hash
           )
           values ($1, $2, $3, $4, $5)
-          returning id, email, display_name, role, status
+          returning id, email, display_name, role, status, created_at
         `,
         [
           authorization.operator.organizationId,
@@ -122,6 +123,8 @@ export async function POST(request: NextRequest) {
         displayName: created.display_name,
         role: created.role,
         status: created.status,
+        lastLoginAt: null,
+        createdAt: created.created_at.toISOString(),
       },
       { status: 201 },
     );

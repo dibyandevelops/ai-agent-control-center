@@ -218,6 +218,9 @@ used in the recording.
   state, and records audit evidence.
 - `GET /api/v1/operators` and `POST /api/v1/operators` let an `admin` list and
   create organization-scoped operator accounts.
+- `PATCH /api/v1/operators/:operatorId` lets an `admin` change another
+  operator's role or account status. Disabling an account immediately revokes
+  its active sessions.
 - `GET /api/v1/control-center` returns organization-scoped live operator data.
 
 ## Security boundaries

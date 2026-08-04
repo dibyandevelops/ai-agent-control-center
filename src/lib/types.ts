@@ -11,6 +11,16 @@ export interface OperatorIdentity {
   displayName: string;
   role: OperatorRole;
 }
+
+export interface OperatorAccount {
+  id: string;
+  email: string;
+  displayName: string;
+  role: OperatorRole;
+  status: "active" | "disabled";
+  lastLoginAt: string | null;
+  createdAt: string;
+}
 export type ExecutionStatus =
   | "not_started"
   | "executing"

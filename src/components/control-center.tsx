@@ -33,6 +33,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
+  UsersRound,
   X,
   XCircle,
   Zap,
@@ -57,6 +58,7 @@ import type {
   Policy,
   RiskLevel,
 } from "@/lib/types";
+import { OperatorManagement } from "@/components/operator-management";
 
 type View =
   | "overview"
@@ -64,7 +66,8 @@ type View =
   | "approvals"
   | "policies"
   | "audit"
-  | "integrations";
+  | "integrations"
+  | "team";
 
 type WorkspaceMode = "demo" | "connecting" | "live";
 
@@ -82,6 +85,7 @@ const navItems: Array<{
   id: View;
   label: string;
   icon: typeof LayoutDashboard;
+  adminOnly?: boolean;
 }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "agents", label: "Agents", icon: Bot },
@@ -89,6 +93,7 @@ const navItems: Array<{
   { id: "policies", label: "Policies", icon: Shield },
   { id: "audit", label: "Audit log", icon: FileClock },
   { id: "integrations", label: "Integrations", icon: PlugZap },
+  { id: "team", label: "Team access", icon: UsersRound, adminOnly: true },
 ];
 
 const titles: Record<View, string> = {
@@ -98,6 +103,7 @@ const titles: Record<View, string> = {
   policies: "Policy engine",
   audit: "Audit log",
   integrations: "Integrations",
+  team: "Team access",
 };
 
 function money(value: number) {
@@ -228,12 +234,14 @@ function Sidebar({
   view,
   open,
   pendingCount,
+  canManageOperators,
   onSelect,
   onClose,
 }: {
   view: View;
   open: boolean;
   pendingCount: number;
+  canManageOperators: boolean;
   onSelect: (view: View) => void;
   onClose: () => void;
 }) {
@@ -251,7 +259,7 @@ function Sidebar({
           </button>
         </div>
         <nav aria-label="Product navigation">
-          {navItems.map((item) => {
+          {navItems.filter((item) => !item.adminOnly || canManageOperators).map((item) => {
             const Icon = item.icon;
             const selected = view === item.id;
             return (
@@ -1606,6 +1614,8 @@ export function ControlCenter() {
     operatorIdentity?.role === "approver";
   const canManagePolicies =
     workspaceMode !== "live" || operatorIdentity?.role === "admin";
+  const canManageOperators =
+    workspaceMode === "live" && operatorIdentity?.role === "admin";
 
   async function connectLiveWorkspace(email: string, password: string) {
     setConnectLoading(true);
@@ -1772,6 +1782,7 @@ export function ControlCenter() {
         view={view}
         open={sidebarOpen}
         pendingCount={pendingApprovals.length}
+        canManageOperators={canManageOperators}
         onSelect={setView}
         onClose={() => setSidebarOpen(false)}
       />
@@ -1827,6 +1838,12 @@ export function ControlCenter() {
           <IntegrationsView
             items={integrationList}
             live={workspaceMode === "live"}
+          />
+        )}
+        {view === "team" && operatorIdentity?.role === "admin" && (
+          <OperatorManagement
+            currentOperator={operatorIdentity}
+            onNotify={setToast}
           />
         )}
       </div>
