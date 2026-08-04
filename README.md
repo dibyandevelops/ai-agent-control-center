@@ -226,6 +226,10 @@ used in the recording.
 - `PATCH /api/v1/operators/:operatorId` lets an `admin` change another
   operator's role or account status, or clear a temporary login lock. Disabling
   an account immediately revokes its active sessions.
+- `POST /api/v1/operators/:operatorId/password-reset` generates a one-time
+  temporary password for another operator, revokes all of their sessions,
+  clears any login lock, and forces password replacement at next login. The
+  temporary credential is returned once with no-store response headers.
 - `PATCH /api/v1/session/password` verifies the current password, replaces it,
   clears the first-login restriction, rotates the current session, and revokes
   every other active session for that operator.
@@ -246,6 +250,9 @@ used in the recording.
   and the transition is recorded in the audit chain.
 - Administrators can clear a temporary lock from **Team access** after
   verifying the operator's identity through an appropriate support channel.
+- Administrator password resets use 192 bits of server-generated randomness.
+  Only the scrypt hash is stored; the plaintext credential is shown once and
+  is deliberately excluded from audit payloads.
 - Operator permissions are enforced server-side with `admin`, `approver`, and
   read-only `auditor` roles.
 - Requests are tenant-scoped and idempotent.

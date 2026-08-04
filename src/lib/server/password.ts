@@ -6,6 +6,10 @@ const blockSize = 8;
 const parallelization = 1;
 const maxmem = 64 * 1024 * 1024;
 
+export function generateTemporaryPassword() {
+  return `sos_tmp_${randomBytes(24).toString("base64url")}`;
+}
+
 function derivePasswordKey(
   password: string,
   salt: Buffer,

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { hashPassword, verifyPassword } from "./password";
+import {
+  generateTemporaryPassword,
+  hashPassword,
+  verifyPassword,
+} from "./password";
 
 describe("operator password hashing", () => {
   it("verifies the correct password and rejects a wrong password", async () => {
@@ -18,5 +22,15 @@ describe("operator password hashing", () => {
 
   it("rejects malformed hashes", async () => {
     await expect(verifyPassword("password", "invalid")).resolves.toBe(false);
+  });
+
+  it("generates unique high-entropy temporary passwords", () => {
+    const passwords = new Set(
+      Array.from({ length: 32 }, () => generateTemporaryPassword()),
+    );
+    expect(passwords.size).toBe(32);
+    for (const password of passwords) {
+      expect(password).toMatch(/^sos_tmp_[A-Za-z0-9_-]{32}$/);
+    }
   });
 });
