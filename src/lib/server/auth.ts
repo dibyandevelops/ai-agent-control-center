@@ -11,9 +11,80 @@ import type { OperatorRole } from "./operator-roles";
 
 const sessionCookieName = "sentinelops_operator_session";
 const sessionDurationMs = 8 * 60 * 60 * 1_000;
+const failedLoginLimit = 5;
+const failedLoginWindowSeconds = 15 * 60;
+const accountLockSeconds = 15 * 60;
 
 function hashSessionToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+async function recordFailedLogin(operator: {
+  id: string;
+  organizationId: string;
+  email: string;
+}) {
+  await withTransaction(async (client) => {
+    const result = await client.query<{
+      failed_login_count: number;
+      locked_until: Date | null;
+    }>(
+      `
+        update operators
+        set failed_login_count = case
+              when failed_login_window_started_at is null
+                or failed_login_window_started_at < now() - ($2 * interval '1 second')
+                then 1
+              else failed_login_count + 1
+            end,
+            failed_login_window_started_at = case
+              when failed_login_window_started_at is null
+                or failed_login_window_started_at < now() - ($2 * interval '1 second')
+                then now()
+              else failed_login_window_started_at
+            end,
+            locked_until = case
+              when case
+                when failed_login_window_started_at is null
+                  or failed_login_window_started_at < now() - ($2 * interval '1 second')
+                  then 1
+                else failed_login_count + 1
+              end >= $3
+                then now() + ($4 * interval '1 second')
+              else null
+            end,
+            updated_at = now()
+        where id = $1
+          and status = 'active'
+          and (locked_until is null or locked_until <= now())
+        returning failed_login_count, locked_until
+      `,
+      [
+        operator.id,
+        failedLoginWindowSeconds,
+        failedLoginLimit,
+        accountLockSeconds,
+      ],
+    );
+    const attempt = result.rows[0];
+    if (
+      attempt?.failed_login_count === failedLoginLimit &&
+      attempt.locked_until
+    ) {
+      await appendAuditEvent(client, {
+        organizationId: operator.organizationId,
+        requestId: null,
+        eventType: "operator.locked",
+        actorType: "system",
+        actorId: operator.email,
+        payload: {
+          failedAttempts: failedLoginLimit,
+          lockDurationMinutes: accountLockSeconds / 60,
+          lockedUntil: attempt.locked_until.toISOString(),
+        },
+      });
+    }
+  });
 }
 
 export interface OperatorIdentity {
@@ -108,6 +179,7 @@ export async function loginOperator(email: string, password: string) {
     password_hash: string;
     password_change_required: boolean;
     status: "active" | "disabled";
+    locked_until: Date | null;
   }>(
     `
       select
@@ -119,7 +191,8 @@ export async function loginOperator(email: string, password: string) {
         op.role,
         op.password_hash,
         op.password_change_required,
-        op.status
+        op.status,
+        op.locked_until
       from operators op
       join organizations org on org.id = op.organization_id
       where op.email = $1
@@ -133,21 +206,44 @@ export async function loginOperator(email: string, password: string) {
     return null;
   }
   const valid = await verifyPassword(password, row.password_hash);
-  if (!valid || row.status !== "active") return null;
+  if (row.status !== "active") return null;
+  if (!valid) {
+    if (!row.locked_until || row.locked_until.getTime() <= Date.now()) {
+      await recordFailedLogin({
+        id: row.id,
+        organizationId: row.organization_id,
+        email: row.email,
+      });
+    }
+    return null;
+  }
+  if (row.locked_until && row.locked_until.getTime() > Date.now()) return null;
 
   const token = `sos_session_${randomBytes(32).toString("base64url")}`;
   const expiresAt = new Date(Date.now() + sessionDurationMs);
-  await withTransaction(async (client) => {
+  const loggedIn = await withTransaction(async (client) => {
+    const unlocked = await client.query<{ id: string }>(
+      `
+        update operators
+        set last_login_at = now(),
+            failed_login_count = 0,
+            failed_login_window_started_at = null,
+            locked_until = null,
+            updated_at = now()
+        where id = $1
+          and status = 'active'
+          and (locked_until is null or locked_until <= now())
+        returning id
+      `,
+      [row.id],
+    );
+    if (!unlocked.rows[0]) return false;
     await client.query(
       `
         insert into operator_sessions (operator_id, token_hash, expires_at)
         values ($1, $2, $3)
       `,
       [row.id, hashSessionToken(token), expiresAt],
-    );
-    await client.query(
-      "update operators set last_login_at = now(), updated_at = now() where id = $1",
-      [row.id],
     );
     await appendAuditEvent(client, {
       organizationId: row.organization_id,
@@ -157,7 +253,9 @@ export async function loginOperator(email: string, password: string) {
       actorId: row.email,
       payload: { role: row.role },
     });
+    return true;
   });
+  if (!loggedIn) return null;
 
   const cookieStore = await cookies();
   cookieStore.set(sessionCookieName, token, {

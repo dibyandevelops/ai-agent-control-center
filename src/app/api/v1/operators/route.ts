@@ -41,12 +41,13 @@ export async function GET() {
         role: "admin" | "approver" | "auditor";
         status: "active" | "disabled";
         password_change_required: boolean;
+        locked_until: Date | null;
         last_login_at: Date | null;
         created_at: Date;
       }>(
         `
           select id, email, display_name, role, status,
-                 password_change_required, last_login_at, created_at
+                 password_change_required, locked_until, last_login_at, created_at
           from operators
           where organization_id = $1
           order by created_at asc
@@ -63,6 +64,7 @@ export async function GET() {
         role: operator.role,
         status: operator.status,
         mustChangePassword: operator.password_change_required,
+        lockedUntil: operator.locked_until?.toISOString() ?? null,
         lastLoginAt: operator.last_login_at?.toISOString() ?? null,
         createdAt: operator.created_at.toISOString(),
       })),
@@ -129,6 +131,7 @@ export async function POST(request: NextRequest) {
         role: created.role,
         status: created.status,
         mustChangePassword: created.password_change_required,
+        lockedUntil: null,
         lastLoginAt: null,
         createdAt: created.created_at.toISOString(),
       },

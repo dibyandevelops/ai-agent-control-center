@@ -224,8 +224,8 @@ used in the recording.
 - `GET /api/v1/operators` and `POST /api/v1/operators` let an `admin` list and
   create organization-scoped operator accounts.
 - `PATCH /api/v1/operators/:operatorId` lets an `admin` change another
-  operator's role or account status. Disabling an account immediately revokes
-  its active sessions.
+  operator's role or account status, or clear a temporary login lock. Disabling
+  an account immediately revokes its active sessions.
 - `PATCH /api/v1/session/password` verifies the current password, replaces it,
   clears the first-login restriction, rotates the current session, and revokes
   every other active session for that operator.
@@ -241,6 +241,11 @@ used in the recording.
   password is replaced.
 - Password changes use a conditional database update and rotate all sessions,
   preventing concurrent changes from silently overwriting one another.
+- Five failed password attempts within 15 minutes lock the account for 15
+  minutes. Counter updates are atomic, locked attempts cannot extend the lock,
+  and the transition is recorded in the audit chain.
+- Administrators can clear a temporary lock from **Team access** after
+  verifying the operator's identity through an appropriate support channel.
 - Operator permissions are enforced server-side with `admin`, `approver`, and
   read-only `auditor` roles.
 - Requests are tenant-scoped and idempotent.

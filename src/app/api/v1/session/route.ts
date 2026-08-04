@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     const operator = await loginOperator(input.email, input.password);
     if (!operator) {
       return NextResponse.json(
-        { error: "Invalid email or password." },
+        { error: "Invalid email or password, or the account is temporarily locked." },
         { status: 401 },
       );
     }

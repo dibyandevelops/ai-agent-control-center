@@ -42,6 +42,12 @@ function roleLabel(role: OperatorRole) {
   return roles.find((item) => item.value === role)?.label ?? role;
 }
 
+function isAccountLocked(operator: OperatorAccount) {
+  return Boolean(
+    operator.lockedUntil && Date.parse(operator.lockedUntil) > Date.now(),
+  );
+}
+
 export function OperatorManagement({
   currentOperator,
   onNotify,
@@ -90,7 +96,9 @@ export function OperatorManagement({
 
   async function updateOperator(
     operator: OperatorAccount,
-    update: Partial<Pick<OperatorAccount, "role" | "status">>,
+    update: Partial<Pick<OperatorAccount, "role" | "status">> & {
+      unlock?: true;
+    },
   ) {
     setBusyId(operator.id);
     setError("");
@@ -143,7 +151,7 @@ export function OperatorManagement({
           </span>
           <div>
             <strong className="block text-sm font-semibold text-sentinel-text">
-              {operators.filter((operator) => operator.status === "active").length} active operators
+              {operators.filter((operator) => operator.status === "active" && !isAccountLocked(operator)).length} active operators
             </strong>
             <span className="mt-0.5 block text-xs text-sentinel-muted">
               Access is scoped to {currentOperator.organizationName}.
@@ -205,6 +213,7 @@ export function OperatorManagement({
                 {operators.map((operator) => {
                   const isCurrent = operator.id === currentOperator.id;
                   const isBusy = busyId === operator.id;
+                  const isLocked = isAccountLocked(operator);
                   return (
                     <tr key={operator.id} className="transition hover:bg-white/[0.025]">
                       <td className="px-5 py-4">
@@ -255,9 +264,9 @@ export function OperatorManagement({
                         )}
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`inline-flex items-center gap-2 text-xs font-medium ${operator.status === "active" ? "text-sentinel-lime" : "text-sentinel-muted"}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${operator.status === "active" ? "bg-sentinel-lime" : "bg-sentinel-dim"}`} />
-                          {operator.status === "active" ? "Active" : "Disabled"}
+                        <span className={`inline-flex items-center gap-2 text-xs font-medium ${isLocked ? "text-sentinel-amber" : operator.status === "active" ? "text-sentinel-lime" : "text-sentinel-muted"}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${isLocked ? "bg-sentinel-amber" : operator.status === "active" ? "bg-sentinel-lime" : "bg-sentinel-dim"}`} />
+                          {isLocked ? "Temporarily locked" : operator.status === "active" ? "Active" : "Disabled"}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-xs text-sentinel-muted">
@@ -266,6 +275,14 @@ export function OperatorManagement({
                       <td className="px-5 py-4 text-right">
                         {isCurrent ? (
                           <span className="text-xs text-sentinel-dim">Protected current session</span>
+                        ) : isLocked ? (
+                          <button
+                            className="min-w-24 rounded-lg border border-sentinel-amber/30 px-3 py-2 text-xs font-semibold text-sentinel-amber transition hover:bg-sentinel-amber/10 disabled:cursor-wait"
+                            disabled={isBusy}
+                            onClick={() => void updateOperator(operator, { unlock: true })}
+                          >
+                            {isBusy ? "Unlocking…" : "Unlock"}
+                          </button>
                         ) : (
                           <button
                             className={`min-w-24 rounded-lg border px-3 py-2 text-xs font-semibold transition disabled:cursor-wait ${operator.status === "active" ? "border-sentinel-red/30 text-red-300 hover:bg-sentinel-red/10" : "border-sentinel-lime/30 text-sentinel-lime hover:bg-sentinel-lime/10"}`}
@@ -290,6 +307,7 @@ export function OperatorManagement({
             {operators.map((operator) => {
               const isCurrent = operator.id === currentOperator.id;
               const isBusy = busyId === operator.id;
+              const isLocked = isAccountLocked(operator);
               return (
                 <article key={operator.id} className="space-y-4 px-5 py-5">
                   <div className="flex items-start gap-3">
@@ -315,9 +333,9 @@ export function OperatorManagement({
                         <Mail className="h-3 w-3 shrink-0" /> {operator.email}
                       </span>
                     </div>
-                    <span className={`mt-1 inline-flex items-center gap-1.5 text-[11px] font-medium ${operator.status === "active" ? "text-sentinel-lime" : "text-sentinel-muted"}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${operator.status === "active" ? "bg-sentinel-lime" : "bg-sentinel-dim"}`} />
-                      {operator.status === "active" ? "Active" : "Disabled"}
+                    <span className={`mt-1 inline-flex items-center gap-1.5 text-[11px] font-medium ${isLocked ? "text-sentinel-amber" : operator.status === "active" ? "text-sentinel-lime" : "text-sentinel-muted"}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${isLocked ? "bg-sentinel-amber" : operator.status === "active" ? "bg-sentinel-lime" : "bg-sentinel-dim"}`} />
+                      {isLocked ? "Locked" : operator.status === "active" ? "Active" : "Disabled"}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -350,6 +368,14 @@ export function OperatorManagement({
                   </div>
                   {isCurrent ? (
                     <div className="rounded-lg border border-sentinel-line bg-sentinel-raised/50 px-3 py-2 text-center text-xs text-sentinel-dim">Protected current session</div>
+                  ) : isLocked ? (
+                    <button
+                      className="w-full rounded-lg border border-sentinel-amber/30 px-3 py-2.5 text-xs font-semibold text-sentinel-amber transition hover:bg-sentinel-amber/10 disabled:cursor-wait"
+                      disabled={isBusy}
+                      onClick={() => void updateOperator(operator, { unlock: true })}
+                    >
+                      {isBusy ? "Unlocking…" : "Unlock account"}
+                    </button>
                   ) : (
                     <button
                       className={`w-full rounded-lg border px-3 py-2.5 text-xs font-semibold transition disabled:cursor-wait ${operator.status === "active" ? "border-sentinel-red/30 text-red-300 hover:bg-sentinel-red/10" : "border-sentinel-lime/30 text-sentinel-lime hover:bg-sentinel-lime/10"}`}

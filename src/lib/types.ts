@@ -20,6 +20,7 @@ export interface OperatorAccount {
   role: OperatorRole;
   status: "active" | "disabled";
   mustChangePassword: boolean;
+  lockedUntil: string | null;
   lastLoginAt: string | null;
   createdAt: string;
 }

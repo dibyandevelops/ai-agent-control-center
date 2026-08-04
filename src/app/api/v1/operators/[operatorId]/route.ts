@@ -10,9 +10,10 @@ const updateOperatorSchema = z
   .object({
     role: z.enum(["admin", "approver", "auditor"]).optional(),
     status: z.enum(["active", "disabled"]).optional(),
+    unlock: z.literal(true).optional(),
   })
-  .refine((input) => input.role !== undefined || input.status !== undefined, {
-    message: "A role or status update is required.",
+  .refine((input) => input.role !== undefined || input.status !== undefined || input.unlock, {
+    message: "A role, status, or unlock update is required.",
   });
 
 export async function PATCH(
@@ -51,6 +52,7 @@ export async function PATCH(
         role: "admin" | "approver" | "auditor";
         status: "active" | "disabled";
         password_change_required: boolean;
+        locked_until: Date | null;
         last_login_at: Date | null;
         created_at: Date;
       }>(
@@ -58,13 +60,22 @@ export async function PATCH(
           update operators
           set role = coalesce($3, role),
               status = coalesce($4, status),
+              failed_login_count = case when $5 then 0 else failed_login_count end,
+              failed_login_window_started_at = case when $5 then null else failed_login_window_started_at end,
+              locked_until = case when $5 then null else locked_until end,
               updated_at = now()
           where id = $1
             and organization_id = $2
           returning id, email, display_name, role, status,
-                    password_change_required, last_login_at, created_at
+                    password_change_required, locked_until, last_login_at, created_at
         `,
-        [operatorId, actor.organizationId, input.role ?? null, input.status ?? null],
+        [
+          operatorId,
+          actor.organizationId,
+          input.role ?? null,
+          input.status ?? null,
+          input.unlock ?? false,
+        ],
       );
       const operator = result.rows[0];
       if (!operator) return null;
@@ -91,6 +102,7 @@ export async function PATCH(
           email: operator.email,
           role: operator.role,
           status: operator.status,
+          unlocked: input.unlock ?? false,
         },
       });
       return operator;
@@ -106,6 +118,7 @@ export async function PATCH(
       role: updated.role,
       status: updated.status,
       mustChangePassword: updated.password_change_required,
+      lockedUntil: updated.locked_until?.toISOString() ?? null,
       lastLoginAt: updated.last_login_at?.toISOString() ?? null,
       createdAt: updated.created_at.toISOString(),
     });
