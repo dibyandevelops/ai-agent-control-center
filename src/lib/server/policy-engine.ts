@@ -57,7 +57,7 @@ function matchesCondition(
   );
 }
 
-function policyMatches(
+export function policyMatches(
   policy: EvaluatedPolicy,
   input: ActionEvaluationInput,
 ) {

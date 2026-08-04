@@ -104,4 +104,16 @@ export const policyWriteSchema = z.object({
   }),
 });
 
+export const policySimulationInputSchema = policyWriteSchema
+  .pick({
+    name: true,
+    priority: true,
+    effect: true,
+    conditions: true,
+  })
+  .extend({
+    policyId: z.string().uuid().optional(),
+    limit: z.number().int().min(1).max(50).default(25),
+  });
+
 export type PolicyWriteInput = z.infer<typeof policyWriteSchema>;

@@ -236,6 +236,10 @@ used in the recording.
   policy fields, updates the organization-scoped rule, and records the exact
   changed fields as audit evidence. The Policies screen provides create/edit
   controls and a first-match decision preview before activation.
+- `POST /api/v1/policies/simulate` requires an `admin` and replays up to 50
+  recent organization actions through an unsaved draft and the current enabled
+  policy order. It reports matches, cases where the draft wins, and decisions
+  that would change without saving, activating, or enforcing the draft.
 - `GET /api/v1/api-keys` lets an `admin` list safe credential metadata without
   exposing plaintext keys or stored hashes.
 - `POST /api/v1/api-keys` creates an organization-scoped agent credential and

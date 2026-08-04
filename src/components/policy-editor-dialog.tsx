@@ -12,6 +12,10 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
+import {
+  PolicySimulationPanel,
+  type PolicySimulationDraft,
+} from "@/components/policy-simulation-panel";
 import type { Policy } from "@/lib/types";
 
 type PolicyField =
@@ -90,6 +94,23 @@ function conditionValue(condition: DraftCondition) {
   return condition.value.trim();
 }
 
+function serializeConditions(conditions: DraftCondition[]) {
+  return conditions.map((condition) => ({
+    field: condition.field,
+    operator: condition.operator,
+    value: conditionValue(condition),
+  }));
+}
+
+function conditionsAreComplete(conditions: ReturnType<typeof serializeConditions>) {
+  return !conditions.some(
+    (condition) =>
+      (typeof condition.value === "number" && Number.isNaN(condition.value)) ||
+      (Array.isArray(condition.value) && condition.value.length === 0) ||
+      condition.value === "",
+  );
+}
+
 function effectLabel(effect: PolicyEffect) {
   if (effect === "block") return "Block the action";
   if (effect === "approval") return "Require human approval";
@@ -136,19 +157,8 @@ export function PolicyEditorDialog({
     setSubmitting(true);
     setError("");
     try {
-      const serializedConditions = conditions.map((condition) => ({
-        field: condition.field,
-        operator: condition.operator,
-        value: conditionValue(condition),
-      }));
-      if (
-        serializedConditions.some(
-          (condition) =>
-            (typeof condition.value === "number" && Number.isNaN(condition.value)) ||
-            (Array.isArray(condition.value) && condition.value.length === 0) ||
-            condition.value === "",
-        )
-      ) {
+      const serializedConditions = serializeConditions(conditions);
+      if (!conditionsAreComplete(serializedConditions)) {
         throw new Error("Complete every condition with a valid value.");
       }
       const response = await fetch(
@@ -179,10 +189,26 @@ export function PolicyEditorDialog({
   }
 
   const EffectIcon = effect === "block" ? LockKeyhole : effect === "approval" ? ClipboardCheck : Activity;
+  const serializedConditions = serializeConditions(conditions);
+  const numericPriority = Number(priority);
+  const simulationDraft: PolicySimulationDraft | null =
+    name.trim().length >= 3 &&
+    Number.isInteger(numericPriority) &&
+    numericPriority >= 0 &&
+    numericPriority <= 10_000 &&
+    conditionsAreComplete(serializedConditions)
+      ? {
+          policyId: policy?.id,
+          name: name.trim(),
+          priority: numericPriority,
+          effect,
+          conditions: { all: serializedConditions },
+        }
+      : null;
 
   return (
     <div className="fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4 backdrop-blur-sm" role="presentation">
-      <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2" role="dialog" aria-modal="true" aria-labelledby="policy-editor-title">
+      <div className="max-h-[92vh] w-full max-w-5xl overflow-x-hidden overflow-y-auto rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2" role="dialog" aria-modal="true" aria-labelledby="policy-editor-title">
         <div className="sticky top-0 z-10 flex items-start justify-between border-b border-sentinel-line bg-sentinel-surface/95 px-6 py-5 backdrop-blur">
           <div>
             <h2 id="policy-editor-title" className="text-lg font-semibold tracking-tight text-sentinel-text">{policy ? "Edit policy" : "Create enforcement policy"}</h2>
@@ -191,8 +217,8 @@ export function PolicyEditorDialog({
           <button className="grid h-9 w-9 place-items-center rounded-lg border border-sentinel-line text-sentinel-muted transition hover:text-sentinel-text" onClick={onClose} aria-label="Close policy editor"><X className="h-4 w-4" /></button>
         </div>
 
-        <form onSubmit={submit} className="grid lg:grid-cols-[1.35fr_0.65fr]">
-          <div className="space-y-6 px-6 py-6 lg:border-r lg:border-sentinel-line">
+        <form onSubmit={submit} className="grid min-w-0 lg:grid-cols-[1.35fr_0.65fr]">
+          <div className="min-w-0 space-y-6 px-6 py-6 lg:border-r lg:border-sentinel-line">
             <div className="grid gap-4 sm:grid-cols-[1fr_130px]">
               <label className="text-xs font-medium text-sentinel-muted">Policy name<input className={`${inputClass} mt-2`} value={name} onChange={(event) => setName(event.target.value)} placeholder="Production changes require approval" required minLength={3} maxLength={160} autoFocus /></label>
               <label className="text-xs font-medium text-sentinel-muted">Priority<input className={`${inputClass} mt-2`} type="number" min={0} max={10000} value={priority} onChange={(event) => setPriority(event.target.value)} required /></label>
@@ -233,13 +259,15 @@ export function PolicyEditorDialog({
               </div>
             </fieldset>
 
+            <PolicySimulationPanel draft={simulationDraft} />
+
             <label className="flex items-center justify-between gap-4 rounded-xl border border-sentinel-line bg-sentinel-raised/40 px-4 py-3">
               <span><strong className="block text-xs font-semibold text-sentinel-text">Activate after saving</strong><small className="mt-1 block text-[10px] text-sentinel-muted">Leave off to review the saved draft first.</small></span>
               <input className="h-4 w-4 accent-sentinel-lime" type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} />
             </label>
           </div>
 
-          <aside className="bg-sentinel-canvas/35 px-6 py-6">
+          <aside className="min-w-0 bg-sentinel-canvas/35 px-6 py-6">
             <div className="sticky top-24">
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sentinel-dim">Decision preview</span>
               <div className="mt-3 rounded-xl border border-sentinel-line bg-sentinel-raised/50 p-4">
@@ -261,7 +289,7 @@ export function PolicyEditorDialog({
             </div>
           </aside>
 
-          <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-sentinel-line bg-sentinel-surface/95 px-6 py-4 backdrop-blur lg:col-span-2">
+          <div className="sticky bottom-0 flex min-w-0 items-center justify-between gap-3 border-t border-sentinel-line bg-sentinel-surface/95 px-6 py-4 backdrop-blur lg:col-span-2">
             <span className="hidden text-[10px] text-sentinel-muted sm:block">{enabled ? "This policy will enforce immediately." : "This policy will be saved as an inactive draft."}</span>
             <div className="ml-auto flex gap-3"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" disabled={submitting}>{submitting ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />}{submitting ? "Saving…" : policy ? "Save changes" : enabled ? "Create & activate" : "Save draft"}</button></div>
           </div>
