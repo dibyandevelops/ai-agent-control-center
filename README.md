@@ -97,10 +97,11 @@ SLACK_APPROVAL_WEBHOOK_URL=<optional staging-only webhook>
 
 `CRON_SECRET` can be generated with `openssl rand -hex 32`. Vercel uses it to
 authenticate the two scheduled routes declared in `vercel.json`. Preview and
-production databases must never share the same connection string. The outbox
-runs every minute so approval alerts are prompt; the reminder dispatcher runs
-every five minutes. Use a Vercel plan that supports these cron frequencies, or
-configure an external scheduler to call the same authenticated routes.
+production databases must never share the same connection string. The Hobby
+staging project runs each worker once per day because that plan does not permit
+more frequent cron jobs. Before a pilot, use a plan that supports a one-minute
+outbox and five-minute reminder schedule, or configure an external scheduler to
+call the same authenticated routes.
 
 Create a GitHub environment named `staging` and add four environment secrets:
 
@@ -119,6 +120,30 @@ After the first staging deployment, point a temporary local environment at the
 staging database and run `pnpm db:seed` and `pnpm operator:create` once to create
 the persistent pilot organization and first administrator. Never run the seed
 command in CI because it prints the newly generated agent key once.
+
+### Current staging demo
+
+Open [https://sentinelops-staging.vercel.app/dashboard](https://sentinelops-staging.vercel.app/dashboard)
+and sign in as `admin@sentinelops.local`. The randomly generated password and
+agent credential are stored in the local macOS Keychain rather than source
+files. Retrieve them only when needed:
+
+```bash
+security find-generic-password \
+  -a admin@sentinelops.local \
+  -s sentinelops-staging-admin \
+  -w
+
+security find-generic-password \
+  -a aperture-labs \
+  -s sentinelops-staging-agent-api-key \
+  -w
+```
+
+These commands print secrets to the terminal, so do not paste their output into
+issues, chat, screenshots, or shell history. The staging tenant includes three
+baseline policies and a pending production-release request for the first manual
+approval demonstration.
 
 Policy activation reviews expire after 24 hours and receive a reminder every
 four hours by default. Override those windows with
