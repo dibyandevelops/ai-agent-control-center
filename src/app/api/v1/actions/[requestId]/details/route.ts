@@ -102,7 +102,7 @@ export async function GET(
           from audit_events
           where request_id = $1
             and organization_id = $2
-          order by id asc
+          order by audit_events.id asc
         `,
         [requestId, operator.organizationId],
       ),
