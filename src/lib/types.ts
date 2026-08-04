@@ -107,6 +107,34 @@ export interface PolicyActivationRequest {
   requestedByOperatorId: string | null;
   requestedBy: string;
   requestedAt: string;
+  candidate: PolicyReviewSnapshot;
+  active: PolicyReviewSnapshot | null;
+  simulation: PolicyActivationSimulation;
+}
+
+export interface PolicyReviewSnapshot {
+  versionNumber: number;
+  name: string;
+  description: string;
+  priority: number;
+  effect: "block" | "approval" | "allow";
+  conditions: NonNullable<Policy["conditions"]>;
+}
+
+export interface PolicyActivationSimulation {
+  actionsEvaluated: number;
+  matchedCount: number;
+  determiningCount: number;
+  changedDecisionCount: number;
+  simulatedAt: string;
+  changedActions: Array<{
+    requestId: string;
+    agentName: string;
+    action: string;
+    resource: string;
+    baselineEffect: "block" | "approval" | "allow";
+    simulatedEffect: "block" | "approval" | "allow";
+  }>;
 }
 
 export interface PolicyVersion {

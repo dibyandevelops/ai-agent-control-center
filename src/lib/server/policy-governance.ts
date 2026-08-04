@@ -1,6 +1,8 @@
 import type { PoolClient } from "pg";
 import { ConflictError, NotFoundError } from "./errors";
-import type { PolicyConditions } from "./contracts";
+import type { ActionEvaluationInput, PolicyConditions } from "./contracts";
+import type { EvaluatedPolicy } from "./policy-engine";
+import { simulatePolicyImpact } from "./policy-simulation";
 
 export type PolicyEffect = "allow" | "approval" | "block";
 
@@ -182,6 +184,11 @@ export async function createActivationRequest(
   },
 ) {
   await ensureNoPendingActivation(client, policy.id);
+  const simulationEvidence = await captureActivationSimulation(
+    client,
+    policy.organization_id,
+    version,
+  );
   const result = await client.query<{
     id: string;
     status: "pending";
@@ -193,9 +200,10 @@ export async function createActivationRequest(
         policy_id,
         version_id,
         requested_by_operator_id,
-        requested_by_email
+        requested_by_email,
+        simulation_evidence
       )
-      values ($1, $2, $3, $4, $5)
+      values ($1, $2, $3, $4, $5, $6::jsonb)
       returning id, status, requested_at
     `,
     [
@@ -204,9 +212,118 @@ export async function createActivationRequest(
       version.id,
       operator.id,
       operator.email,
+      JSON.stringify(simulationEvidence),
     ],
   );
   return result.rows[0];
+}
+
+async function captureActivationSimulation(
+  client: PoolClient,
+  organizationId: string,
+  version: PolicyVersionRow,
+) {
+  const [policiesResult, actionsResult] = await Promise.all([
+    client.query<{
+      id: string;
+      version_id: string;
+      name: string;
+      effect: PolicyEffect;
+      priority: number;
+      conditions: PolicyConditions;
+    }>(
+      `
+        select p.id, pv.id as version_id, pv.name, pv.effect,
+               pv.priority, pv.conditions
+        from policies p
+        join policy_versions pv on pv.id = p.active_version_id
+        where p.organization_id = $1 and p.enabled = true
+        order by pv.priority asc, p.id asc
+      `,
+      [organizationId],
+    ),
+    client.query<{
+      id: string;
+      action: string;
+      resource: string;
+      environment: "development" | "staging" | "production";
+      risk: "low" | "medium" | "high";
+      context: ActionEvaluationInput["context"];
+      requested_at: Date;
+      agent_external_id: string;
+      agent_name: string;
+      owner_email: string;
+      team: string;
+      provider: string;
+    }>(
+      `
+        select ar.id, ar.action, ar.resource, ar.environment, ar.risk,
+               ar.context, ar.requested_at, a.external_id as agent_external_id,
+               a.name as agent_name, a.owner_email, a.team, a.provider
+        from action_requests ar
+        join agents a on a.id = ar.agent_id
+        where ar.organization_id = $1
+        order by ar.requested_at desc, ar.id desc
+        limit 50
+      `,
+      [organizationId],
+    ),
+  ]);
+  const candidate: EvaluatedPolicy = {
+    id: version.policy_id,
+    versionId: version.id,
+    name: version.name,
+    effect: version.effect,
+    priority: version.priority,
+    conditions: version.conditions,
+  };
+  const currentPolicies: EvaluatedPolicy[] = policiesResult.rows.map((row) => ({
+    id: row.id,
+    versionId: row.version_id,
+    name: row.name,
+    effect: row.effect,
+    priority: row.priority,
+    conditions: row.conditions,
+  }));
+  const actions = actionsResult.rows.map((row) => ({
+    requestId: row.id,
+    agentName: row.agent_name,
+    requestedAt: row.requested_at,
+    input: {
+      idempotencyKey: `activation-simulation-${row.id}`,
+      agent: {
+        externalId: row.agent_external_id,
+        name: row.agent_name,
+        ownerEmail: row.owner_email,
+        team: row.team,
+        provider: row.provider,
+      },
+      action: row.action,
+      resource: row.resource,
+      environment: row.environment,
+      riskHint: row.risk,
+      context: row.context,
+    },
+  }));
+  const result = simulatePolicyImpact({ candidate, currentPolicies, actions });
+  return {
+    actionsEvaluated: result.actionsEvaluated,
+    matchedCount: result.matchedCount,
+    determiningCount: result.determiningCount,
+    changedDecisionCount: result.changedDecisionCount,
+    simulatedAt: new Date().toISOString(),
+    changedActions: result.rows
+      .filter((row) => row.decisionChanged)
+      .slice(0, 5)
+      .map((row) => ({
+        requestId: row.requestId,
+        agentName: row.agentName,
+        action: row.action,
+        resource: row.resource,
+        baselineEffect: row.baselineEffect,
+        simulatedEffect: row.simulatedEffect,
+      })),
+  };
 }
 
 export function policyMode(effect: PolicyEffect) {

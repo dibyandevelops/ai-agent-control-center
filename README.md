@@ -242,7 +242,9 @@ used in the recording.
   version timeline, activation state, requester, reviewer, and review reason.
 - `POST /api/v1/policies/activation-requests/:requestId/decision` requires a
   review note from a second `admin`. The requesting administrator is prevented
-  from approving or rejecting their own activation request.
+  from approving or rejecting their own activation request. The review screen
+  shows an active-versus-proposed field diff and a point-in-time replay of up to
+  50 recent actions captured when the request was created.
 - `POST /api/v1/policies/:policyId/rollback` creates a new version from the
   selected historical snapshot and sends that version through the same
   independent activation review; history is never rewritten.
@@ -300,6 +302,9 @@ used in the recording.
 - Policy edits and rollback requests never replace the active rule before
   approval. Every evaluated action records the exact active policy version used
   for its decision.
+- Activation requests persist their historical simulation summary and changed
+  examples, so later reviewers see the evidence available at request time
+  instead of a result that silently changes with newer traffic.
 - Requests are tenant-scoped and idempotent.
 - Pending decisions use conditional updates to prevent double approval.
 - Execution outcomes use row locking and terminal-state protection to prevent

@@ -1258,7 +1258,7 @@ tbody tr:hover {
 
 .policy-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 310px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
   gap: 14px;
 }
 
@@ -1279,6 +1279,17 @@ tbody tr:hover {
   min-height: 104px;
   padding: 16px 18px;
   border-bottom: 1px solid var(--border);
+}
+
+.policy-copy {
+  min-width: 0;
+}
+
+.policy-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .policy-row:last-child {
@@ -1881,6 +1892,17 @@ tbody tr:hover {
     align-items: flex-start;
     flex-direction: column;
     gap: 16px;
+  }
+
+  .policy-row {
+    grid-template-columns: 40px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .policy-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .page-title-row .primary-button,

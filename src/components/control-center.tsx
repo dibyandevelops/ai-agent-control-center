@@ -807,29 +807,31 @@ function PoliciesView({
                 <p>{policy.description}</p>
                 <small>{policy.scope} · active v{policy.activeVersionNumber ?? "none"} · latest v{policy.latestVersionNumber ?? 1} · {policy.matches} matches in 7 days</small>
               </div>
-              <button
-                className="rounded-lg border border-sentinel-line px-3 py-2 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text"
-                onClick={() => setHistoryPolicy(policy)}
-              >
-                History
-              </button>
-              <button
-                className="rounded-lg border border-sentinel-line px-3 py-2 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text disabled:opacity-40"
-                onClick={() => openEditor(policy)}
-                disabled={!canManage}
-              >
-                Edit
-              </button>
-              <button
-                role="switch"
-                aria-checked={policy.enabled}
-                aria-label={`${policy.enabled ? "Disable" : "Request activation for"} ${policy.name}`}
-                className={`toggle ${policy.enabled ? "toggle-on" : ""}`}
-                disabled={!canManage || policy.activationStatus === "pending"}
-                onClick={() => onToggle(policy.id)}
-              >
-                <span />
-              </button>
+              <div className="policy-actions">
+                <button
+                  className="rounded-lg border border-sentinel-line px-3 py-2 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text"
+                  onClick={() => setHistoryPolicy(policy)}
+                >
+                  History
+                </button>
+                <button
+                  className="rounded-lg border border-sentinel-line px-3 py-2 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text disabled:opacity-40"
+                  onClick={() => openEditor(policy)}
+                  disabled={!canManage}
+                >
+                  Edit
+                </button>
+                <button
+                  role="switch"
+                  aria-checked={policy.enabled}
+                  aria-label={`${policy.enabled ? "Disable" : "Request activation for"} ${policy.name}`}
+                  className={`toggle ${policy.enabled ? "toggle-on" : ""}`}
+                  disabled={!canManage || policy.activationStatus === "pending"}
+                  onClick={() => onToggle(policy.id)}
+                >
+                  <span />
+                </button>
+              </div>
             </article>
           ))}
         </section>

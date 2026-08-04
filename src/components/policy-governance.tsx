@@ -1,12 +1,15 @@
 "use client";
 
 import {
+  ArrowRight,
   Check,
   Clock3,
+  GitCompareArrows,
   History,
   LoaderCircle,
   RotateCcw,
   ShieldCheck,
+  TestTubeDiagonal,
   X,
   XCircle,
 } from "lucide-react";
@@ -24,6 +27,36 @@ function formatDate(value: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function effectLabel(effect: "block" | "approval" | "allow") {
+  if (effect === "block") return "Block";
+  if (effect === "approval") return "Require approval";
+  return "Allow";
+}
+
+function conditionsLabel(conditions: PolicyActivationRequest["candidate"]["conditions"]) {
+  return conditions
+    .map((condition) => {
+      const value = Array.isArray(condition.value)
+        ? condition.value.join(", ")
+        : String(condition.value);
+      return `${condition.field} ${condition.operator} ${value}`;
+    })
+    .join(" AND ");
+}
+
+function activationDiff(request: PolicyActivationRequest) {
+  const active = request.active;
+  const candidate = request.candidate;
+  const fields = [
+    { label: "Name", before: active?.name ?? "Not active", after: candidate.name },
+    { label: "Description", before: active?.description ?? "Not active", after: candidate.description },
+    { label: "Decision", before: active ? effectLabel(active.effect) : "Not active", after: effectLabel(candidate.effect) },
+    { label: "Priority", before: active ? String(active.priority) : "Not active", after: String(candidate.priority) },
+    { label: "Conditions", before: active ? conditionsLabel(active.conditions) : "Not active", after: conditionsLabel(candidate.conditions) },
+  ];
+  return fields.filter((field) => field.before !== field.after);
 }
 
 export function PolicyActivationQueue({
@@ -57,29 +90,75 @@ export function PolicyActivationQueue({
   }
 
   return (
-    <section className="panel overflow-hidden">
-      <div className="section-heading">
-        <div>
-          <h2>Activation approvals</h2>
-          <p>{requests.length} waiting for a second administrator</p>
+    <section className="panel min-w-0 overflow-hidden">
+      <div className="flex items-start justify-between gap-4 border-b border-sentinel-line px-5 py-4">
+        <div className="min-w-0">
+          <h2 className="text-sm font-bold tracking-tight text-sentinel-text">Activation approvals</h2>
+          <p className="mt-1 text-[10px] leading-4 text-sentinel-muted">{requests.length} waiting for a second administrator</p>
         </div>
-        <ShieldCheck className="h-5 w-5 text-sentinel-lime" />
+        <ShieldCheck className="h-5 w-5 shrink-0 text-sentinel-lime" />
       </div>
       {requests.length ? (
         <div className="divide-y divide-sentinel-line">
           {requests.map((request) => {
             const ownRequest = request.requestedByOperatorId === operatorId;
             const ready = Boolean(reasons[request.id]?.trim());
+            const diff = activationDiff(request);
+            const simulation = request.simulation;
             return (
-              <article className="space-y-3 py-4 first:pt-0 last:pb-0" key={request.id}>
+              <article className="min-w-0 space-y-4 px-5 py-5" key={request.id}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <strong className="block truncate text-xs font-semibold text-sentinel-text">{request.policyName}</strong>
-                    <span className="mt-1 block text-[10px] text-sentinel-muted">
+                    <strong className="block break-words text-xs font-semibold leading-5 text-sentinel-text">{request.policyName}</strong>
+                    <span className="mt-1 block break-words text-[10px] leading-4 text-sentinel-muted">
                       Version {request.versionNumber} · requested by {request.requestedBy}
                     </span>
                   </div>
                   <span className="mode mode-approval shrink-0">Pending</span>
+                </div>
+                <div className="rounded-xl border border-sentinel-line bg-sentinel-canvas/55 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="inline-flex items-center gap-2 text-[10px] font-semibold text-sentinel-text"><GitCompareArrows className="h-3.5 w-3.5 text-sentinel-lime" /> Change set</span>
+                    <span className="text-[9px] text-sentinel-dim">v{request.activeVersionNumber ?? "none"} → v{request.versionNumber}</span>
+                  </div>
+                  {diff.length ? (
+                    <dl className="mt-3 space-y-3">
+                      {diff.map((field) => (
+                        <div className="min-w-0" key={field.label}>
+                          <dt className="mb-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-sentinel-dim">{field.label}</dt>
+                          <dd className="m-0 grid min-w-0 grid-cols-[minmax(0,1fr)_12px_minmax(0,1fr)] items-start gap-2 text-[10px] leading-4">
+                            <span className="break-words text-sentinel-muted line-through decoration-sentinel-red/50">{field.before}</span>
+                            <ArrowRight className="mt-0.5 h-3 w-3 text-sentinel-dim" />
+                            <span className="break-words font-medium text-sentinel-text">{field.after}</span>
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : (
+                    <p className="mt-3 text-[10px] text-sentinel-muted">No configuration fields changed.</p>
+                  )}
+                </div>
+                <div className="rounded-xl border border-sentinel-lime/20 bg-sentinel-lime/5 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="inline-flex items-center gap-2 text-[10px] font-semibold text-sentinel-text"><TestTubeDiagonal className="h-3.5 w-3.5 text-sentinel-lime" /> Historical simulation</span>
+                    <span className="text-[9px] text-sentinel-dim">{formatDate(simulation.simulatedAt)}</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <span className="rounded-lg bg-sentinel-canvas/60 p-2 text-[9px] text-sentinel-muted"><strong className="block text-sm text-sentinel-text">{simulation.actionsEvaluated}</strong>Actions replayed</span>
+                    <span className="rounded-lg bg-sentinel-canvas/60 p-2 text-[9px] text-sentinel-muted"><strong className="block text-sm text-sentinel-text">{simulation.changedDecisionCount}</strong>Decisions changed</span>
+                    <span className="rounded-lg bg-sentinel-canvas/60 p-2 text-[9px] text-sentinel-muted"><strong className="block text-sm text-sentinel-text">{simulation.matchedCount}</strong>Rules matched</span>
+                    <span className="rounded-lg bg-sentinel-canvas/60 p-2 text-[9px] text-sentinel-muted"><strong className="block text-sm text-sentinel-text">{simulation.determiningCount}</strong>Winning decisions</span>
+                  </div>
+                  {simulation.changedActions.length ? (
+                    <div className="mt-3 border-t border-sentinel-lime/15 pt-3">
+                      <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-sentinel-dim">Changed examples</span>
+                      {simulation.changedActions.slice(0, 3).map((action) => (
+                        <p className="mt-2 break-words text-[9px] leading-4 text-sentinel-muted" key={action.requestId}>
+                          {action.agentName} · {action.action}: {effectLabel(action.baselineEffect)} → <strong className="font-semibold text-sentinel-text">{effectLabel(action.simulatedEffect)}</strong>
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 {ownRequest ? (
                   <div className="flex items-start gap-2 rounded-lg border border-sentinel-amber/20 bg-sentinel-amber/5 px-3 py-2 text-[10px] leading-4 text-sentinel-amber">
@@ -99,7 +178,7 @@ export function PolicyActivationQueue({
                       placeholder="Review note (required)"
                       aria-label={`Review note for ${request.policyName}`}
                     />
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2 max-[360px]:grid-cols-1">
                       <button
                         type="button"
                         className="secondary-button justify-center"
@@ -125,7 +204,7 @@ export function PolicyActivationQueue({
           })}
         </div>
       ) : (
-        <div className="py-5 text-center">
+        <div className="px-5 py-6 text-center">
           <ShieldCheck className="mx-auto h-6 w-6 text-sentinel-lime" />
           <strong className="mt-2 block text-xs text-sentinel-text">No activation reviews</strong>
           <p className="mt-1 text-[10px] text-sentinel-muted">New policy versions will appear here.</p>

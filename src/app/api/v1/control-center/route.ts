@@ -3,6 +3,7 @@ import { getOperatorSession } from "@/lib/server/auth";
 import { getPool } from "@/lib/server/db";
 import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
+import type { PolicyActivationSimulation } from "@/lib/types";
 
 export async function GET() {
   try {
@@ -187,10 +188,27 @@ export async function GET() {
           version_id: string;
           version_number: number;
           effect: "allow" | "approval" | "block";
+          description: string;
+          priority: number;
+          conditions: { all: Array<{
+            field: string;
+            operator: "eq" | "in" | "gte" | "contains";
+            value: string | number | boolean | Array<string | number | boolean>;
+          }> };
           requested_by_operator_id: string | null;
           requested_by_email: string;
           requested_at: Date;
           active_version_number: number | null;
+          active_name: string | null;
+          active_description: string | null;
+          active_effect: "allow" | "approval" | "block" | null;
+          active_priority: number | null;
+          active_conditions: { all: Array<{
+            field: string;
+            operator: "eq" | "in" | "gte" | "contains";
+            value: string | number | boolean | Array<string | number | boolean>;
+          }> } | null;
+          simulation_evidence: PolicyActivationSimulation;
         }>(`
           select
             par.id,
@@ -199,10 +217,19 @@ export async function GET() {
             par.version_id,
             pv.version_number,
             pv.effect,
+            pv.description,
+            pv.priority,
+            pv.conditions,
             par.requested_by_operator_id,
             par.requested_by_email,
             par.requested_at,
-            active.version_number as active_version_number
+            active.version_number as active_version_number,
+            active.name as active_name,
+            active.description as active_description,
+            active.effect as active_effect,
+            active.priority as active_priority,
+            active.conditions as active_conditions,
+            par.simulation_evidence
           from policy_activation_requests par
           join policy_versions pv on pv.id = par.version_id
           join policies p on p.id = par.policy_id
@@ -306,6 +333,27 @@ export async function GET() {
         requestedByOperatorId: row.requested_by_operator_id,
         requestedBy: row.requested_by_email,
         requestedAt: row.requested_at.toISOString(),
+        candidate: {
+          versionNumber: row.version_number,
+          name: row.policy_name,
+          description: row.description,
+          priority: row.priority,
+          effect: row.effect,
+          conditions: row.conditions.all,
+        },
+        active: row.active_version_number !== null && row.active_name !== null &&
+          row.active_description !== null && row.active_effect !== null &&
+          row.active_priority !== null && row.active_conditions
+          ? {
+              versionNumber: row.active_version_number,
+              name: row.active_name,
+              description: row.active_description,
+              priority: row.active_priority,
+              effect: row.active_effect,
+              conditions: row.active_conditions.all,
+            }
+          : null,
+        simulation: row.simulation_evidence,
       })),
       audit: auditResult.rows.map((row) => {
         const status = String(row.payload.status ?? row.payload.decision ?? "");
