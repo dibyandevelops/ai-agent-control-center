@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { ConflictError } from "@/lib/server/errors";
 import { appendAuditEvent } from "@/lib/server/audit";
 import { getOperatorSession } from "@/lib/server/auth";
 import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
+import { getPolicyActivationSchedule } from "@/lib/server/policy-activation-schedule";
 import {
   createActivationRequest,
   ensureNoPendingActivation,
@@ -14,6 +15,7 @@ import {
   policyResponse,
 } from "@/lib/server/policy-governance";
 import { policyWriteSchema } from "@/lib/server/policy-input";
+import { notifySlackOfPolicyActivation } from "@/lib/server/slack";
 
 const updatePolicySchema = policyWriteSchema.partial().refine(
   (input) => Object.keys(input).length > 0,
@@ -49,6 +51,24 @@ export async function PATCH(
         policyId,
         operator.organizationId,
       );
+      const auditExpiredActivation = (expired: {
+        id: string;
+        version_id: string;
+        expires_at: Date;
+      }) =>
+        appendAuditEvent(client, {
+          organizationId: operator.organizationId,
+          requestId: null,
+          eventType: "policy.activation_expired",
+          actorType: "system",
+          actorId: "policy-deadline",
+          payload: {
+            activationRequestId: expired.id,
+            policyId,
+            versionId: expired.version_id,
+            expiredAt: expired.expires_at.toISOString(),
+          },
+        });
       const latestVersion = await loadLatestPolicyVersion(
         client,
         policyId,
@@ -75,6 +95,8 @@ export async function PATCH(
             policy,
             version: latestVersion,
             operator,
+            schedule: getPolicyActivationSchedule(),
+            onExpired: auditExpiredActivation,
           });
           await appendAuditEvent(client, {
             organizationId: operator.organizationId,
@@ -126,7 +148,7 @@ export async function PATCH(
         };
       }
 
-      await ensureNoPendingActivation(client, policyId);
+      await ensureNoPendingActivation(client, policyId, auditExpiredActivation);
       const merged = policyWriteSchema.parse({
         name: input.name ?? latestVersion.name,
         description: input.description ?? latestVersion.description,
@@ -166,7 +188,13 @@ export async function PATCH(
         );
       }
       const activationRequest = merged.enabled
-        ? await createActivationRequest(client, { policy, version, operator })
+        ? await createActivationRequest(client, {
+            policy,
+            version,
+            operator,
+            schedule: getPolicyActivationSchedule(),
+            onExpired: auditExpiredActivation,
+          })
         : null;
 
       await appendAuditEvent(client, {
@@ -207,6 +235,21 @@ export async function PATCH(
         activationRequest,
       };
     });
+
+    if (result.activationRequest) {
+      after(async () => {
+        await notifySlackOfPolicyActivation({
+          kind: "requested",
+          requestId: result.activationRequest!.id,
+          policyName: result.version.name,
+          versionNumber: result.version.version_number,
+          requestedBy: operator.email,
+          expiresAt: result.activationRequest!.expires_at.toISOString(),
+        }).catch((error) => {
+          console.error("Slack policy activation notification failed", error);
+        });
+      });
+    }
 
     return NextResponse.json(
       policyResponse({

@@ -115,6 +115,7 @@ export async function GET() {
           pending_requested_by_operator_id: string | null;
           pending_requested_by_email: string | null;
           pending_requested_at: Date | null;
+          pending_expires_at: Date | null;
         }>(`
           select
             p.id,
@@ -130,7 +131,8 @@ export async function GET() {
             pending.id as pending_request_id,
             pending.requested_by_operator_id as pending_requested_by_operator_id,
             pending.requested_by_email as pending_requested_by_email,
-            pending.requested_at as pending_requested_at
+            pending.requested_at as pending_requested_at,
+            pending.expires_at as pending_expires_at
           from policies p
           join lateral (
             select *
@@ -143,7 +145,9 @@ export async function GET() {
           left join lateral (
             select *
             from policy_activation_requests par
-            where par.policy_id = p.id and par.status = 'pending'
+            where par.policy_id = p.id
+              and par.status = 'pending'
+              and par.expires_at > now()
             limit 1
           ) pending on true
           left join lateral (
@@ -209,6 +213,9 @@ export async function GET() {
             value: string | number | boolean | Array<string | number | boolean>;
           }> } | null;
           simulation_evidence: PolicyActivationSimulation;
+          expires_at: Date;
+          reminder_count: number;
+          escalated_at: Date | null;
         }>(`
           select
             par.id,
@@ -229,12 +236,17 @@ export async function GET() {
             active.effect as active_effect,
             active.priority as active_priority,
             active.conditions as active_conditions,
-            par.simulation_evidence
+            par.simulation_evidence,
+            par.expires_at,
+            par.reminder_count,
+            par.escalated_at
           from policy_activation_requests par
           join policy_versions pv on pv.id = par.version_id
           join policies p on p.id = par.policy_id
           left join policy_versions active on active.id = p.active_version_id
-          where par.organization_id = $1 and par.status = 'pending'
+          where par.organization_id = $1
+            and par.status = 'pending'
+            and par.expires_at > now()
           order by par.requested_at asc
           limit 100
         `, [operator.organizationId]),
@@ -319,6 +331,7 @@ export async function GET() {
               requestedByOperatorId: row.pending_requested_by_operator_id,
               requestedBy: row.pending_requested_by_email,
               requestedAt: row.pending_requested_at?.toISOString() ?? null,
+              expiresAt: row.pending_expires_at?.toISOString() ?? null,
             }
           : null,
       })),
@@ -333,6 +346,9 @@ export async function GET() {
         requestedByOperatorId: row.requested_by_operator_id,
         requestedBy: row.requested_by_email,
         requestedAt: row.requested_at.toISOString(),
+        expiresAt: row.expires_at.toISOString(),
+        reminderCount: row.reminder_count,
+        escalatedAt: row.escalated_at?.toISOString() ?? null,
         candidate: {
           versionNumber: row.version_number,
           name: row.policy_name,
@@ -418,16 +434,16 @@ export async function GET() {
         {
           id: "int-slack",
           name: "Slack",
-          description: "Route approval requests to the configured workspace.",
+          description: "Route action and policy activation reviews to the configured workspace.",
           connected: Boolean(env.SLACK_APPROVAL_WEBHOOK_URL),
           category: "Communication",
           events: env.SLACK_APPROVAL_WEBHOOK_URL
-            ? "Approval notifications enabled"
+            ? "Approval and escalation notifications enabled"
             : "Not configured",
           status: env.SLACK_APPROVAL_WEBHOOK_URL
             ? "configured"
             : "not_connected",
-          mode: "Approval notifications",
+          mode: "Approvals and escalations",
           url: null,
         },
       ],

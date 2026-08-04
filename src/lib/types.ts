@@ -93,6 +93,7 @@ export interface Policy {
     requestedByOperatorId?: string | null;
     requestedBy?: string;
     requestedAt: string | null;
+    expiresAt?: string | null;
   } | null;
 }
 
@@ -107,6 +108,9 @@ export interface PolicyActivationRequest {
   requestedByOperatorId: string | null;
   requestedBy: string;
   requestedAt: string;
+  expiresAt: string;
+  reminderCount: number;
+  escalatedAt: string | null;
   candidate: PolicyReviewSnapshot;
   active: PolicyReviewSnapshot | null;
   simulation: PolicyActivationSimulation;
@@ -152,7 +156,7 @@ export interface PolicyVersion {
   active: boolean;
   activation: {
     id: string;
-    status: "pending" | "approved" | "rejected";
+    status: "pending" | "approved" | "rejected" | "expired";
     requestedBy: string | null;
     requestedAt: string | null;
     reviewedBy: string | null;

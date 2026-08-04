@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { appendAuditEvent } from "@/lib/server/audit";
 import { getOperatorSession } from "@/lib/server/auth";
 import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
+import { getPolicyActivationSchedule } from "@/lib/server/policy-activation-schedule";
 import {
   createActivationRequest,
   insertPolicyVersion,
@@ -11,6 +12,7 @@ import {
   type LockedPolicy,
 } from "@/lib/server/policy-governance";
 import { policyWriteSchema } from "@/lib/server/policy-input";
+import { notifySlackOfPolicyActivation } from "@/lib/server/slack";
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,7 +56,12 @@ export async function POST(request: NextRequest) {
         changeType: "created",
       });
       const activationRequest = input.enabled
-        ? await createActivationRequest(client, { policy, version, operator })
+        ? await createActivationRequest(client, {
+            policy,
+            version,
+            operator,
+            schedule: getPolicyActivationSchedule(),
+          })
         : null;
 
       await appendAuditEvent(client, {
@@ -89,6 +96,21 @@ export async function POST(request: NextRequest) {
       }
       return { policy, version, activationRequest };
     });
+
+    if (created.activationRequest) {
+      after(async () => {
+        await notifySlackOfPolicyActivation({
+          kind: "requested",
+          requestId: created.activationRequest!.id,
+          policyName: created.version.name,
+          versionNumber: created.version.version_number,
+          requestedBy: operator.email,
+          expiresAt: created.activationRequest!.expires_at.toISOString(),
+        }).catch((error) => {
+          console.error("Slack policy activation notification failed", error);
+        });
+      });
+    }
 
     return NextResponse.json(
       policyResponse({

@@ -34,6 +34,12 @@ export interface LockedPolicy {
   active_version_id: string | null;
 }
 
+export interface ExpiredPolicyActivation {
+  id: string;
+  version_id: string;
+  expires_at: Date;
+}
+
 export interface PolicyVersionRow extends PolicyConfiguration {
   id: string;
   policy_id: string;
@@ -154,7 +160,26 @@ export async function insertPolicyVersion(
 export async function ensureNoPendingActivation(
   client: PoolClient,
   policyId: string,
+  onExpired?: (activation: ExpiredPolicyActivation) => Promise<unknown>,
 ) {
+  const expiredResult = await client.query<ExpiredPolicyActivation>(
+    `
+      update policy_activation_requests
+      set status = 'expired',
+          reviewed_at = now(),
+          review_reason = 'Activation request expired before independent review.'
+      where policy_id = $1
+        and status = 'pending'
+        and expires_at <= now()
+      returning id, version_id, expires_at
+    `,
+    [policyId],
+  );
+  if (onExpired) {
+    for (const activation of expiredResult.rows) {
+      await onExpired(activation);
+    }
+  }
   const pending = await client.query<{ id: string }>(
     `
       select id
@@ -177,13 +202,17 @@ export async function createActivationRequest(
     policy,
     version,
     operator,
+    schedule = { ttlHours: 24, reminderMinutes: 240 },
+    onExpired,
   }: {
     policy: LockedPolicy;
     version: PolicyVersionRow;
     operator: { id: string; email: string };
+    schedule?: { ttlHours: number; reminderMinutes: number };
+    onExpired?: (activation: ExpiredPolicyActivation) => Promise<unknown>;
   },
 ) {
-  await ensureNoPendingActivation(client, policy.id);
+  await ensureNoPendingActivation(client, policy.id, onExpired);
   const simulationEvidence = await captureActivationSimulation(
     client,
     policy.organization_id,
@@ -193,6 +222,7 @@ export async function createActivationRequest(
     id: string;
     status: "pending";
     requested_at: Date;
+    expires_at: Date;
   }>(
     `
       insert into policy_activation_requests (
@@ -201,10 +231,19 @@ export async function createActivationRequest(
         version_id,
         requested_by_operator_id,
         requested_by_email,
-        simulation_evidence
+        simulation_evidence,
+        expires_at,
+        next_reminder_at
       )
-      values ($1, $2, $3, $4, $5, $6::jsonb)
-      returning id, status, requested_at
+      values (
+        $1, $2, $3, $4, $5, $6::jsonb,
+        now() + ($7 * interval '1 hour'),
+        least(
+          now() + ($8 * interval '1 minute'),
+          now() + ($7 * interval '1 hour')
+        )
+      )
+      returning id, status, requested_at, expires_at
     `,
     [
       policy.organization_id,
@@ -213,6 +252,8 @@ export async function createActivationRequest(
       operator.id,
       operator.email,
       JSON.stringify(simulationEvidence),
+      schedule.ttlHours,
+      schedule.reminderMinutes,
     ],
   );
   return result.rows[0];
@@ -348,6 +389,7 @@ export function policyResponse({
     id: string;
     status: "pending";
     requested_at: Date;
+    expires_at: Date;
   } | null;
   matches?: number;
 }) {
@@ -373,6 +415,7 @@ export function policyResponse({
       ? {
           id: activationRequest.id,
           requestedAt: activationRequest.requested_at.toISOString(),
+          expiresAt: activationRequest.expires_at.toISOString(),
         }
       : null,
   };

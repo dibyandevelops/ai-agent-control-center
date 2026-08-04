@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { ConflictError, NotFoundError } from "@/lib/server/errors";
 import { appendAuditEvent } from "@/lib/server/audit";
 import { getOperatorSession } from "@/lib/server/auth";
 import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
+import { getPolicyActivationSchedule } from "@/lib/server/policy-activation-schedule";
 import {
   createActivationRequest,
   ensureNoPendingActivation,
@@ -13,6 +14,7 @@ import {
   type PolicyVersionRow,
 } from "@/lib/server/policy-governance";
 import { policyRollbackSchema } from "@/lib/server/policy-input";
+import { notifySlackOfPolicyActivation } from "@/lib/server/slack";
 
 export async function POST(
   request: NextRequest,
@@ -41,10 +43,28 @@ export async function POST(
         policyId,
         operator.organizationId,
       );
+      const auditExpiredActivation = (expired: {
+        id: string;
+        version_id: string;
+        expires_at: Date;
+      }) =>
+        appendAuditEvent(client, {
+          organizationId: operator.organizationId,
+          requestId: null,
+          eventType: "policy.activation_expired",
+          actorType: "system",
+          actorId: "policy-deadline",
+          payload: {
+            activationRequestId: expired.id,
+            policyId,
+            versionId: expired.version_id,
+            expiredAt: expired.expires_at.toISOString(),
+          },
+        });
       if (policy.active_version_id === input.versionId) {
         throw new ConflictError("That policy version is already active.");
       }
-      await ensureNoPendingActivation(client, policyId);
+      await ensureNoPendingActivation(client, policyId, auditExpiredActivation);
       const sourceResult = await client.query<PolicyVersionRow>(
         `
           select *
@@ -67,6 +87,8 @@ export async function POST(
         policy,
         version,
         operator,
+        schedule: getPolicyActivationSchedule(),
+        onExpired: auditExpiredActivation,
       });
       await appendAuditEvent(client, {
         organizationId: operator.organizationId,
@@ -93,7 +115,20 @@ export async function POST(
         sourceVersionNumber: source.version_number,
         activationRequestId: activationRequest.id,
         status: activationRequest.status,
+        expiresAt: activationRequest.expires_at.toISOString(),
       };
+    });
+    after(async () => {
+      await notifySlackOfPolicyActivation({
+        kind: "requested",
+        requestId: result.activationRequestId,
+        policyName: result.policyName,
+        versionNumber: result.versionNumber,
+        requestedBy: operator.email,
+        expiresAt: result.expiresAt,
+      }).catch((error) => {
+        console.error("Slack policy rollback notification failed", error);
+      });
     });
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

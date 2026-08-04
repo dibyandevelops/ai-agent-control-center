@@ -29,6 +29,16 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function deadlineLabel(value: string) {
+  const remainingMinutes = Math.max(
+    0,
+    Math.ceil((new Date(value).getTime() - Date.now()) / 60_000),
+  );
+  if (remainingMinutes < 60) return `${remainingMinutes}m remaining`;
+  const hours = Math.ceil(remainingMinutes / 60);
+  return `${hours}h remaining`;
+}
+
 function effectLabel(effect: "block" | "approval" | "allow") {
   if (effect === "block") return "Block";
   if (effect === "approval") return "Require approval";
@@ -113,8 +123,18 @@ export function PolicyActivationQueue({
                     <span className="mt-1 block break-words text-[10px] leading-4 text-sentinel-muted">
                       Version {request.versionNumber} · requested by {request.requestedBy}
                     </span>
+                    <span className="mt-2 inline-flex items-center gap-1.5 text-[9px] font-medium text-sentinel-amber">
+                      <Clock3 className="h-3 w-3" /> Expires {formatDate(request.expiresAt)} · {deadlineLabel(request.expiresAt)}
+                    </span>
+                    {request.reminderCount ? (
+                      <span className="ml-2 text-[9px] text-sentinel-dim">
+                        {request.escalatedAt ? "Escalated" : "Reminder sent"} · {request.reminderCount}
+                      </span>
+                    ) : null}
                   </div>
-                  <span className="mode mode-approval shrink-0">Pending</span>
+                  <span className={`mode shrink-0 ${request.escalatedAt ? "mode-block" : "mode-approval"}`}>
+                    {request.escalatedAt ? "Escalated" : "Pending"}
+                  </span>
                 </div>
                 <div className="rounded-xl border border-sentinel-line bg-sentinel-canvas/55 p-3">
                   <div className="flex items-center justify-between gap-3">
@@ -298,6 +318,7 @@ export function PolicyHistoryDialog({
                     <strong className="text-sm font-semibold text-sentinel-text">Version {version.versionNumber}</strong>
                     {version.active ? <span className="mode mode-monitor">Active</span> : null}
                     {version.activation?.status === "pending" ? <span className="mode mode-approval">Pending</span> : null}
+                    {version.activation?.status === "expired" ? <span className="mode mode-block">Expired</span> : null}
                     {version.changeType === "rollback" ? <span className="mode mode-block">Rollback</span> : null}
                   </div>
                   <p className="mt-2 text-xs leading-5 text-sentinel-muted">{version.description}</p>

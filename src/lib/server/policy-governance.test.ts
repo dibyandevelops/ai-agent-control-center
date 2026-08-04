@@ -64,6 +64,7 @@ describe("policy four-eyes governance", () => {
           id: "request-1",
           status: "pending" as const,
           requested_at: new Date("2026-08-04T00:00:00.000Z"),
+          expires_at: new Date("2026-08-05T00:00:00.000Z"),
         },
       }).activationStatus,
     ).toBe("pending");

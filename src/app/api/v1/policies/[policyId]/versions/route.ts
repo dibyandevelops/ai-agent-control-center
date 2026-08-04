@@ -47,7 +47,7 @@ export async function GET(
       created_by_email: string;
       created_at: Date;
       request_id: string | null;
-      request_status: "pending" | "approved" | "rejected" | null;
+      request_status: "pending" | "approved" | "rejected" | "expired" | null;
       requested_by_email: string | null;
       reviewed_by_email: string | null;
       review_reason: string | null;

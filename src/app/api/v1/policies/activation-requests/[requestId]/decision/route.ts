@@ -33,7 +33,7 @@ export async function POST(
     const result = await withTransaction(async (client) => {
       const requestResult = await client.query<{
         id: string;
-        status: "pending" | "approved" | "rejected";
+        status: "pending" | "approved" | "rejected" | "expired";
         policy_id: string;
         version_id: string;
         requested_by_operator_id: string | null;
@@ -46,6 +46,7 @@ export async function POST(
         priority: number;
         effect: "allow" | "approval" | "block";
         conditions: PolicyConditions;
+        expires_at: Date;
       }>(
         `
           select
@@ -62,7 +63,8 @@ export async function POST(
             pv.description,
             pv.priority,
             pv.effect,
-            pv.conditions
+            pv.conditions,
+            par.expires_at
           from policy_activation_requests par
           join policies p on p.id = par.policy_id
           join policy_versions pv on pv.id = par.version_id
@@ -75,8 +77,48 @@ export async function POST(
       if (!activation) {
         throw new NotFoundError("Policy activation request not found.");
       }
+      if (activation.status === "expired") {
+        throw new ConflictError(
+          "This activation request expired and can no longer be reviewed.",
+        );
+      }
       if (activation.status !== "pending") {
         throw new ConflictError("This activation request was already reviewed.");
+      }
+      if (activation.expires_at.getTime() <= Date.now()) {
+        await client.query(
+          `
+            update policy_activation_requests
+            set status = 'expired',
+                reviewed_at = now(),
+                review_reason = 'Activation request expired before independent review.'
+            where id = $1 and status = 'pending'
+          `,
+          [requestId],
+        );
+        await appendAuditEvent(client, {
+          organizationId: operator.organizationId,
+          requestId: null,
+          eventType: "policy.activation_expired",
+          actorType: "system",
+          actorId: "policy-deadline",
+          payload: {
+            activationRequestId: activation.id,
+            policyId: activation.policy_id,
+            policyName: activation.name,
+            versionId: activation.version_id,
+            versionNumber: activation.version_number,
+            expiredAt: activation.expires_at.toISOString(),
+          },
+        });
+        return {
+          expired: true as const,
+          id: activation.id,
+          policyId: activation.policy_id,
+          versionId: activation.version_id,
+          versionNumber: activation.version_number,
+          policyName: activation.name,
+        };
       }
       if (!canReviewPolicyActivation(
         {
@@ -153,6 +195,7 @@ export async function POST(
       });
 
       return {
+        expired: false as const,
         id: activation.id,
         policyId: activation.policy_id,
         versionId: activation.version_id,
@@ -163,6 +206,12 @@ export async function POST(
         reason: input.reason,
       };
     });
+    if (result.expired) {
+      return NextResponse.json(
+        { error: "This activation request expired and can no longer be reviewed." },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(result);
   } catch (error) {
     if (

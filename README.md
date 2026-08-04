@@ -66,6 +66,24 @@ Open [http://localhost:3000](http://localhost:3000) for the landing page and
 control center. Select **Connect live** and sign in with the operator email and
 password created above.
 
+Policy activation reviews expire after 24 hours and receive a reminder every
+four hours by default. Override those windows with
+`POLICY_ACTIVATION_TTL_HOURS` and `POLICY_ACTIVATION_REMINDER_MINUTES`. For
+scheduled reminders, generate a private `SENTINELOPS_CRON_SECRET` with a secret
+manager or `openssl rand -hex 32`, then have your
+server scheduler call the dispatcher every five minutes:
+
+```bash
+curl --fail --request POST \
+  --header "Authorization: Bearer $SENTINELOPS_CRON_SECRET" \
+  http://localhost:3000/api/v1/internal/policy-activation-reminders
+```
+
+The dispatcher is disabled when the secret is absent. It marks overdue reviews
+expired, sends a reminder on the first due interval, escalates subsequent due
+intervals, and records delivery results in the audit chain. Slack delivery is
+enabled only when `SLACK_APPROVAL_WEBHOOK_URL` is configured.
+
 Operator roles are deliberately small for the MVP:
 
 - `admin` can view data, decide actions, manage policies, manage agent API
@@ -248,6 +266,10 @@ used in the recording.
 - `POST /api/v1/policies/:policyId/rollback` creates a new version from the
   selected historical snapshot and sends that version through the same
   independent activation review; history is never rewritten.
+- `GET` or `POST /api/v1/internal/policy-activation-reminders` requires the
+  cron bearer secret. It processes bounded reminder batches using row locks
+  with `SKIP LOCKED`, expires overdue requests, and delivers Slack reminders
+  outside the database transaction.
 - `POST /api/v1/policies/simulate` requires an `admin` and replays up to 50
   recent organization actions through an unsaved draft and the current enabled
   policy order. It reports matches, cases where the draft wins, and decisions
@@ -305,13 +327,18 @@ used in the recording.
 - Activation requests persist their historical simulation summary and changed
   examples, so later reviewers see the evidence available at request time
   instead of a result that silently changes with newer traffic.
+- Expired activation requests cannot be approved. The previously active policy
+  remains unchanged, and reminder, escalation, expiration, and Slack delivery
+  outcomes are appended to the hash-chained audit log.
 - Requests are tenant-scoped and idempotent.
 - Pending decisions use conditional updates to prevent double approval.
 - Execution outcomes use row locking and terminal-state protection to prevent
   concurrent or rewritten completion results.
 - Audit events form an organization-level SHA-256 hash chain.
 - PostgreSQL queries are parameterized and use a bounded connection pool.
-- Slack is disabled unless `SLACK_APPROVAL_WEBHOOK_URL` is configured.
+- Slack is disabled unless `SLACK_APPROVAL_WEBHOOK_URL` is configured. The
+  reminder dispatcher is separately disabled unless a strong
+  `SENTINELOPS_CRON_SECRET` is configured.
 
 This MVP is not yet a complete enterprise security product. SSO, SCIM,
 fine-grained operator roles, expiring credentials, webhook signing, audit
