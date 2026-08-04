@@ -81,6 +81,10 @@ Administrators can create agent credentials from **Credentials**. SentinelOps
 shows the complete key only after creation or rotation, so copy it directly to
 the workload's secret manager before closing the dialog. Rotation revokes the
 previous credential atomically; revocation takes effect on the next request.
+The same screen includes copyable cURL, dependency-free Node.js, and
+standard-library Python examples. After creating or rotating a key, **Test
+connection** sends a harmless development health-read through the real policy
+engine without persisting the plaintext credential in browser storage.
 
 ## Evaluate an agent action
 

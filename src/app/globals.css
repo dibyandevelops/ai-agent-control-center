@@ -1817,11 +1817,13 @@ tbody tr:hover {
   .sidebar {
     width: 240px;
     transform: translateX(-102%);
+    box-shadow: none;
     transition: transform 180ms ease;
   }
 
   .sidebar-open {
     transform: translateX(0);
+    box-shadow: 12px 0 36px rgba(2, 44, 34, 0.12);
   }
 
   .sidebar-close,

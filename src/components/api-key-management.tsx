@@ -11,10 +11,12 @@ import {
   ShieldAlert,
   ShieldCheck,
   Trash2,
+  Wifi,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { AgentApiKey } from "@/lib/types";
+import { AgentQuickstart } from "@/components/agent-quickstart";
 
 const fieldClass =
   "mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 text-sm text-sentinel-text outline-none transition placeholder:text-sentinel-dim focus:border-sentinel-lime/70 focus:ring-2 focus:ring-sentinel-lime/10";
@@ -61,6 +63,7 @@ export function ApiKeyManagement({
     title: string;
     description: string;
     secret: string;
+    apiKey: AgentApiKey;
   } | null>(null);
 
   const loadApiKeys = useCallback(async () => {
@@ -131,6 +134,7 @@ export function ApiKeyManagement({
         title: "Rotated API key",
         description: `${apiKey.name} now has a new credential. The previous key stopped working immediately.`,
         secret: payload.secret,
+        apiKey: payload.apiKey,
       });
       onNotify(`${apiKey.name} was rotated and its previous key was revoked.`);
     } else {
@@ -171,7 +175,9 @@ export function ApiKeyManagement({
           </span>
           <div>
             <strong className="block text-sm font-semibold text-sentinel-text">
-              {activeCount} active {activeCount === 1 ? "credential" : "credentials"}
+              {loading
+                ? "Loading credentials"
+                : `${activeCount} active ${activeCount === 1 ? "credential" : "credentials"}`}
             </strong>
             <span className="mt-0.5 block text-xs text-sentinel-muted">
               Every key is scoped to {organizationName}.
@@ -190,6 +196,8 @@ export function ApiKeyManagement({
           <span>{error}</span>
         </div>
       ) : null}
+
+      <AgentQuickstart onCreateKey={() => setCreateOpen(true)} />
 
       <section className="overflow-hidden rounded-app border border-sentinel-line bg-sentinel-surface shadow-app-1">
         <div className="flex items-center justify-between border-b border-sentinel-line px-5 py-4">
@@ -300,6 +308,7 @@ export function ApiKeyManagement({
               title: "API key created",
               description: `${apiKey.name} can now authenticate agent evaluation requests.`,
               secret,
+              apiKey,
             });
             onNotify(`${apiKey.name} was created.`);
           }}
@@ -313,7 +322,20 @@ export function ApiKeyManagement({
         />
       ) : null}
       {revealed ? (
-        <SecretRevealDialog {...revealed} onClose={() => setRevealed(null)} />
+        <SecretRevealDialog
+          {...revealed}
+          onClose={() => setRevealed(null)}
+          onTested={(apiKeyId) => {
+            setApiKeys((current) =>
+              current.map((apiKey) =>
+                apiKey.id === apiKeyId
+                  ? { ...apiKey, lastUsedAt: new Date().toISOString() }
+                  : apiKey,
+              ),
+            );
+            onNotify("Agent credential connection verified.");
+          }}
+        />
       ) : null}
     </main>
   );
@@ -431,15 +453,23 @@ function SecretRevealDialog({
   title,
   description,
   secret,
+  apiKey,
   onClose,
+  onTested,
 }: {
   title: string;
   description: string;
   secret: string;
+  apiKey: AgentApiKey;
   onClose: () => void;
+  onTested: (apiKeyId: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const [testState, setTestState] = useState<
+    "idle" | "testing" | "verified" | "failed"
+  >("idle");
+  const [testMessage, setTestMessage] = useState("");
 
   async function copySecret() {
     try {
@@ -447,6 +477,51 @@ function SecretRevealDialog({
       setCopied(true);
     } catch {
       setError("Copy failed. Select the API key manually.");
+    }
+  }
+
+  async function testConnection() {
+    setTestState("testing");
+    setTestMessage("");
+    try {
+      const response = await fetch("/api/v1/actions/evaluate", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${secret}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          idempotencyKey: `onboarding-${apiKey.id}-${crypto.randomUUID()}`,
+          agent: {
+            externalId: `onboarding-${apiKey.id}`,
+            name: `${apiKey.name} connection check`,
+            ownerEmail: "platform@example.com",
+            team: "Platform Engineering",
+            provider: "SentinelOps quickstart",
+          },
+          action: "system.health.read",
+          resource: "sentinelops://credential-test",
+          environment: "development",
+          riskHint: "low",
+          context: { onboardingTest: true },
+        }),
+      });
+      const payload = (await response.json()) as {
+        status?: string;
+        requestId?: string;
+        error?: string;
+      };
+      if (!response.ok || !payload.status || !payload.requestId) {
+        throw new Error(payload.error || "Credential test failed.");
+      }
+      setTestState("verified");
+      setTestMessage(`Connected. SentinelOps returned ${payload.status}.`);
+      onTested(apiKey.id);
+    } catch (testError) {
+      setTestState("failed");
+      setTestMessage(
+        testError instanceof Error ? testError.message : "Credential test failed.",
+      );
     }
   }
 
@@ -465,6 +540,27 @@ function SecretRevealDialog({
               {copied ? <Check className="h-4 w-4 text-sentinel-lime" /> : <Copy className="h-4 w-4" />}
             </button>
           </div>
+        </div>
+        <div className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 ${testState === "verified" ? "border-sentinel-lime/25 bg-sentinel-lime/10" : testState === "failed" ? "border-sentinel-red/30 bg-sentinel-red/10" : "border-sentinel-line bg-sentinel-raised/50"}`}>
+          <Wifi className={`mt-0.5 h-4 w-4 shrink-0 ${testState === "verified" ? "text-sentinel-lime" : testState === "failed" ? "text-red-300" : "text-sentinel-muted"}`} />
+          <div className="min-w-0 flex-1">
+            <strong className="block text-xs font-semibold text-sentinel-text">Verify before installing</strong>
+            <p className="mt-1 text-[11px] leading-5 text-sentinel-muted">
+              {testMessage || "Send a harmless development health-read through the real policy engine."}
+            </p>
+          </div>
+          {testState !== "verified" ? (
+            <button
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-sentinel-line px-2.5 text-[11px] font-semibold text-sentinel-text transition hover:border-sentinel-lime/40 disabled:cursor-wait"
+              onClick={() => void testConnection()}
+              disabled={testState === "testing"}
+            >
+              {testState === "testing" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Wifi className="h-3.5 w-3.5" />}
+              {testState === "testing" ? "Testing…" : "Test connection"}
+            </button>
+          ) : (
+            <Check className="h-4 w-4 shrink-0 text-sentinel-lime" />
+          )}
         </div>
         {error ? <div className="rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-200">{error}</div> : null}
         <div className="flex justify-end border-t border-sentinel-line pt-5"><button className="primary-button" onClick={onClose}>I saved this key</button></div>
