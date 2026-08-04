@@ -18,6 +18,7 @@ import {
   type ExecutionStatus,
 } from "./execution-state";
 import { AuthenticationError, ConflictError, NotFoundError } from "./errors";
+import { getServerEnv } from "./env";
 import { enqueueActionApprovalNotification } from "./notification-outbox";
 
 interface ActionRequestRow {
@@ -179,7 +180,12 @@ export async function evaluateAction(
           ? "allowed"
           : "blocked";
     const expiresAt =
-      status === "pending" ? new Date(Date.now() + 30 * 60 * 1_000) : null;
+      status === "pending"
+        ? new Date(
+            Date.now() +
+              getServerEnv().ACTION_APPROVAL_TTL_MINUTES * 60 * 1_000,
+          )
+        : null;
 
     const requestResult = await client.query<ActionRequestRow>(
       `

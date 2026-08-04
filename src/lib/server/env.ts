@@ -10,6 +10,7 @@ const serverEnvSchema = z.object({
   SENTINELOPS_ADMIN_TOKEN: z.string().min(32).optional(),
   SLACK_APPROVAL_WEBHOOK_URL: z.string().url().optional(),
   SENTINELOPS_CRON_SECRET: z.string().min(32).optional(),
+  ACTION_APPROVAL_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
   POLICY_ACTIVATION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   POLICY_ACTIVATION_REMINDER_MINUTES: z.coerce.number().int().min(5).max(1440).default(240),
   GITHUB_TOKEN: z.string().min(1).optional(),
@@ -42,6 +43,8 @@ export function getServerEnv(): ServerEnv {
       process.env.CRON_SECRET ||
       process.env.SENTINELOPS_CRON_SECRET ||
       undefined,
+    ACTION_APPROVAL_TTL_MINUTES:
+      process.env.ACTION_APPROVAL_TTL_MINUTES || undefined,
     POLICY_ACTIVATION_TTL_HOURS:
       process.env.POLICY_ACTIVATION_TTL_HOURS || undefined,
     POLICY_ACTIVATION_REMINDER_MINUTES:

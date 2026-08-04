@@ -90,6 +90,7 @@ DB_SSL=true
 DB_SSL_REJECT_UNAUTHORIZED=true
 DB_POOL_MAX=5
 CRON_SECRET=<at least 32 random characters>
+ACTION_APPROVAL_TTL_MINUTES=1440
 POLICY_ACTIVATION_TTL_HOURS=24
 POLICY_ACTIVATION_REMINDER_MINUTES=240
 SLACK_APPROVAL_WEBHOOK_URL=<optional staging-only webhook>
@@ -102,6 +103,10 @@ staging project runs each worker once per day because that plan does not permit
 more frequent cron jobs. Before a pilot, use a plan that supports a one-minute
 outbox and five-minute reminder schedule, or configure an external scheduler to
 call the same authenticated routes.
+
+`ACTION_APPROVAL_TTL_MINUTES` controls how long a consequential action remains
+available for human review. Local development defaults to 30 minutes; staging
+uses 1,440 minutes so a manual demonstration remains available for one day.
 
 Create a GitHub environment named `staging` and add four environment secrets:
 
