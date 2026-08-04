@@ -229,8 +229,13 @@ used in the recording.
 - `GET /api/v1/audit/integrity` requires an authenticated operator session and
   recomputes every event hash and previous-hash link across organization audit
   chains. The Audit Log exposes this as **Verify integrity**.
-- `PATCH /api/v1/policies/:policyId` requires an `admin`, updates enforcement
-  state, and records audit evidence.
+- `POST /api/v1/policies` requires an `admin`, validates a guided set of
+  conditions, and creates an organization-scoped policy. New policies can be
+  saved as inactive drafts before they begin enforcing actions.
+- `PATCH /api/v1/policies/:policyId` requires an `admin`, validates any changed
+  policy fields, updates the organization-scoped rule, and records the exact
+  changed fields as audit evidence. The Policies screen provides create/edit
+  controls and a first-match decision preview before activation.
 - `GET /api/v1/api-keys` lets an `admin` list safe credential metadata without
   exposing plaintext keys or stored hashes.
 - `POST /api/v1/api-keys` creates an organization-scoped agent credential and

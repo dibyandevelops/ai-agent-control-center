@@ -62,6 +62,7 @@ import type {
 import { OperatorManagement } from "@/components/operator-management";
 import { PasswordChangeDialog } from "@/components/password-change-dialog";
 import { ApiKeyManagement } from "@/components/api-key-management";
+import { PolicyEditorDialog } from "@/components/policy-editor-dialog";
 
 type View =
   | "overview"
@@ -749,17 +750,27 @@ function ApprovalsView({
 function PoliciesView({
   policies,
   onToggle,
+  onSaved,
   canManage,
 }: {
   policies: Policy[];
   onToggle: (id: string) => void;
+  onSaved: (policy: Policy) => void;
   canManage: boolean;
 }) {
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
+
+  function openEditor(policy: Policy | null) {
+    setEditingPolicy(policy);
+    setEditorOpen(true);
+  }
+
   return (
     <main className="page">
       <div className="page-title-row">
         <div><h2>Policy engine</h2><p>Turn governance requirements into controls that execute on every agent action.</p></div>
-        <button className="primary-button primary-large"><Plus /> Create policy</button>
+        <button className="primary-button primary-large" onClick={() => openEditor(null)} disabled={!canManage}><Plus /> Create policy</button>
       </div>
       <div className="policy-layout">
         <section className="panel policy-list">
@@ -777,6 +788,13 @@ function PoliciesView({
                 <p>{policy.description}</p>
                 <small>{policy.scope} · {policy.matches} matches in 7 days</small>
               </div>
+              <button
+                className="rounded-lg border border-sentinel-line px-3 py-2 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text disabled:opacity-40"
+                onClick={() => openEditor(policy)}
+                disabled={!canManage}
+              >
+                Edit
+              </button>
               <button
                 role="switch"
                 aria-checked={policy.enabled}
@@ -802,6 +820,16 @@ function PoliciesView({
           </div>
         </aside>
       </div>
+      {editorOpen ? (
+        <PolicyEditorDialog
+          policy={editingPolicy}
+          onClose={() => setEditorOpen(false)}
+          onSaved={(savedPolicy) => {
+            onSaved(savedPolicy);
+            setEditorOpen(false);
+          }}
+        />
+      ) : null}
     </main>
   );
 }
@@ -1839,6 +1867,19 @@ export function ControlCenter() {
     if (policy) setToast(`${policy.name} ${policy.enabled ? "disabled" : "enabled"}.`);
   }
 
+  function savePolicy(policy: Policy) {
+    setPolicyList((current) => {
+      const exists = current.some((item) => item.id === policy.id);
+      const next = exists
+        ? current.map((item) => (item.id === policy.id ? policy : item))
+        : [...current, policy];
+      return next.toSorted(
+        (left, right) => (left.priority ?? 100) - (right.priority ?? 100),
+      );
+    });
+    setToast(`${policy.name} was saved${policy.enabled ? " and activated" : " as a draft"}.`);
+  }
+
   function openRegisterDialog() {
     if (workspaceMode === "live") {
       setToast(
@@ -1904,6 +1945,7 @@ export function ControlCenter() {
           <PoliciesView
             policies={policyList}
             onToggle={togglePolicy}
+            onSaved={savePolicy}
             canManage={canManagePolicies}
           />
         )}

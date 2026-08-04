@@ -76,6 +76,13 @@ export interface Policy {
   description: string;
   scope: string;
   mode: "Block" | "Approval" | "Monitor";
+  effect?: "block" | "approval" | "allow";
+  priority?: number;
+  conditions?: Array<{
+    field: string;
+    operator: "eq" | "in" | "gte" | "contains";
+    value: string | number | boolean | Array<string | number | boolean>;
+  }>;
   enabled: boolean;
   matches: number;
 }

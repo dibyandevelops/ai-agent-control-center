@@ -94,7 +94,13 @@ export async function GET() {
           name: string;
           description: string;
           effect: "allow" | "approval" | "block";
+          priority: number;
           enabled: boolean;
+          conditions: { all: Array<{
+            field: string;
+            operator: "eq" | "in" | "gte" | "contains";
+            value: string | number | boolean | Array<string | number | boolean>;
+          }> };
           matches: string;
         }>(`
           select
@@ -102,7 +108,9 @@ export async function GET() {
             p.name,
             p.description,
             p.effect,
+            p.priority,
             p.enabled,
+            p.conditions,
             count(ar.id)::text as matches
           from policies p
           left join action_requests ar
@@ -201,6 +209,9 @@ export async function GET() {
             : row.effect === "approval"
               ? "Approval"
               : "Monitor",
+        effect: row.effect,
+        priority: row.priority,
+        conditions: row.conditions.all,
         enabled: row.enabled,
         matches: Number(row.matches),
       })),
