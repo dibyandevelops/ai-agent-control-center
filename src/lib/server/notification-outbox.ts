@@ -2,6 +2,7 @@ import "server-only";
 
 import type { PoolClient } from "pg";
 import { z } from "zod";
+import { scheduleNotificationOutboxDispatch } from "./notification-dispatch";
 
 export type PolicyNotificationKind =
   | "requested"
@@ -94,6 +95,12 @@ export type GitHubAppLifecycleAlertPayload = z.infer<
   typeof githubAppLifecycleAlertSchema
 >;
 
+function notificationEnqueueResult(result: { rows: { id: string }[] }) {
+  const id = result.rows[0]?.id ?? null;
+  if (id) scheduleNotificationOutboxDispatch();
+  return { enqueued: Boolean(id), id };
+}
+
 export async function enqueueGitHubAppLifecycleAlert(
   client: PoolClient,
   input: {
@@ -117,7 +124,7 @@ export async function enqueueGitHubAppLifecycleAlert(
       JSON.stringify(payload),
     ],
   );
-  return { enqueued: Boolean(result.rows[0]), id: result.rows[0]?.id ?? null };
+  return notificationEnqueueResult(result);
 }
 
 export async function enqueueGitHubDriftNotification(
@@ -142,7 +149,7 @@ export async function enqueueGitHubDriftNotification(
       JSON.stringify(input.payload),
     ],
   );
-  return { enqueued: Boolean(result.rows[0]), id: result.rows[0]?.id ?? null };
+  return notificationEnqueueResult(result);
 }
 
 export async function enqueueReleaseGovernanceNotification(
@@ -167,7 +174,7 @@ export async function enqueueReleaseGovernanceNotification(
       JSON.stringify(input.payload),
     ],
   );
-  return { enqueued: Boolean(result.rows[0]), id: result.rows[0]?.id ?? null };
+  return notificationEnqueueResult(result);
 }
 
 export async function enqueueReleaseExecutionFailureNotification(
@@ -196,7 +203,7 @@ export async function enqueueReleaseExecutionFailureNotification(
       JSON.stringify(input.payload),
     ],
   );
-  return { enqueued: Boolean(result.rows[0]), id: result.rows[0]?.id ?? null };
+  return notificationEnqueueResult(result);
 }
 
 export async function enqueueActionApprovalNotification(
@@ -225,7 +232,7 @@ export async function enqueueActionApprovalNotification(
       JSON.stringify(input.payload),
     ],
   );
-  return { enqueued: Boolean(result.rows[0]), id: result.rows[0]?.id ?? null };
+  return notificationEnqueueResult(result);
 }
 
 export async function enqueuePolicyActivationNotification(
@@ -261,5 +268,5 @@ export async function enqueuePolicyActivationNotification(
       JSON.stringify(input.payload),
     ],
   );
-  return { enqueued: Boolean(result.rows[0]), id: result.rows[0]?.id ?? null };
+  return notificationEnqueueResult(result);
 }

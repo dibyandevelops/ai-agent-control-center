@@ -175,11 +175,15 @@ curl --fail --request POST \
 
 The dispatcher is disabled when the secret is absent. It marks overdue reviews
 expired, queues a reminder on the first due interval, and escalates subsequent
-due intervals. The outbox worker claims up to 50 notifications without blocking
-other workers, performs Slack delivery after committing the claim, and retries
-failures with exponential backoff. After five failed attempts, the notification
-is retained in a dead-letter state for investigation. Slack delivery is enabled
-only when `SLACK_APPROVAL_WEBHOOK_URL` is configured.
+due intervals. Newly queued notifications trigger the authenticated outbox
+worker after the originating API response, so Slack alerts normally arrive in
+near real time without adding delivery latency to the request. The scheduled
+route remains the recovery path if that immediate trigger fails. The outbox
+worker claims up to 50 notifications without blocking other workers, performs
+Slack delivery after committing the claim, and retries failures with
+exponential backoff. After five failed attempts, the notification is retained
+in a dead-letter state for investigation. Slack delivery is enabled only when
+`SLACK_APPROVAL_WEBHOOK_URL` is configured.
 
 Approved `deploy.release` and `github.release.create` requests are claimed by
 the automated release worker immediately after the approval response. Claims
@@ -466,8 +470,11 @@ used in the recording.
 - `GET` or `POST /api/v1/internal/notification-outbox` requires the same cron
   bearer secret. It reclaims stale worker leases, delivers due notifications in
   bounded batches, schedules exponential retries, and dead-letters terminal
-  failures without losing their payload or audit history. This includes GitHub
-  App lifecycle alerts for suspension, disconnection, and repository removal.
+  failures without losing their payload or audit history. Successful outbox
+  inserts also schedule this worker immediately after the API response; the
+  cron invocation is durable recovery rather than the normal delivery path.
+  This includes GitHub App lifecycle alerts for suspension, disconnection, and
+  repository removal.
 - `POST /api/v1/notifications/retry-dead` requires an administrator. It returns
   up to 100 failed notifications to the delivery queue and records each manual
   recovery in the audit chain. The same recovery control appears on the live
