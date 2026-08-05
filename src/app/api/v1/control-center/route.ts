@@ -365,6 +365,7 @@ export async function GET() {
     );
     const githubAppConnected = githubAppConfigured && githubAppRegistered;
     const githubConnected = githubAppConnected;
+    const githubConnectionStatus = githubConnections[0]?.status;
     const githubWebhookConfigured = Boolean(
       env.GITHUB_WEBHOOK_SECRET && githubAppRegistered,
     );
@@ -377,7 +378,7 @@ export async function GET() {
       ? "verified"
       : githubConnected
         ? "configured"
-        : githubAppRegistered
+        : githubConnections.length > 0
           ? "attention"
           : "not_connected";
     const notificationOutbox = notificationOutboxResult.rows[0];
@@ -552,6 +553,10 @@ export async function GET() {
           category: "Engineering",
           events: githubDriftResult.rows.length > 0
             ? `${githubDriftResult.rows.length} active governance incident${githubDriftResult.rows.length === 1 ? "" : "s"}`
+            : githubConnectionStatus === "suspended"
+            ? "Installation suspended"
+            : githubConnectionStatus === "disconnected"
+            ? "Installation disconnected"
             : latestGitHubEvidence
             ? "Governed draft verified"
             : githubConnected
@@ -564,6 +569,10 @@ export async function GET() {
           mode:
             activeCriticalContainments > 0
               ? `Release containment active · ${activeCriticalContainments} target${activeCriticalContainments === 1 ? "" : "s"} frozen`
+              : githubConnectionStatus === "suspended"
+              ? "GitHub App installation suspended"
+              : githubConnectionStatus === "disconnected"
+              ? "GitHub App installation disconnected"
               : githubAppRegistered && !githubAppConfigured
               ? "GitHub App credentials required"
               : env.RELEASE_EXECUTION_MODE === "github_draft"

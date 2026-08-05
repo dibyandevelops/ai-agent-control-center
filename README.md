@@ -353,7 +353,8 @@ On the SentinelOps GitHub App, configure:
 - Payload URL: `https://your-sentinelops-host/api/v1/webhooks/github`
 - Content type: `application/json`
 - Secret: the same value as `GITHUB_WEBHOOK_SECRET`
-- Events: select **Releases**
+- Events: select **Releases**. GitHub sends the mandatory **Installation** and
+  **Installation repositories** events to GitHub Apps automatically.
 
 The endpoint verifies `X-Hub-Signature-256` against the unmodified request body
 and deduplicates `X-GitHub-Delivery`. Release creation, publication, and
@@ -366,6 +367,12 @@ for the affected repository and tag. Acknowledgment does not lift that freeze;
 an administrator must record a remediation note and explicitly resolve the
 incident. Resolution removes containment and resumes any already-approved
 operation that was waiting behind it.
+
+The same signed endpoint immediately applies GitHub App lifecycle changes.
+Suspended installations stop issuing repository credentials, deleted
+installations are retained as disconnected audit evidence, and repositories
+removed from an installation are disabled for that SentinelOps organization.
+Delivery IDs make these updates safe when GitHub retries a webhook.
 
 Optional `.env.local` values let you customize the demonstration:
 
@@ -410,9 +417,10 @@ used in the recording.
 - The live **Approvals** view includes a separate release-governance queue with
   deadline countdowns, urgency and escalation indicators, full evidence links,
   independent review controls, and recovery for failed GitHub operations.
-- `POST /api/v1/webhooks/github` verifies signed GitHub `release` deliveries,
-  deduplicates replays, reconciles each mutation with SentinelOps evidence, and
-  records unmatched mutations as release-drift incidents.
+- `POST /api/v1/webhooks/github` verifies and deduplicates signed GitHub
+  `release`, `installation`, and `installation_repositories` deliveries. It
+  reconciles release mutations with SentinelOps evidence and immediately
+  enforces installation suspension, deletion, and repository access changes.
 - `GET/POST /api/v1/github/connections` lists or connects GitHub App
   installations only for the signed-in administrator's organization.
 - `POST /api/v1/github/connections/:connectionId/sync` refreshes the authorized

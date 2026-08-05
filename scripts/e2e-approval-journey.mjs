@@ -44,6 +44,10 @@ const githubWebhookSecret = randomBytes(32).toString("hex");
 const connectedRepository = remoteBaseUrl
   ? process.env.SENTINELOPS_E2E_REPOSITORY || "sentinelops/platform"
   : `sentinelops/e2e-${runId}`;
+const githubInstallationId = Number.parseInt(
+  createHash("sha256").update(runId).digest("hex").slice(0, 12),
+  16,
+);
 let organizationId = null;
 let server = null;
 
@@ -136,7 +140,7 @@ async function setupTenant() {
          returning id`,
         [
           organizationId,
-          Number.parseInt(createHash("sha256").update(runId).digest("hex").slice(0, 12), 16),
+          githubInstallationId,
           operator.rows[0].id,
           operatorEmail,
         ],
@@ -919,6 +923,118 @@ async function exerciseJourney(baseUrl) {
   );
   }
 
+  let lifecycleEvents = 0;
+  if (!remoteBaseUrl) {
+    const lifecycleRepository = `sentinelops/lifecycle-${runId}`;
+    const installation = {
+      id: githubInstallationId,
+      account: { login: "sentinelops-e2e", type: "Organization" },
+      repository_selection: "selected",
+      permissions: { contents: "write", metadata: "read" },
+      suspended_at: null,
+    };
+    const sendLifecycle = async (eventName, payload, deliveryId = randomUUID()) => {
+      const body = JSON.stringify(payload);
+      const signature = `sha256=${createHmac("sha256", githubWebhookSecret)
+        .update(body)
+        .digest("hex")}`;
+      return jsonRequest(`${baseUrl}/api/v1/webhooks/github`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-github-event": eventName,
+          "x-github-delivery": deliveryId,
+          "x-hub-signature-256": signature,
+        },
+        body,
+      });
+    };
+
+    const repositoryDeliveryId = randomUUID();
+    const repositoryAddedPayload = {
+      action: "added",
+      installation,
+      repository_selection: "selected",
+      repositories_added: [{
+        id: Number.parseInt(
+          createHash("sha256").update(`${runId}:lifecycle`).digest("hex").slice(0, 12),
+          16,
+        ),
+        full_name: lifecycleRepository,
+        name: lifecycleRepository.split("/")[1],
+        private: true,
+        default_branch: "main",
+        owner: { login: "sentinelops" },
+      }],
+      repositories_removed: [],
+      sender: { login: "github-installation-owner" },
+    };
+    const repositoryAdded = await sendLifecycle(
+      "installation_repositories",
+      repositoryAddedPayload,
+      repositoryDeliveryId,
+    );
+    assert.equal(repositoryAdded.response.status, 202);
+    assert.equal(repositoryAdded.payload.status, "updated");
+    assert.deepEqual(repositoryAdded.payload.addedRepositories, [lifecycleRepository]);
+    lifecycleEvents += 1;
+
+    const duplicateRepositoryAdded = await sendLifecycle(
+      "installation_repositories",
+      repositoryAddedPayload,
+      repositoryDeliveryId,
+    );
+    assert.equal(duplicateRepositoryAdded.response.status, 200);
+    assert.equal(duplicateRepositoryAdded.payload.status, "duplicate");
+
+    const repositoryRemoved = await sendLifecycle("installation_repositories", {
+      ...repositoryAddedPayload,
+      action: "removed",
+      repositories_added: [],
+      repositories_removed: repositoryAddedPayload.repositories_added,
+    });
+    assert.equal(repositoryRemoved.response.status, 202);
+    assert.equal(repositoryRemoved.payload.status, "updated");
+    assert.deepEqual(repositoryRemoved.payload.removedRepositories, [lifecycleRepository]);
+    lifecycleEvents += 1;
+
+    for (const [action, expectedStatus] of [
+      ["suspend", "suspended"],
+      ["unsuspend", "active"],
+      ["deleted", "disconnected"],
+    ]) {
+      const changed = await sendLifecycle("installation", {
+        action,
+        installation: {
+          ...installation,
+          suspended_at: action === "suspend" ? new Date().toISOString() : null,
+        },
+        sender: { login: "github-installation-owner" },
+      });
+      assert.equal(changed.response.status, 202);
+      assert.equal(changed.payload.status, "updated");
+      assert.equal(changed.payload.connectionStatus, expectedStatus);
+      lifecycleEvents += 1;
+    }
+
+    const lifecycleWorkspace = await jsonRequest(`${baseUrl}/api/v1/control-center`, {
+      headers: { cookie },
+    });
+    const lifecycleGitHub = lifecycleWorkspace.payload.integrations.find(
+      (integration) => integration.name === "GitHub",
+    );
+    assert.equal(lifecycleGitHub.connected, false);
+    assert.equal(lifecycleGitHub.status, "attention");
+    assert.match(lifecycleGitHub.mode, /installation disconnected/i);
+    assert.equal(lifecycleGitHub.githubConnections[0].status, "disconnected");
+    assert.equal(
+      lifecycleGitHub.githubConnections[0].repositories.every(
+        (repository) => repository.enabled === false,
+      ),
+      true,
+    );
+  }
+
   const integrity = await jsonRequest(`${baseUrl}/api/v1/audit/integrity`, {
     headers: { cookie },
   });
@@ -937,6 +1053,7 @@ async function exerciseJourney(baseUrl) {
     driftNotifications,
     containmentBlocks,
     containmentResolutions,
+    lifecycleEvents,
   };
 }
 
@@ -990,6 +1107,7 @@ try {
   console.log(`GitHub drift alerts queued: ${result.driftNotifications}`);
   console.log(`Critical containment blocks enforced: ${result.containmentBlocks}`);
   console.log(`Critical containments resolved: ${result.containmentResolutions}`);
+  console.log(`GitHub App lifecycle changes enforced: ${result.lifecycleEvents}`);
   }
 } finally {
   await cleanup();

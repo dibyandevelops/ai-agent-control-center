@@ -9,6 +9,12 @@ import {
   getGitHubInstallation,
   listGitHubInstallationRepositories,
 } from "./github-app";
+import {
+  installationStatusForAction,
+  lifecycleAuditEvent,
+  type GitHubInstallationRepositoriesWebhook,
+  type GitHubInstallationWebhook,
+} from "./github-app-lifecycle";
 
 export interface GitHubConnectionSummary {
   id: string;
@@ -42,7 +48,7 @@ export async function listOrganizationGitHubConnections(organizationId: string) 
     `select id, github_installation_id::text, account_login, account_type,
             status, repository_selection, last_synced_at
        from github_app_installations
-      where organization_id = $1 and status <> 'disconnected'
+      where organization_id = $1
       order by account_login, created_at`,
     [organizationId],
   );
@@ -270,4 +276,190 @@ export async function resolveGitHubRepositoryCredential(input: {
   }
 
   throw new Error(`Repository ${input.repository} is not connected to this organization.`);
+}
+
+type GitHubLifecycleInput =
+  | {
+      eventName: "installation";
+      deliveryId: string;
+      payload: GitHubInstallationWebhook;
+    }
+  | {
+      eventName: "installation_repositories";
+      deliveryId: string;
+      payload: GitHubInstallationRepositoriesWebhook;
+    };
+
+export async function applyGitHubAppLifecycleEvent(input: GitHubLifecycleInput) {
+  return withTransaction(async (client) => {
+    const found = await client.query<{
+      id: string;
+      organization_id: string;
+      status: "active" | "suspended" | "disconnected";
+    }>(
+      `select id, organization_id, status
+         from github_app_installations
+        where github_installation_id = $1
+        for update`,
+      [input.payload.installation.id],
+    );
+    const connection = found.rows[0];
+    const senderLogin = input.payload.sender.login;
+    if (!connection) {
+      await client.query(
+        `insert into github_webhook_deliveries (
+           delivery_id, event_name, event_action, sender_login, outcome
+         ) values ($1, $2, $3, $4, 'ignored')
+         on conflict (delivery_id) do nothing`,
+        [input.deliveryId, input.eventName, input.payload.action, senderLogin],
+      );
+      return { status: "ignored" as const, reason: "installation_not_connected" as const };
+    }
+
+    const delivery = await client.query<{ delivery_id: string }>(
+      `insert into github_webhook_deliveries (
+         delivery_id, organization_id, event_name, event_action,
+         repository, sender_login, outcome
+       ) values ($1, $2, $3, $4, $5, $6, 'authorized')
+       on conflict (delivery_id) do nothing
+       returning delivery_id`,
+      [
+        input.deliveryId,
+        connection.organization_id,
+        input.eventName,
+        input.payload.action,
+        input.eventName === "installation_repositories"
+          ? input.payload.repositories_added[0]?.full_name ??
+            input.payload.repositories_removed[0]?.full_name ??
+            null
+          : null,
+        senderLogin,
+      ],
+    );
+    if (!delivery.rows[0]) return { status: "duplicate" as const };
+
+    let connectionStatus = connection.status;
+    const addedRepositories: string[] = [];
+    let removedRepositories: string[] = [];
+    if (input.eventName === "installation") {
+      connectionStatus = installationStatusForAction(input.payload.action);
+      await client.query(
+        `update github_app_installations
+            set account_login = $2,
+                account_type = $3,
+                status = $4,
+                repository_selection = $5,
+                permissions = $6::jsonb,
+                last_synced_at = now(),
+                updated_at = now()
+          where id = $1`,
+        [
+          connection.id,
+          input.payload.installation.account.login,
+          input.payload.installation.account.type,
+          connectionStatus,
+          input.payload.installation.repository_selection,
+          JSON.stringify(input.payload.installation.permissions),
+        ],
+      );
+      if (connectionStatus === "disconnected") {
+        const disabled = await client.query<{ full_name: string }>(
+          `update github_app_repositories
+              set enabled = false, updated_at = now()
+            where installation_id = $1 and organization_id = $2 and enabled = true
+            returning full_name`,
+          [connection.id, connection.organization_id],
+        );
+        removedRepositories = disabled.rows.map((row) => row.full_name);
+      }
+    } else {
+      await client.query(
+        `update github_app_installations
+            set repository_selection = $2,
+                last_synced_at = now(),
+                updated_at = now()
+          where id = $1`,
+        [connection.id, input.payload.repository_selection],
+      );
+      for (const repository of input.payload.repositories_removed) {
+        const disabled = await client.query<{ full_name: string }>(
+          `update github_app_repositories
+              set enabled = false, last_synced_at = now(), updated_at = now()
+            where installation_id = $1
+              and organization_id = $2
+              and (github_repository_id = $3 or lower(full_name) = lower($4))
+            returning full_name`,
+          [connection.id, connection.organization_id, repository.id, repository.full_name],
+        );
+        removedRepositories.push(...disabled.rows.map((row) => row.full_name));
+      }
+      for (const repository of input.payload.repositories_added) {
+        const [ownerFromName, repositoryFromName] = repository.full_name.split("/");
+        const values = [
+          connection.organization_id,
+          connection.id,
+          repository.id,
+          repository.full_name,
+          repository.owner?.login ?? ownerFromName,
+          repository.name ?? repositoryFromName,
+          repository.private,
+          repository.default_branch,
+        ];
+        const updated = await client.query<{ full_name: string }>(
+          `update github_app_repositories
+              set installation_id = $2,
+                  github_repository_id = $3,
+                  full_name = $4,
+                  owner_login = $5,
+                  name = $6,
+                  private = $7,
+                  default_branch = $8,
+                  enabled = true,
+                  last_synced_at = now(),
+                  updated_at = now()
+            where organization_id = $1
+              and ((installation_id = $2 and github_repository_id = $3)
+                   or lower(full_name) = lower($4))
+            returning full_name`,
+          values,
+        );
+        if (!updated.rows[0]) {
+          await client.query(
+            `insert into github_app_repositories (
+               organization_id, installation_id, github_repository_id, full_name,
+               owner_login, name, private, default_branch, enabled, last_synced_at
+             ) values ($1, $2, $3, $4, $5, $6, $7, $8, true, now())`,
+            values,
+          );
+        }
+        addedRepositories.push(repository.full_name);
+      }
+    }
+
+    await appendAuditEvent(client, {
+      organizationId: connection.organization_id,
+      requestId: null,
+      eventType: lifecycleAuditEvent({
+        eventName: input.eventName,
+        action: input.payload.action,
+      }),
+      actorType: "system",
+      actorId: `github:${senderLogin}`,
+      payload: {
+        status: connectionStatus,
+        deliveryId: input.deliveryId,
+        installationId: String(input.payload.installation.id),
+        accountLogin: input.payload.installation.account.login,
+        action: input.payload.action,
+        addedRepositories,
+        removedRepositories,
+      },
+    });
+    return {
+      status: "updated" as const,
+      connectionStatus,
+      addedRepositories,
+      removedRepositories,
+    };
+  });
 }

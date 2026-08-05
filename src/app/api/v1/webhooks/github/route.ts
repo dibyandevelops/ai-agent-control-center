@@ -3,6 +3,11 @@ import { appendAuditEvent } from "@/lib/server/audit";
 import { getPool, withTransaction } from "@/lib/server/db";
 import { getServerEnv } from "@/lib/server/env";
 import {
+  githubInstallationRepositoriesWebhookSchema,
+  githubInstallationWebhookSchema,
+} from "@/lib/server/github-app-lifecycle";
+import { applyGitHubAppLifecycleEvent } from "@/lib/server/github-connections";
+import {
   classifyGitHubReleaseMutation,
   githubReleaseWebhookSchema,
   verifyGitHubWebhookSignature,
@@ -38,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     const eventName = request.headers.get("x-github-event");
     if (eventName === "ping") return NextResponse.json({ status: "pong" });
-    if (eventName !== "release") {
+    if (!["release", "installation", "installation_repositories"].includes(eventName ?? "")) {
       return NextResponse.json({ status: "ignored", reason: "unsupported_event" }, { status: 202 });
     }
     const deliveryId = request.headers.get("x-github-delivery")?.trim();
@@ -50,6 +55,24 @@ export async function POST(request: NextRequest) {
       json = JSON.parse(body);
     } catch {
       return NextResponse.json({ error: "GitHub webhook payload must be valid JSON." }, { status: 400 });
+    }
+    if (eventName === "installation" || eventName === "installation_repositories") {
+      const result = await applyGitHubAppLifecycleEvent(
+        eventName === "installation"
+          ? {
+              eventName,
+              deliveryId,
+              payload: githubInstallationWebhookSchema.parse(json),
+            }
+          : {
+              eventName,
+              deliveryId,
+              payload: githubInstallationRepositoriesWebhookSchema.parse(json),
+            },
+      );
+      return NextResponse.json(result, {
+        status: result.status === "duplicate" ? 200 : 202,
+      });
     }
     const payload = githubReleaseWebhookSchema.parse(json);
     const repositoryOwner = await getPool().query<{ organization_id: string }>(
