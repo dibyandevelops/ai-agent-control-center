@@ -92,12 +92,13 @@ export async function POST(request: NextRequest) {
       const resource = `${payload.repository.full_name}@${payload.release.tag_name}`;
       const evidenceResult = await client.query<{
         id: string;
+        organization_id: string;
         execution_status: "executing" | "succeeded" | string;
         publication_status: "executing" | "succeeded" | null;
         cancellation_status: "executing" | "succeeded" | null;
       }>(
         `
-          select action.id, action.execution_status,
+          select action.id, action.organization_id, action.execution_status,
                  publication.status as publication_status,
                  cancellation.status as cancellation_status
           from action_requests action
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
             from release_draft_governance_requests governance
             where governance.action_request_id = action.id
               and governance.operation = 'publish'
-              and governance.status = any($3::text[])
+              and governance.status = any($2::text[])
             order by governance.requested_at desc
             limit 1
           ) publication on true
@@ -115,19 +116,22 @@ export async function POST(request: NextRequest) {
             from release_draft_governance_requests governance
             where governance.action_request_id = action.id
               and governance.operation = 'cancel'
-              and governance.status = any($3::text[])
+              and governance.status = any($2::text[])
             order by governance.requested_at desc
             limit 1
           ) cancellation on true
-          where action.organization_id = $1
-            and lower(action.resource) = lower($2)
+          where lower(action.resource) = lower($1)
             and action.action in ('deploy.release', 'github.release.create')
           order by action.requested_at desc
           limit 1
         `,
-        [organization.id, resource, supportedEvidenceStatuses],
+        [resource, supportedEvidenceStatuses],
       );
       const evidence = evidenceResult.rows[0];
+      // Governed executions can belong to a temporary verification tenant while
+      // the repository-level webhook has one configured fallback owner. Exact
+      // action evidence wins; unknown mutations remain assigned to that owner.
+      const evidenceOrganizationId = evidence?.organization_id ?? organization.id;
       const classification = classifyGitHubReleaseMutation({
         action: payload.action,
         draft: payload.release.draft,
@@ -151,7 +155,7 @@ export async function POST(request: NextRequest) {
         `,
         [
           deliveryId,
-          organization.id,
+          evidenceOrganizationId,
           payload.action,
           payload.repository.full_name,
           payload.release.tag_name,
@@ -175,7 +179,7 @@ export async function POST(request: NextRequest) {
             returning id
           `,
           [
-            organization.id,
+            evidenceOrganizationId,
             evidence?.id ?? null,
             deliveryId,
             payload.repository.full_name,
@@ -190,7 +194,7 @@ export async function POST(request: NextRequest) {
         );
         incidentId = incident.rows[0].id;
         const notification = await enqueueGitHubDriftNotification(client, {
-          organizationId: organization.id,
+          organizationId: evidenceOrganizationId,
           payload: {
             incidentId,
             requestId: evidence?.id ?? null,
@@ -206,7 +210,7 @@ export async function POST(request: NextRequest) {
         notificationOutboxId = notification.id;
       }
       await appendAuditEvent(client, {
-        organizationId: organization.id,
+        organizationId: evidenceOrganizationId,
         requestId: evidence?.id ?? null,
         eventType: classification.outcome === "drift"
           ? "github.release_drift_detected"
