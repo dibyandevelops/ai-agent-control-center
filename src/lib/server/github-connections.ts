@@ -3,7 +3,6 @@ import "server-only";
 import type { PoolClient } from "pg";
 import { appendAuditEvent } from "./audit";
 import { getPool, withTransaction } from "./db";
-import { getServerEnv } from "./env";
 import {
   assertGitHubReleasePermissions,
   createGitHubInstallationToken,
@@ -270,12 +269,5 @@ export async function resolveGitHubRepositoryCredential(input: {
     return { token: access.token, mode: "github_app" as const };
   }
 
-  const env = getServerEnv();
-  if (
-    env.GITHUB_TOKEN && env.GITHUB_REPOSITORY &&
-    env.GITHUB_REPOSITORY.toLowerCase() === input.repository.toLowerCase()
-  ) {
-    return { token: env.GITHUB_TOKEN, mode: "legacy_pat" as const };
-  }
   throw new Error(`Repository ${input.repository} is not connected to this organization.`);
 }

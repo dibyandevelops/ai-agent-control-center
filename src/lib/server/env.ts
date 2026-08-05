@@ -13,23 +13,12 @@ const serverEnvSchema = z.object({
   ACTION_APPROVAL_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
   POLICY_ACTIVATION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   POLICY_ACTIVATION_REMINDER_MINUTES: z.coerce.number().int().min(5).max(1440).default(240),
-  GITHUB_TOKEN: z.string().min(1).optional(),
   GITHUB_APP_ID: z.string().regex(/^\d+$/).optional(),
   GITHUB_APP_SLUG: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
   GITHUB_APP_CLIENT_ID: z.string().min(10).optional(),
   GITHUB_APP_CLIENT_SECRET: z.string().min(20).optional(),
   GITHUB_APP_PRIVATE_KEY: z.string().min(100).optional(),
   GITHUB_WEBHOOK_SECRET: z.string().min(32).optional(),
-  GITHUB_WEBHOOK_ORGANIZATION_SLUG: z
-    .string()
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-    .optional(),
-  GITHUB_REPOSITORY: z
-    .string()
-    .regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/)
-    .optional(),
-  GITHUB_RELEASE_MODE: z.enum(["draft"]).optional(),
-  GITHUB_DRY_RUN: z.enum(["true", "false"]).optional(),
   RELEASE_EXECUTION_MODE: z
     .enum(["disabled", "dry_run", "github_draft"])
     .default("dry_run"),
@@ -64,7 +53,6 @@ export function getServerEnv(): ServerEnv {
       process.env.POLICY_ACTIVATION_TTL_HOURS || undefined,
     POLICY_ACTIVATION_REMINDER_MINUTES:
       process.env.POLICY_ACTIVATION_REMINDER_MINUTES || undefined,
-    GITHUB_TOKEN: process.env.GITHUB_TOKEN || undefined,
     GITHUB_APP_ID: process.env.GITHUB_APP_ID || undefined,
     GITHUB_APP_SLUG: process.env.GITHUB_APP_SLUG || undefined,
     GITHUB_APP_CLIENT_ID: process.env.GITHUB_APP_CLIENT_ID || undefined,
@@ -72,11 +60,6 @@ export function getServerEnv(): ServerEnv {
     GITHUB_APP_PRIVATE_KEY:
       process.env.GITHUB_APP_PRIVATE_KEY?.replace(/\\n/g, "\n") || undefined,
     GITHUB_WEBHOOK_SECRET: process.env.GITHUB_WEBHOOK_SECRET || undefined,
-    GITHUB_WEBHOOK_ORGANIZATION_SLUG:
-      process.env.GITHUB_WEBHOOK_ORGANIZATION_SLUG || undefined,
-    GITHUB_REPOSITORY: process.env.GITHUB_REPOSITORY || undefined,
-    GITHUB_RELEASE_MODE: process.env.GITHUB_RELEASE_MODE || undefined,
-    GITHUB_DRY_RUN: process.env.GITHUB_DRY_RUN || undefined,
     RELEASE_EXECUTION_MODE:
       process.env.RELEASE_EXECUTION_MODE || undefined,
     RELEASE_EXECUTION_BATCH_SIZE:

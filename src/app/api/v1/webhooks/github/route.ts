@@ -64,18 +64,7 @@ export async function POST(request: NextRequest) {
         limit 1`,
       [payload.repository.full_name],
     );
-    let ownerOrganizationId = repositoryOwner.rows[0]?.organization_id ?? null;
-    const legacyRepositoryMatches = Boolean(
-      env.GITHUB_REPOSITORY &&
-      env.GITHUB_REPOSITORY.toLowerCase() === payload.repository.full_name.toLowerCase(),
-    );
-    if (!ownerOrganizationId && legacyRepositoryMatches && env.GITHUB_WEBHOOK_ORGANIZATION_SLUG) {
-      const legacyOwner = await getPool().query<{ id: string }>(
-        "select id from organizations where slug = $1",
-        [env.GITHUB_WEBHOOK_ORGANIZATION_SLUG],
-      );
-      ownerOrganizationId = legacyOwner.rows[0]?.id ?? null;
-    }
+    const ownerOrganizationId = repositoryOwner.rows[0]?.organization_id ?? null;
     if (!ownerOrganizationId) {
       await getPool().query(
         `

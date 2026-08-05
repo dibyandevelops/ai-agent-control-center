@@ -356,8 +356,6 @@ export async function GET() {
         reference.startsWith("https://github.com/")
       );
     });
-    const githubTokenConfigured = Boolean(env.GITHUB_TOKEN);
-    const githubRepositoryConfigured = Boolean(env.GITHUB_REPOSITORY);
     const githubAppConfigured = Boolean(
       env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY,
     );
@@ -366,11 +364,9 @@ export async function GET() {
       connection.repositories.some((repository) => repository.enabled)
     );
     const githubAppConnected = githubAppConfigured && githubAppRegistered;
-    const githubConnected = githubAppConnected ||
-      (githubTokenConfigured && githubRepositoryConfigured);
+    const githubConnected = githubAppConnected;
     const githubWebhookConfigured = Boolean(
-      env.GITHUB_WEBHOOK_SECRET &&
-      (githubAppRegistered || env.GITHUB_WEBHOOK_ORGANIZATION_SLUG),
+      env.GITHUB_WEBHOOK_SECRET && githubAppRegistered,
     );
     const activeCriticalContainments = githubDriftResult.rows.filter(
       (incident) => incident.severity === "critical",
@@ -381,7 +377,7 @@ export async function GET() {
       ? "verified"
       : githubConnected
         ? "configured"
-        : githubAppRegistered || githubTokenConfigured || githubRepositoryConfigured
+        : githubAppRegistered
           ? "attention"
           : "not_connected";
     const notificationOutbox = notificationOutboxResult.rows[0];
@@ -562,27 +558,21 @@ export async function GET() {
               ? "Ready for validation"
               : "Not configured",
           status: githubStatus,
-          repository: githubConnections[0]?.repositories[0]?.fullName ?? env.GITHUB_REPOSITORY,
-          authenticationMode: githubAppRegistered
-            ? "github_app"
-            : githubTokenConfigured && githubRepositoryConfigured
-              ? "legacy_pat"
-              : "not_configured",
+          repository: githubConnections[0]?.repositories[0]?.fullName,
+          authenticationMode: githubAppRegistered ? "github_app" : "not_configured",
           githubConnections,
           mode:
             activeCriticalContainments > 0
               ? `Release containment active · ${activeCriticalContainments} target${activeCriticalContainments === 1 ? "" : "s"} frozen`
               : githubAppRegistered && !githubAppConfigured
               ? "GitHub App credentials required"
-              : env.GITHUB_DRY_RUN === "false"
+              : env.RELEASE_EXECUTION_MODE === "github_draft"
               ? githubWebhookConfigured
                 ? "Draft release · Drift protected"
                 : "Draft release · Webhook required"
               : "Read-only dry run",
           url: githubConnections[0]?.repositories[0]?.fullName
             ? `https://github.com/${githubConnections[0].repositories[0].fullName}`
-            : env.GITHUB_REPOSITORY
-            ? `https://github.com/${env.GITHUB_REPOSITORY}`
             : null,
           driftIncidents: githubDriftResult.rows.map((row) => ({
             id: row.id,

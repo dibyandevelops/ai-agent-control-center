@@ -289,7 +289,7 @@ export interface Integration {
   url?: string | null;
   deadLetters?: number;
   driftIncidents?: GitHubDriftIncident[];
-  authenticationMode?: "github_app" | "legacy_pat" | "not_configured";
+  authenticationMode?: "github_app" | "not_configured";
   githubConnections?: GitHubConnection[];
 }
 

@@ -306,8 +306,7 @@ GITHUB_APP_CLIENT_ID=Iv1.your_client_id
 GITHUB_APP_CLIENT_SECRET=your_client_secret
 GITHUB_APP_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
 GITHUB_WEBHOOK_SECRET=replace-with-openssl-rand-hex-32
-GITHUB_RELEASE_MODE=draft
-GITHUB_DRY_RUN=true
+RELEASE_EXECUTION_MODE=dry_run
 ```
 
 Enable **Request user authorization (OAuth) during installation** and set the
@@ -318,18 +317,9 @@ verifies that the signed-in installer can access the installation before
 SentinelOps links its repositories. A GitHub installation can belong to only
 one SentinelOps organization.
 
-`GITHUB_TOKEN`, `GITHUB_REPOSITORY`, and
-`GITHUB_WEBHOOK_ORGANIZATION_SLUG` remain supported temporarily for the existing
-sandbox migration. They should not be used for new customer organizations.
-
-Verify legacy sandbox access without changing GitHub:
-
-```bash
-pnpm github:verify
-```
-
-The verification command checks the exact repository, confirms it is not
-archived, and confirms the token has write access. It never prints the token.
+SentinelOps does not accept a global GitHub personal access token. Repository
+credentials are short-lived installation tokens created only after the repository
+has been connected to the current SentinelOps organization.
 
 Keep SentinelOps running with `pnpm dev`, then open a second terminal:
 
@@ -341,15 +331,14 @@ The demo submits a production release and waits while the decision is
 `pending`. Open [http://localhost:3000/dashboard](http://localhost:3000/dashboard),
 connect the live workspace, and approve or deny the request.
 
-With `GITHUB_DRY_RUN=true`, the agent validates the configured GitHub repository,
-then reports `executing`, simulates four release steps, and reports `succeeded`.
-No GitHub write API is called. After denial or a policy block, it stops without
-executing.
-
-Only after the dry run is verified should `GITHUB_DRY_RUN` be changed to
-`false`. Even then, the client is hard-limited to creating a **draft** release
-in `GITHUB_REPOSITORY`; it cannot publish the release. Existing draft tags are
-treated as idempotent replays, while an existing published tag is rejected.
+With `RELEASE_EXECUTION_MODE=dry_run`, SentinelOps automatically simulates the
+approved release and records evidence without calling GitHub. After the full
+approval journey is verified, set `RELEASE_EXECUTION_MODE=github_draft`.
+SentinelOps then obtains a short-lived token for the organization's GitHub App
+installation and creates only a **draft** release in the repository named by the
+request. Publishing or cancelling that draft requires a separate four-eyes
+approval. Existing draft tags are treated as idempotent replays, while an
+existing published tag is rejected.
 
 ### Detect GitHub changes outside SentinelOps
 
@@ -359,7 +348,7 @@ Generate a webhook secret without committing it:
 openssl rand -hex 32
 ```
 
-For the legacy sandbox webhook, open **Settings → Webhooks → Add webhook** and configure:
+On the SentinelOps GitHub App, configure:
 
 - Payload URL: `https://your-sentinelops-host/api/v1/webhooks/github`
 - Content type: `application/json`

@@ -42,7 +42,7 @@ const operatorPassword = `E2E-${randomBytes(18).toString("base64url")}!`;
 const agentApiKey = `sop_live_${randomBytes(24).toString("base64url")}`;
 const githubWebhookSecret = randomBytes(32).toString("hex");
 const connectedRepository = remoteBaseUrl
-  ? process.env.GITHUB_REPOSITORY || "sentinelops/platform"
+  ? process.env.SENTINELOPS_E2E_REPOSITORY || "sentinelops/platform"
   : `sentinelops/e2e-${runId}`;
 let organizationId = null;
 let server = null;
@@ -222,9 +222,7 @@ async function startServer() {
     env: {
       ...process.env,
       NODE_ENV: "production",
-      GITHUB_REPOSITORY: connectedRepository,
       GITHUB_WEBHOOK_SECRET: githubWebhookSecret,
-      GITHUB_WEBHOOK_ORGANIZATION_SLUG: organizationSlug,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
