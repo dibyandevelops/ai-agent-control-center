@@ -998,6 +998,29 @@ async function exerciseJourney(baseUrl) {
     assert.deepEqual(repositoryRemoved.payload.removedRepositories, [lifecycleRepository]);
     lifecycleEvents += 1;
 
+    const finalRepositoryRemoved = await sendLifecycle("installation_repositories", {
+      ...repositoryAddedPayload,
+      action: "removed",
+      repositories_added: [],
+      repositories_removed: [{
+        ...repositoryAddedPayload.repositories_added[0],
+        id: 999_999_999,
+        full_name: releaseRepository,
+        name: releaseRepository.split("/")[1],
+      }],
+    });
+    assert.equal(finalRepositoryRemoved.response.status, 202);
+    assert.deepEqual(finalRepositoryRemoved.payload.removedRepositories, [releaseRepository]);
+    lifecycleEvents += 1;
+    const repositorylessWorkspace = await jsonRequest(`${baseUrl}/api/v1/control-center`, {
+      headers: { cookie },
+    });
+    const repositorylessGitHub = repositorylessWorkspace.payload.integrations.find(
+      (integration) => integration.name === "GitHub",
+    );
+    assert.equal(repositorylessGitHub.status, "attention");
+    assert.match(repositorylessGitHub.mode, /repository access required/i);
+
     for (const [action, expectedStatus] of [
       ["suspend", "suspended"],
       ["unsuspend", "active"],
