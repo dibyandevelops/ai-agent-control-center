@@ -25,8 +25,9 @@ export async function GET(
 
     const { requestId } = await context.params;
     const pool = getPool();
-    const [requestResult, timelineResult] = await Promise.all([
-      pool.query<{
+    // Read the request first so a terminal execution status and its audit event
+    // cannot be observed from two different transaction snapshots.
+    const requestResult = await pool.query<{
         id: string;
         action: string;
         resource: string;
@@ -83,8 +84,8 @@ export async function GET(
           limit 1
         `,
         [requestId, operator.organizationId],
-      ),
-      pool.query<{
+      );
+    const timelineResult = await pool.query<{
         id: string;
         created_at: Date;
         event_type: string;
@@ -106,8 +107,7 @@ export async function GET(
           order by audit_events.id asc
         `,
         [requestId, operator.organizationId],
-      ),
-    ]);
+      );
 
     const row = requestResult.rows[0];
     if (!row) {
