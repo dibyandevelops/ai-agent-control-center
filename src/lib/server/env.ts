@@ -4,6 +4,8 @@ import { z } from "zod";
 
 const serverEnvSchema = z.object({
   DATABASE_URL: z.string().url().optional(),
+  SENTINELOPS_PUBLIC_URL: z.string().url().optional(),
+  VERCEL_PROJECT_PRODUCTION_URL: z.string().min(1).optional(),
   DB_SSL: z.enum(["true", "false", "1", "0"]).optional(),
   DB_SSL_REJECT_UNAUTHORIZED: z.enum(["true", "false"]).optional(),
   DB_POOL_MAX: z.coerce.number().int().min(1).max(20).default(5),
@@ -35,6 +37,9 @@ export function getServerEnv(): ServerEnv {
 
   const result = serverEnvSchema.safeParse({
     DATABASE_URL: process.env.DATABASE_URL || undefined,
+    SENTINELOPS_PUBLIC_URL: process.env.SENTINELOPS_PUBLIC_URL || undefined,
+    VERCEL_PROJECT_PRODUCTION_URL:
+      process.env.VERCEL_PROJECT_PRODUCTION_URL || undefined,
     DB_SSL: process.env.DB_SSL || undefined,
     DB_SSL_REJECT_UNAUTHORIZED:
       process.env.DB_SSL_REJECT_UNAUTHORIZED || undefined,
@@ -84,4 +89,13 @@ export function requireDatabaseUrl() {
     );
   }
   return value;
+}
+
+export function getSentinelOpsPublicUrl() {
+  const env = getServerEnv();
+  if (env.SENTINELOPS_PUBLIC_URL) return env.SENTINELOPS_PUBLIC_URL.replace(/\/$/, "");
+  if (env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${env.VERCEL_PROJECT_PRODUCTION_URL.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+  }
+  return "http://localhost:3000";
 }

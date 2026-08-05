@@ -79,6 +79,47 @@ export type GitHubDriftNotificationPayload = z.infer<
   typeof githubDriftNotificationSchema
 >;
 
+export const githubAppLifecycleAlertSchema = z.object({
+  deliveryId: z.string().trim().min(1).max(100),
+  installationId: z.string().regex(/^\d+$/),
+  accountLogin: z.string().trim().min(1).max(200),
+  change: z.enum(["suspended", "disconnected", "repository_access_removed"]),
+  severity: z.enum(["high", "critical"]),
+  actorLogin: z.string().trim().min(1).max(200),
+  repositories: z.array(z.string().trim().min(3).max(300)).max(100),
+  remediationUrl: z.string().url(),
+});
+
+export type GitHubAppLifecycleAlertPayload = z.infer<
+  typeof githubAppLifecycleAlertSchema
+>;
+
+export async function enqueueGitHubAppLifecycleAlert(
+  client: PoolClient,
+  input: {
+    organizationId: string;
+    payload: GitHubAppLifecycleAlertPayload;
+  },
+) {
+  const payload = githubAppLifecycleAlertSchema.parse(input.payload);
+  const result = await client.query<{ id: string }>(
+    `
+      insert into notification_outbox (
+        organization_id, channel, event_type, dedupe_key, payload
+      )
+      values ($1, 'slack', 'github.app_lifecycle_alert', $2, $3::jsonb)
+      on conflict (channel, dedupe_key) do nothing
+      returning id
+    `,
+    [
+      input.organizationId,
+      `github-app-lifecycle:${payload.deliveryId}`,
+      JSON.stringify(payload),
+    ],
+  );
+  return { enqueued: Boolean(result.rows[0]), id: result.rows[0]?.id ?? null };
+}
+
 export async function enqueueGitHubDriftNotification(
   client: PoolClient,
   input: {

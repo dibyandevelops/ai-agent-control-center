@@ -13,7 +13,7 @@ first real vertical slice supports:
 - hash-chained audit evidence;
 - signed GitHub webhook reconciliation and release-drift incidents;
 - agent-reported execution outcomes;
-- optional Slack approval notifications; and
+- durable Slack approval, failure, drift, and integration-security notifications; and
 - a control center that can switch between preview and live data.
 
 ## Stack
@@ -87,6 +87,7 @@ project, then configure these Vercel production-scoped variables:
 
 ```text
 DATABASE_URL=<Neon pooled staging connection string>
+SENTINELOPS_PUBLIC_URL=https://your-staging-host.example
 DB_SSL=true
 DB_SSL_REJECT_UNAUTHORIZED=true
 DB_POOL_MAX=5
@@ -372,7 +373,10 @@ The same signed endpoint immediately applies GitHub App lifecycle changes.
 Suspended installations stop issuing repository credentials, deleted
 installations are retained as disconnected audit evidence, and repositories
 removed from an installation are disabled for that SentinelOps organization.
-Delivery IDs make these updates safe when GitHub retries a webhook.
+Delivery IDs make these updates safe when GitHub retries a webhook. Suspension,
+deletion, and repository removal also create high-priority, deduplicated Slack
+alerts through the durable outbox. Each alert links directly to
+`/dashboard?view=integrations` on `SENTINELOPS_PUBLIC_URL` for remediation.
 
 Optional `.env.local` values let you customize the demonstration:
 
@@ -462,7 +466,8 @@ used in the recording.
 - `GET` or `POST /api/v1/internal/notification-outbox` requires the same cron
   bearer secret. It reclaims stale worker leases, delivers due notifications in
   bounded batches, schedules exponential retries, and dead-letters terminal
-  failures without losing their payload or audit history.
+  failures without losing their payload or audit history. This includes GitHub
+  App lifecycle alerts for suspension, disconnection, and repository removal.
 - `POST /api/v1/notifications/retry-dead` requires an administrator. It returns
   up to 100 failed notifications to the delivery queue and records each manual
   recovery in the audit chain. The same recovery control appears on the live

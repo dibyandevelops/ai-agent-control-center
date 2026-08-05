@@ -1,11 +1,34 @@
 import type { Metadata } from "next";
-import { ControlCenter } from "@/components/control-center";
+import {
+  ControlCenter,
+  type DashboardView,
+} from "@/components/control-center";
 
 export const metadata: Metadata = {
   title: "Control Center — SentinelOps",
   description: "Govern, approve, and audit every action taken by your AI workforce.",
 };
 
-export default function DashboardPage() {
-  return <ControlCenter />;
+const dashboardViews = new Set<DashboardView>([
+  "overview",
+  "agents",
+  "approvals",
+  "policies",
+  "audit",
+  "integrations",
+  "credentials",
+  "team",
+]);
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string | string[] }>;
+}) {
+  const requestedView = (await searchParams).view;
+  const initialView = typeof requestedView === "string" &&
+      dashboardViews.has(requestedView as DashboardView)
+    ? requestedView as DashboardView
+    : "overview";
+  return <ControlCenter initialView={initialView} />;
 }

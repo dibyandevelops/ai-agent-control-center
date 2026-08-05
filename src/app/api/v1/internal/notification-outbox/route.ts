@@ -7,6 +7,7 @@ import { apiError } from "@/lib/server/http";
 import { hasValidInternalBearer } from "@/lib/server/internal-auth";
 import {
   actionApprovalNotificationSchema,
+  githubAppLifecycleAlertSchema,
   githubDriftNotificationSchema,
   policyActivationNotificationSchema,
   releaseExecutionFailureNotificationSchema,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/server/notification-outbox-core";
 import {
   notifySlackOfApproval,
+  notifySlackOfGitHubAppLifecycle,
   notifySlackOfGitHubDrift,
   notifySlackOfPolicyActivation,
   notifySlackOfReleaseExecutionFailure,
@@ -76,6 +78,14 @@ async function deliver(row: OutboxRow): Promise<DeliveryResult> {
         return { row, delivered: false, reason: "invalid_payload" };
       }
       const result = await notifySlackOfGitHubDrift(parsed.data);
+      return { row, delivered: result.delivered, reason: result.reason };
+    }
+    if (row.event_type === "github.app_lifecycle_alert") {
+      const parsed = githubAppLifecycleAlertSchema.safeParse(row.payload);
+      if (!parsed.success) {
+        return { row, delivered: false, reason: "invalid_payload" };
+      }
+      const result = await notifySlackOfGitHubAppLifecycle(parsed.data);
       return { row, delivered: result.delivered, reason: result.reason };
     }
     if (!row.event_type.startsWith("policy.activation_")) {

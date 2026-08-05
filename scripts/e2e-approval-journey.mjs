@@ -924,6 +924,7 @@ async function exerciseJourney(baseUrl) {
   }
 
   let lifecycleEvents = 0;
+  let lifecycleAlerts = 0;
   if (!remoteBaseUrl) {
     const lifecycleRepository = `sentinelops/lifecycle-${runId}`;
     const installation = {
@@ -1056,6 +1057,22 @@ async function exerciseJourney(baseUrl) {
       ),
       true,
     );
+    const lifecycleAlertResult = await pool.query(
+      `select count(*)::int as count,
+              array_agg(payload->>'remediationUrl' order by created_at) as remediation_urls
+         from notification_outbox
+        where organization_id = $1
+          and event_type = 'github.app_lifecycle_alert'`,
+      [organizationId],
+    );
+    assert.equal(lifecycleAlertResult.rows[0].count, 4);
+    assert.equal(
+      lifecycleAlertResult.rows[0].remediation_urls.every(
+        (url) => url.endsWith("/dashboard?view=integrations"),
+      ),
+      true,
+    );
+    lifecycleAlerts = lifecycleAlertResult.rows[0].count;
   }
 
   const integrity = await jsonRequest(`${baseUrl}/api/v1/audit/integrity`, {
@@ -1077,6 +1094,7 @@ async function exerciseJourney(baseUrl) {
     containmentBlocks,
     containmentResolutions,
     lifecycleEvents,
+    lifecycleAlerts,
   };
 }
 
@@ -1131,6 +1149,7 @@ try {
   console.log(`Critical containment blocks enforced: ${result.containmentBlocks}`);
   console.log(`Critical containments resolved: ${result.containmentResolutions}`);
   console.log(`GitHub App lifecycle changes enforced: ${result.lifecycleEvents}`);
+  console.log(`Durable GitHub App lifecycle alerts: ${result.lifecycleAlerts}`);
   }
 } finally {
   await cleanup();

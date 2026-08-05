@@ -3,6 +3,7 @@ import "server-only";
 import type { PoolClient } from "pg";
 import { appendAuditEvent } from "./audit";
 import { getPool, withTransaction } from "./db";
+import { getSentinelOpsPublicUrl } from "./env";
 import {
   assertGitHubReleasePermissions,
   createGitHubInstallationToken,
@@ -15,6 +16,7 @@ import {
   type GitHubInstallationRepositoriesWebhook,
   type GitHubInstallationWebhook,
 } from "./github-app-lifecycle";
+import { enqueueGitHubAppLifecycleAlert } from "./notification-outbox";
 
 export interface GitHubConnectionSummary {
   id: string;
@@ -341,6 +343,7 @@ export async function applyGitHubAppLifecycleEvent(input: GitHubLifecycleInput) 
     let connectionStatus = connection.status;
     const addedRepositories: string[] = [];
     let removedRepositories: string[] = [];
+    let alertRepositories: string[] = [];
     if (input.eventName === "installation") {
       connectionStatus = installationStatusForAction(input.payload.action);
       await client.query(
@@ -371,6 +374,16 @@ export async function applyGitHubAppLifecycleEvent(input: GitHubLifecycleInput) 
           [connection.id, connection.organization_id],
         );
         removedRepositories = disabled.rows.map((row) => row.full_name);
+        alertRepositories = removedRepositories;
+      } else if (connectionStatus === "suspended") {
+        const affected = await client.query<{ full_name: string }>(
+          `select full_name
+             from github_app_repositories
+            where installation_id = $1 and organization_id = $2 and enabled = true
+            order by lower(full_name)`,
+          [connection.id, connection.organization_id],
+        );
+        alertRepositories = affected.rows.map((row) => row.full_name);
       }
     } else {
       await client.query(
@@ -434,7 +447,33 @@ export async function applyGitHubAppLifecycleEvent(input: GitHubLifecycleInput) 
         }
         addedRepositories.push(repository.full_name);
       }
+      alertRepositories = removedRepositories;
     }
+
+    const alertChange = input.eventName === "installation"
+      ? input.payload.action === "suspend"
+        ? "suspended" as const
+        : input.payload.action === "deleted"
+          ? "disconnected" as const
+          : null
+      : removedRepositories.length > 0
+        ? "repository_access_removed" as const
+        : null;
+    const lifecycleNotification = alertChange
+      ? await enqueueGitHubAppLifecycleAlert(client, {
+          organizationId: connection.organization_id,
+          payload: {
+            deliveryId: input.deliveryId,
+            installationId: String(input.payload.installation.id),
+            accountLogin: input.payload.installation.account.login,
+            change: alertChange,
+            severity: alertChange === "repository_access_removed" ? "high" : "critical",
+            actorLogin: senderLogin,
+            repositories: alertRepositories,
+            remediationUrl: `${getSentinelOpsPublicUrl()}/dashboard?view=integrations`,
+          },
+        })
+      : null;
 
     await appendAuditEvent(client, {
       organizationId: connection.organization_id,
@@ -453,6 +492,7 @@ export async function applyGitHubAppLifecycleEvent(input: GitHubLifecycleInput) 
         action: input.payload.action,
         addedRepositories,
         removedRepositories,
+        notificationOutboxId: lifecycleNotification?.id ?? null,
       },
     });
     return {

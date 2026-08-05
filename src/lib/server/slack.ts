@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getServerEnv } from "./env";
+import { formatGitHubAppLifecycleSlackText } from "./notification-outbox-core";
 
 async function postSlackText(text: string) {
   const webhookUrl = getServerEnv().SLACK_APPROVAL_WEBHOOK_URL;
@@ -125,4 +126,16 @@ export async function notifySlackOfGitHubDrift(input: {
       ...(input.externalReference ? [`Evidence: ${input.externalReference}`] : []),
     ].join("\n"),
   );
+}
+
+export async function notifySlackOfGitHubAppLifecycle(input: {
+  installationId: string;
+  accountLogin: string;
+  change: "suspended" | "disconnected" | "repository_access_removed";
+  severity: "high" | "critical";
+  actorLogin: string;
+  repositories: string[];
+  remediationUrl: string;
+}) {
+  return postSlackText(formatGitHubAppLifecycleSlackText(input));
 }

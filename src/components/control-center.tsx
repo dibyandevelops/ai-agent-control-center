@@ -79,7 +79,7 @@ import { ReleaseGovernanceQueue } from "@/components/release-governance-queue";
 import { GitHubDriftIncidents } from "@/components/github-drift-incidents";
 import { GitHubAppConnection } from "@/components/github-app-connection";
 
-type View =
+export type DashboardView =
   | "overview"
   | "agents"
   | "approvals"
@@ -104,7 +104,7 @@ interface LiveControlCenterPayload {
 }
 
 const navItems: Array<{
-  id: View;
+  id: DashboardView;
   label: string;
   icon: typeof LayoutDashboard;
   adminOnly?: boolean;
@@ -119,7 +119,7 @@ const navItems: Array<{
   { id: "team", label: "Team access", icon: UsersRound, adminOnly: true },
 ];
 
-const titles: Record<View, string> = {
+const titles: Record<DashboardView, string> = {
   overview: "Control center",
   agents: "Agent registry",
   approvals: "Approval queue",
@@ -207,7 +207,7 @@ function TopBar({
   operator,
   onChangePassword,
 }: {
-  view: View;
+  view: DashboardView;
   onMenu: () => void;
   operator: OperatorIdentity | null;
   onChangePassword: () => void;
@@ -269,11 +269,11 @@ function Sidebar({
   onSelect,
   onClose,
 }: {
-  view: View;
+  view: DashboardView;
   open: boolean;
   pendingCount: number;
   canManageOperators: boolean;
-  onSelect: (view: View) => void;
+  onSelect: (view: DashboardView) => void;
   onClose: () => void;
 }) {
   return (
@@ -1951,8 +1951,12 @@ function Toast({
   );
 }
 
-export function ControlCenter() {
-  const [view, setView] = useState<View>("overview");
+export function ControlCenter({
+  initialView = "overview",
+}: {
+  initialView?: DashboardView;
+}) {
+  const [view, setView] = useState<DashboardView>(initialView);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
