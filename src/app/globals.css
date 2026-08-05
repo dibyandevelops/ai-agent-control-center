@@ -1144,7 +1144,7 @@ tbody tr:hover {
 
 .approval-card dl div {
   display: grid;
-  grid-template-columns: 49px 1fr;
+  grid-template-columns: 49px minmax(0, 1fr);
   gap: 6px;
 }
 

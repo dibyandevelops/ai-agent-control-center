@@ -458,8 +458,8 @@ function RiskPosture({ events }: { events: AuditEvent[] }) {
               {event.result === "Blocked" ? <ShieldAlert /> : <Check />}
             </span>
             <time>{displayTime(event.time)}</time>
-            <div>
-              <strong>{event.action}</strong>
+            <div className="min-w-0">
+              <strong className="block max-w-full truncate" title={event.action}>{event.action}</strong>
               <span>{event.agent}</span>
             </div>
           </div>
@@ -609,7 +609,7 @@ function ApprovalCard({
   canDecide: boolean;
 }) {
   return (
-    <article className="approval-card">
+    <article className="approval-card min-w-0 overflow-hidden">
       <div className="approval-meta">
         <Risk risk={approval.risk} />
         <time>{displayTime(approval.requestedAt)}</time>
@@ -619,8 +619,8 @@ function ApprovalCard({
         <div><strong>{approval.agentName}</strong><span>{approval.request}</span></div>
       </div>
       <dl>
-        <div><dt>Resource</dt><dd>{approval.resource}</dd></div>
-        <div><dt>Context</dt><dd>{approval.context}</dd></div>
+        <div><dt>Resource</dt><dd className="min-w-0 break-words [overflow-wrap:anywhere]" title={approval.resource}>{approval.resource}</dd></div>
+        <div><dt>Context</dt><dd className="min-w-0 break-words [overflow-wrap:anywhere]">{approval.context}</dd></div>
       </dl>
       <div className="approval-actions">
         <button className="primary-button" disabled={!canDecide} onClick={() => onDecision(approval, "approved")}>
