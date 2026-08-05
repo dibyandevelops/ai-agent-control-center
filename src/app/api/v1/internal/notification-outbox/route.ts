@@ -53,7 +53,10 @@ async function deliver(row: OutboxRow): Promise<DeliveryResult> {
       if (!parsed.success) {
         return { row, delivered: false, reason: "invalid_payload" };
       }
-      const result = await notifySlackOfApproval(parsed.data);
+      const result = await notifySlackOfApproval({
+        organizationId: row.organization_id,
+        ...parsed.data,
+      });
       return { row, delivered: result.delivered, reason: result.reason };
     }
     if (row.event_type === "action.execution_failed") {
@@ -61,7 +64,10 @@ async function deliver(row: OutboxRow): Promise<DeliveryResult> {
       if (!parsed.success) {
         return { row, delivered: false, reason: "invalid_payload" };
       }
-      const result = await notifySlackOfReleaseExecutionFailure(parsed.data);
+      const result = await notifySlackOfReleaseExecutionFailure({
+        organizationId: row.organization_id,
+        ...parsed.data,
+      });
       return { row, delivered: result.delivered, reason: result.reason };
     }
     if (row.event_type === "release.draft_governance_requested") {
@@ -69,7 +75,10 @@ async function deliver(row: OutboxRow): Promise<DeliveryResult> {
       if (!parsed.success) {
         return { row, delivered: false, reason: "invalid_payload" };
       }
-      const result = await notifySlackOfReleaseGovernance(parsed.data);
+      const result = await notifySlackOfReleaseGovernance({
+        organizationId: row.organization_id,
+        ...parsed.data,
+      });
       return { row, delivered: result.delivered, reason: result.reason };
     }
     if (row.event_type === "github.release_drift_detected") {
@@ -77,7 +86,10 @@ async function deliver(row: OutboxRow): Promise<DeliveryResult> {
       if (!parsed.success) {
         return { row, delivered: false, reason: "invalid_payload" };
       }
-      const result = await notifySlackOfGitHubDrift(parsed.data);
+      const result = await notifySlackOfGitHubDrift({
+        organizationId: row.organization_id,
+        ...parsed.data,
+      });
       return { row, delivered: result.delivered, reason: result.reason };
     }
     if (row.event_type === "github.app_lifecycle_alert") {
@@ -85,7 +97,10 @@ async function deliver(row: OutboxRow): Promise<DeliveryResult> {
       if (!parsed.success) {
         return { row, delivered: false, reason: "invalid_payload" };
       }
-      const result = await notifySlackOfGitHubAppLifecycle(parsed.data);
+      const result = await notifySlackOfGitHubAppLifecycle({
+        organizationId: row.organization_id,
+        ...parsed.data,
+      });
       return { row, delivered: result.delivered, reason: result.reason };
     }
     if (!row.event_type.startsWith("policy.activation_")) {
@@ -95,7 +110,10 @@ async function deliver(row: OutboxRow): Promise<DeliveryResult> {
     if (!parsed.success) {
       return { row, delivered: false, reason: "invalid_payload" };
     }
-    const result = await notifySlackOfPolicyActivation(parsed.data);
+    const result = await notifySlackOfPolicyActivation({
+      organizationId: row.organization_id,
+      ...parsed.data,
+    });
     return { row, delivered: result.delivered, reason: result.reason };
   } catch (error) {
     return {

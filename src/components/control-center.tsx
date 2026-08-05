@@ -78,6 +78,7 @@ import {
 import { ReleaseGovernanceQueue } from "@/components/release-governance-queue";
 import { GitHubDriftIncidents } from "@/components/github-drift-incidents";
 import { GitHubAppConnection } from "@/components/github-app-connection";
+import { SlackConnection } from "@/components/slack-connection";
 
 export type DashboardView =
   | "overview"
@@ -1690,6 +1691,14 @@ function IntegrationsView({
             </div>
             {live && integration.name === "GitHub" ? (
               <GitHubAppConnection
+                integration={integration}
+                canManage={canAcknowledgeDrift}
+                onChanged={onRefresh}
+                onNotify={onNotify}
+              />
+            ) : null}
+            {live && integration.name === "Slack" ? (
+              <SlackConnection
                 integration={integration}
                 canManage={canAcknowledgeDrift}
                 onChanged={onRefresh}

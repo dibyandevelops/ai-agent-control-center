@@ -4,6 +4,7 @@ import { getPool } from "@/lib/server/db";
 import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
 import { listOrganizationGitHubConnections } from "@/lib/server/github-connections";
+import { getOrganizationSlackConnection } from "@/lib/server/slack-connections";
 import type { PolicyActivationSimulation } from "@/lib/types";
 
 export async function GET() {
@@ -28,6 +29,7 @@ export async function GET() {
       githubDriftResult,
       notificationOutboxResult,
       githubConnections,
+      slackConnection,
     ] =
       await Promise.all([
         pool.query<{
@@ -346,6 +348,7 @@ export async function GET() {
           [operator.organizationId],
         ),
         listOrganizationGitHubConnections(operator.organizationId),
+        getOrganizationSlackConnection(operator.organizationId),
       ]);
 
     const latestGitHubEvidence = auditResult.rows.find((row) => {
@@ -614,17 +617,31 @@ export async function GET() {
           id: "int-slack",
           name: "Slack",
           description: "Route action and policy activation reviews to the configured workspace.",
-          connected: Boolean(env.SLACK_APPROVAL_WEBHOOK_URL),
+          connected: Boolean(slackConnection || env.SLACK_APPROVAL_WEBHOOK_URL),
           category: "Communication",
           events: `${queuedNotifications} queued · ${deadNotifications} dead-lettered`,
           deadLetters: deadNotifications,
           status: deadNotifications > 0
             ? "attention"
-            : env.SLACK_APPROVAL_WEBHOOK_URL
+            : slackConnection?.status === "active"
               ? "configured"
+              : slackConnection?.status === "error"
+                ? "attention"
+                : env.SLACK_APPROVAL_WEBHOOK_URL
+                  ? "configured"
               : "not_connected",
-          mode: "Approvals and escalations",
+          mode: slackConnection
+            ? `${slackConnection.teamName} · #${slackConnection.channelName.replace(/^#/, "")}`
+            : env.SLACK_APPROVAL_WEBHOOK_URL
+              ? "Migration fallback webhook"
+              : "Approvals and escalations",
           url: null,
+          slackConnection,
+          slackAuthenticationMode: slackConnection
+            ? "oauth"
+            : env.SLACK_APPROVAL_WEBHOOK_URL
+              ? "migration_fallback"
+              : "not_configured",
         },
       ],
     });

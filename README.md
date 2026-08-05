@@ -96,6 +96,9 @@ ACTION_APPROVAL_TTL_MINUTES=1440
 POLICY_ACTIVATION_TTL_HOURS=24
 POLICY_ACTIVATION_REMINDER_MINUTES=240
 SLACK_APPROVAL_WEBHOOK_URL=<optional staging-only webhook>
+SLACK_CLIENT_ID=<Slack app client ID>
+SLACK_CLIENT_SECRET=<Slack app client secret>
+SLACK_CREDENTIAL_ENCRYPTION_KEY=<base64-encoded 32-byte key>
 ```
 
 `CRON_SECRET` can be generated with `openssl rand -hex 32`. Vercel uses it to
@@ -182,8 +185,10 @@ route remains the recovery path if that immediate trigger fails. The outbox
 worker claims up to 50 notifications without blocking other workers, performs
 Slack delivery after committing the claim, and retries failures with
 exponential backoff. After five failed attempts, the notification is retained
-in a dead-letter state for investigation. Slack delivery is enabled only when
-`SLACK_APPROVAL_WEBHOOK_URL` is configured.
+in a dead-letter state for investigation. Slack delivery prefers an
+organization-scoped OAuth connection. Webhook URLs are encrypted with
+AES-256-GCM and never returned by the API. `SLACK_APPROVAL_WEBHOOK_URL` remains
+only as a migration fallback for organizations that have not completed OAuth.
 
 Approved `deploy.release` and `github.release.create` requests are claimed by
 the automated release worker immediately after the approval response. Claims

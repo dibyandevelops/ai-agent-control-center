@@ -13,6 +13,8 @@ features:
     always_online: false
 
 oauth_config:
+  redirect_urls:
+    - https://sentinelops-staging.vercel.app/api/v1/slack/connections/callback
   scopes:
     bot:
       - incoming-webhook

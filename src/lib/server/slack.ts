@@ -1,26 +1,47 @@
 import "server-only";
 
-import { getServerEnv } from "./env";
 import { formatGitHubAppLifecycleSlackText } from "./notification-outbox-core";
+import {
+  recordSlackDelivery,
+  resolveSlackDeliveryTarget,
+} from "./slack-connections";
 
-async function postSlackText(text: string) {
-  const webhookUrl = getServerEnv().SLACK_APPROVAL_WEBHOOK_URL;
-  if (!webhookUrl) return { delivered: false, reason: "not_configured" };
+async function postSlackText(organizationId: string, text: string) {
+  const target = await resolveSlackDeliveryTarget(organizationId);
+  if (!target) return { delivered: false, reason: "not_configured" };
 
-  const response = await fetch(webhookUrl, {
+  const response = await fetch(target.webhookUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ text }),
     signal: AbortSignal.timeout(5_000),
   });
 
-  return {
+  const result = {
     delivered: response.ok,
     reason: response.ok ? "delivered" : `http_${response.status}`,
   };
+  await recordSlackDelivery({ connectionId: target.connectionId, ...result });
+  return result;
+}
+
+export async function sendSlackConnectionTest(input: {
+  organizationId: string;
+  organizationName: string;
+}) {
+  return postSlackText(
+    input.organizationId,
+    [
+      "SentinelOps — Slack connection verified",
+      `Organization: ${input.organizationName}`,
+      "Tenant routing: organization-scoped OAuth",
+      "Status: Ready for governance and security alerts",
+    ].join("\n"),
+  );
 }
 
 export async function notifySlackOfApproval(input: {
+  organizationId: string;
   requestId: string;
   agentName: string;
   action: string;
@@ -28,6 +49,7 @@ export async function notifySlackOfApproval(input: {
   risk: string;
 }) {
   return postSlackText(
+    input.organizationId,
     [
       `SentinelOps approval required: ${input.action}`,
       `Agent: ${input.agentName}`,
@@ -39,6 +61,7 @@ export async function notifySlackOfApproval(input: {
 }
 
 export async function notifySlackOfPolicyActivation(input: {
+  organizationId: string;
   kind: "requested" | "reminder" | "escalation" | "expired";
   requestId: string;
   policyName: string;
@@ -55,6 +78,7 @@ export async function notifySlackOfPolicyActivation(input: {
           ? "ESCALATION: policy activation still awaiting review"
           : "Policy activation request expired";
   return postSlackText(
+    input.organizationId,
     [
       `SentinelOps — ${heading}`,
       `Policy: ${input.policyName} (v${input.versionNumber})`,
@@ -66,6 +90,7 @@ export async function notifySlackOfPolicyActivation(input: {
 }
 
 export async function notifySlackOfReleaseExecutionFailure(input: {
+  organizationId: string;
   requestId: string;
   agentName: string;
   action: string;
@@ -74,6 +99,7 @@ export async function notifySlackOfReleaseExecutionFailure(input: {
   attemptCount: number;
 }) {
   return postSlackText(
+    input.organizationId,
     [
       `SentinelOps — automated release execution failed`,
       `Agent: ${input.agentName}`,
@@ -87,6 +113,7 @@ export async function notifySlackOfReleaseExecutionFailure(input: {
 }
 
 export async function notifySlackOfReleaseGovernance(input: {
+  organizationId: string;
   governanceId: string;
   requestId: string;
   operation: "publish" | "cancel";
@@ -95,6 +122,7 @@ export async function notifySlackOfReleaseGovernance(input: {
   expiresAt: string;
 }) {
   return postSlackText(
+    input.organizationId,
     [
       `SentinelOps — independent approval required to ${input.operation} GitHub draft`,
       `Release: ${input.resource}`,
@@ -107,6 +135,7 @@ export async function notifySlackOfReleaseGovernance(input: {
 }
 
 export async function notifySlackOfGitHubDrift(input: {
+  organizationId: string;
   incidentId: string;
   repository: string;
   tagName: string;
@@ -117,6 +146,7 @@ export async function notifySlackOfGitHubDrift(input: {
   externalReference: string | null;
 }) {
   return postSlackText(
+    input.organizationId,
     [
       `SentinelOps — ${input.severity.toUpperCase()} GitHub release governance incident`,
       `Mutation: ${input.eventAction} ${input.repository}@${input.tagName}`,
@@ -129,6 +159,7 @@ export async function notifySlackOfGitHubDrift(input: {
 }
 
 export async function notifySlackOfGitHubAppLifecycle(input: {
+  organizationId: string;
   installationId: string;
   accountLogin: string;
   change: "suspended" | "disconnected" | "repository_access_removed";
@@ -137,5 +168,8 @@ export async function notifySlackOfGitHubAppLifecycle(input: {
   repositories: string[];
   remediationUrl: string;
 }) {
-  return postSlackText(formatGitHubAppLifecycleSlackText(input));
+  return postSlackText(
+    input.organizationId,
+    formatGitHubAppLifecycleSlackText(input),
+  );
 }

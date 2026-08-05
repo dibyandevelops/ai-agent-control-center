@@ -291,6 +291,20 @@ export interface Integration {
   driftIncidents?: GitHubDriftIncident[];
   authenticationMode?: "github_app" | "not_configured";
   githubConnections?: GitHubConnection[];
+  slackConnection?: SlackConnection | null;
+  slackAuthenticationMode?: "oauth" | "migration_fallback" | "not_configured";
+}
+
+export interface SlackConnection {
+  id: string;
+  teamId: string;
+  teamName: string;
+  channelId: string;
+  channelName: string;
+  status: "active" | "error" | "disconnected";
+  lastDeliveryAt: string | null;
+  lastError: string | null;
+  updatedAt: string;
 }
 
 export interface GitHubConnection {

@@ -11,6 +11,9 @@ const serverEnvSchema = z.object({
   DB_POOL_MAX: z.coerce.number().int().min(1).max(20).default(5),
   SENTINELOPS_ADMIN_TOKEN: z.string().min(32).optional(),
   SLACK_APPROVAL_WEBHOOK_URL: z.string().url().optional(),
+  SLACK_CLIENT_ID: z.string().min(8).optional(),
+  SLACK_CLIENT_SECRET: z.string().min(20).optional(),
+  SLACK_CREDENTIAL_ENCRYPTION_KEY: z.string().min(43).optional(),
   SENTINELOPS_CRON_SECRET: z.string().min(32).optional(),
   ACTION_APPROVAL_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
   POLICY_ACTIVATION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
@@ -48,6 +51,10 @@ export function getServerEnv(): ServerEnv {
       process.env.SENTINELOPS_ADMIN_TOKEN || undefined,
     SLACK_APPROVAL_WEBHOOK_URL:
       process.env.SLACK_APPROVAL_WEBHOOK_URL || undefined,
+    SLACK_CLIENT_ID: process.env.SLACK_CLIENT_ID || undefined,
+    SLACK_CLIENT_SECRET: process.env.SLACK_CLIENT_SECRET || undefined,
+    SLACK_CREDENTIAL_ENCRYPTION_KEY:
+      process.env.SLACK_CREDENTIAL_ENCRYPTION_KEY || undefined,
     SENTINELOPS_CRON_SECRET:
       process.env.CRON_SECRET ||
       process.env.SENTINELOPS_CRON_SECRET ||
