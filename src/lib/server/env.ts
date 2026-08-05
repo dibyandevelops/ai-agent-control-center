@@ -10,7 +10,6 @@ const serverEnvSchema = z.object({
   DB_SSL_REJECT_UNAUTHORIZED: z.enum(["true", "false"]).optional(),
   DB_POOL_MAX: z.coerce.number().int().min(1).max(20).default(5),
   SENTINELOPS_ADMIN_TOKEN: z.string().min(32).optional(),
-  SLACK_APPROVAL_WEBHOOK_URL: z.string().url().optional(),
   SLACK_CLIENT_ID: z.string().min(8).optional(),
   SLACK_CLIENT_SECRET: z.string().min(20).optional(),
   SLACK_CREDENTIAL_ENCRYPTION_KEY: z.string().min(43).optional(),
@@ -49,8 +48,6 @@ export function getServerEnv(): ServerEnv {
     DB_POOL_MAX: process.env.DB_POOL_MAX || undefined,
     SENTINELOPS_ADMIN_TOKEN:
       process.env.SENTINELOPS_ADMIN_TOKEN || undefined,
-    SLACK_APPROVAL_WEBHOOK_URL:
-      process.env.SLACK_APPROVAL_WEBHOOK_URL || undefined,
     SLACK_CLIENT_ID: process.env.SLACK_CLIENT_ID || undefined,
     SLACK_CLIENT_SECRET: process.env.SLACK_CLIENT_SECRET || undefined,
     SLACK_CREDENTIAL_ENCRYPTION_KEY:

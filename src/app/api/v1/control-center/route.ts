@@ -617,7 +617,7 @@ export async function GET() {
           id: "int-slack",
           name: "Slack",
           description: "Route action and policy activation reviews to the configured workspace.",
-          connected: Boolean(slackConnection || env.SLACK_APPROVAL_WEBHOOK_URL),
+          connected: Boolean(slackConnection),
           category: "Communication",
           events: `${queuedNotifications} queued · ${deadNotifications} dead-lettered`,
           deadLetters: deadNotifications,
@@ -627,21 +627,15 @@ export async function GET() {
               ? "configured"
               : slackConnection?.status === "error"
                 ? "attention"
-                : env.SLACK_APPROVAL_WEBHOOK_URL
-                  ? "configured"
-              : "not_connected",
+                : "not_connected",
           mode: slackConnection
             ? `${slackConnection.teamName} · #${slackConnection.channelName.replace(/^#/, "")}`
-            : env.SLACK_APPROVAL_WEBHOOK_URL
-              ? "Migration fallback webhook"
-              : "Approvals and escalations",
+            : "Approvals and escalations",
           url: null,
           slackConnection,
           slackAuthenticationMode: slackConnection
             ? "oauth"
-            : env.SLACK_APPROVAL_WEBHOOK_URL
-              ? "migration_fallback"
-              : "not_configured",
+            : "not_configured",
         },
       ],
     });

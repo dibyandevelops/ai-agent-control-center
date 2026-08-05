@@ -204,10 +204,7 @@ export async function resolveSlackDeliveryTarget(organizationId: string) {
       mode: "oauth" as const,
     };
   }
-  const fallback = getServerEnv().SLACK_APPROVAL_WEBHOOK_URL;
-  return fallback
-    ? { connectionId: null, webhookUrl: fallback, mode: "migration_fallback" as const }
-    : null;
+  return null;
 }
 
 export async function recordSlackDelivery(input: {

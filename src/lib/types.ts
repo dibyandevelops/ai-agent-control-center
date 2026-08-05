@@ -292,7 +292,7 @@ export interface Integration {
   authenticationMode?: "github_app" | "not_configured";
   githubConnections?: GitHubConnection[];
   slackConnection?: SlackConnection | null;
-  slackAuthenticationMode?: "oauth" | "migration_fallback" | "not_configured";
+  slackAuthenticationMode?: "oauth" | "not_configured";
 }
 
 export interface SlackConnection {

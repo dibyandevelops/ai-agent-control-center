@@ -68,7 +68,7 @@ export function SlackConnection({
           </p>
         </div>
         <span className="rounded-full border border-sentinel-border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sentinel-muted">
-          {integration.slackAuthenticationMode === "oauth" ? "Slack OAuth" : "Migration fallback"}
+          {integration.slackAuthenticationMode === "oauth" ? "Slack OAuth" : "Not connected"}
         </span>
       </div>
 
