@@ -63,3 +63,24 @@ export async function notifySlackOfPolicyActivation(input: {
     ].join("\n"),
   );
 }
+
+export async function notifySlackOfReleaseExecutionFailure(input: {
+  requestId: string;
+  agentName: string;
+  action: string;
+  resource: string;
+  error: string;
+  attemptCount: number;
+}) {
+  return postSlackText(
+    [
+      `SentinelOps — automated release execution failed`,
+      `Agent: ${input.agentName}`,
+      `Action: ${input.action}`,
+      `Resource: ${input.resource}`,
+      `Attempt: ${input.attemptCount}`,
+      `Reason: ${input.error}`,
+      `Request: ${input.requestId}`,
+    ].join("\n"),
+  );
+}

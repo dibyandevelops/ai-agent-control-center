@@ -1071,13 +1071,21 @@ function AuditView({
 function ActionDetailDrawer({
   requestId,
   onClose,
+  canRetryExecution,
+  onExecutionRetried,
+  onNotify,
 }: {
   requestId: string | null;
   onClose: () => void;
+  canRetryExecution: boolean;
+  onExecutionRetried: () => Promise<void>;
+  onNotify: (message: string) => void;
 }) {
   const [detail, setDetail] = useState<ActionDetail | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(Boolean(requestId));
+  const [retrying, setRetrying] = useState(false);
+  const [refreshSequence, setRefreshSequence] = useState(0);
 
   useEffect(() => {
     if (!requestId) return;
@@ -1110,7 +1118,48 @@ function ActionDetailDrawer({
 
     void loadDetail();
     return () => controller.abort();
-  }, [requestId]);
+  }, [requestId, refreshSequence]);
+
+  async function retryExecution() {
+    if (!requestId || !canRetryExecution || retrying) return;
+    setRetrying(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/v1/actions/${requestId}/execution/retry`,
+        { method: "POST" },
+      );
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error || "Execution could not be retried.");
+      }
+      await onExecutionRetried();
+      setDetail((current) => current ? {
+        ...current,
+        execution: {
+          ...current.execution,
+          status: "not_started",
+          summary: "Retry queued. The execution worker is starting.",
+          errorCode: null,
+          startedAt: null,
+          completedAt: null,
+          externalReference: null,
+        },
+      } : current);
+      onNotify("Release execution was safely requeued.");
+      window.setTimeout(() => setRefreshSequence((value) => value + 1), 1_000);
+    } catch (retryError) {
+      setError(
+        retryError instanceof Error
+          ? retryError.message
+          : "Execution could not be retried.",
+      );
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   useEffect(() => {
     if (!requestId) return;
@@ -1167,9 +1216,9 @@ function ActionDetailDrawer({
             <>
               <section className="rounded-xl border border-sentinel-border bg-sentinel-panel-soft p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="text-lg font-semibold text-sentinel-text">{detail.action}</h3>
-                    <p className="mt-1 text-sm text-sentinel-muted">{detail.resource}</p>
+                    <p className="mt-1 break-all text-sm text-sentinel-muted">{detail.resource}</p>
                   </div>
                   <Risk risk={detail.risk} />
                 </div>
@@ -1195,6 +1244,16 @@ function ActionDetailDrawer({
                   <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sentinel-muted">Execution</span>
                   <h3 className="mt-2 text-base font-semibold capitalize text-sentinel-text">{detail.execution.status.replace("_", " ")}</h3>
                   <p className="mt-2 text-xs leading-5 text-sentinel-muted">{detail.execution.summary || "No execution outcome reported."}</p>
+                  {detail.execution.errorCode ? (
+                    <div className="mt-4 rounded-lg border border-red-400/25 bg-red-400/10 p-3">
+                      <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-red-300">
+                        Failure code
+                      </span>
+                      <code className="mt-1 block break-all text-[11px] text-red-100">
+                        {detail.execution.errorCode}
+                      </code>
+                    </div>
+                  ) : null}
                   {detail.execution.externalReference?.startsWith("https://github.com/") ? (
                     <a className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-sentinel-lime" href={detail.execution.externalReference} target="_blank" rel="noreferrer">
                       <ExternalLink className="h-3.5 w-3.5" /> Open GitHub evidence
@@ -1206,6 +1265,22 @@ function ActionDetailDrawer({
                     >
                       {detail.execution.externalReference}
                     </code>
+                  ) : null}
+                  {detail.execution.status === "failed" ? (
+                    <button
+                      type="button"
+                      className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-sentinel-lime px-4 py-2.5 text-xs font-bold text-[#08100b] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45"
+                      disabled={!canRetryExecution || retrying}
+                      title={canRetryExecution ? undefined : "Admin role required"}
+                      onClick={() => void retryExecution()}
+                    >
+                      {retrying ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4" />
+                      )}
+                      {retrying ? "Requeuing…" : "Retry execution"}
+                    </button>
                   ) : null}
                 </section>
               </div>
@@ -2204,6 +2279,9 @@ export function ControlCenter() {
         key={selectedRequestId ?? "closed"}
         requestId={selectedRequestId}
         onClose={() => setSelectedRequestId(null)}
+        canRetryExecution={workspaceMode === "live" && operatorIdentity?.role === "admin"}
+        onExecutionRetried={refreshLiveWorkspace}
+        onNotify={setToast}
       />
       {toast && <Toast message={toast} onClose={() => setToast("")} />}
     </div>

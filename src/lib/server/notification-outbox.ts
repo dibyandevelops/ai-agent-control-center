@@ -37,6 +37,48 @@ export type ActionApprovalNotificationPayload = z.infer<
   typeof actionApprovalNotificationSchema
 >;
 
+export const releaseExecutionFailureNotificationSchema = z.object({
+  requestId: z.string().uuid(),
+  agentName: z.string().trim().min(1).max(160),
+  action: z.string().trim().min(1).max(200),
+  resource: z.string().trim().min(1).max(500),
+  error: z.string().trim().min(1).max(1_000),
+  attemptCount: z.number().int().positive(),
+});
+
+export type ReleaseExecutionFailureNotificationPayload = z.infer<
+  typeof releaseExecutionFailureNotificationSchema
+>;
+
+export async function enqueueReleaseExecutionFailureNotification(
+  client: PoolClient,
+  input: {
+    organizationId: string;
+    payload: ReleaseExecutionFailureNotificationPayload;
+  },
+) {
+  const result = await client.query<{ id: string }>(
+    `
+      insert into notification_outbox (
+        organization_id,
+        channel,
+        event_type,
+        dedupe_key,
+        payload
+      )
+      values ($1, 'slack', 'action.execution_failed', $2, $3::jsonb)
+      on conflict (channel, dedupe_key) do nothing
+      returning id
+    `,
+    [
+      input.organizationId,
+      `release-execution:${input.payload.requestId}:failed:${input.payload.attemptCount}`,
+      JSON.stringify(input.payload),
+    ],
+  );
+  return { enqueued: Boolean(result.rows[0]), id: result.rows[0]?.id ?? null };
+}
+
 export async function enqueueActionApprovalNotification(
   client: PoolClient,
   input: {

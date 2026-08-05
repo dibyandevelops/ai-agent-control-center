@@ -308,6 +308,101 @@ async function exerciseJourney(baseUrl) {
     ],
   );
 
+  const failedEvaluationBody = {
+    ...evaluationBody,
+    idempotencyKey: `enterprise-retry-${runId}`,
+    resource: "malformed-release-target",
+    context: { changeTicket: "E2E-RETRY-1002" },
+  };
+  const failedEvaluation = await jsonRequest(
+    `${baseUrl}/api/v1/actions/evaluate`,
+    {
+      method: "POST",
+      headers: agentHeaders,
+      body: JSON.stringify(failedEvaluationBody),
+    },
+  );
+  assert.equal(failedEvaluation.response.status, 201);
+  const failedRequestId = failedEvaluation.payload.requestId;
+  const failedApproval = await jsonRequest(
+    `${baseUrl}/api/v1/actions/${failedRequestId}/decision`,
+    {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({
+        decision: "approved",
+        reason: "E2E administrator approved the retry scenario.",
+      }),
+    },
+  );
+  assert.equal(failedApproval.response.status, 200);
+
+  let failedDetail;
+  const failureDeadline = Date.now() + 15_000;
+  while (Date.now() < failureDeadline) {
+    failedDetail = await jsonRequest(
+      `${baseUrl}/api/v1/actions/${failedRequestId}/details`,
+      { headers: { cookie } },
+    );
+    if (failedDetail.payload.execution?.status === "failed") break;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  assert.equal(failedDetail?.payload.execution?.status, "failed");
+  assert.equal(
+    failedDetail.payload.execution.errorCode,
+    "AUTOMATED_RELEASE_EXECUTION_FAILED",
+  );
+  const failureAlert = await pool.query(
+    `
+      select count(*)::int as count
+      from notification_outbox
+      where organization_id = $1
+        and event_type = 'action.execution_failed'
+        and payload->>'requestId' = $2
+    `,
+    [organizationId, failedRequestId],
+  );
+  assert.equal(failureAlert.rows[0].count, 1);
+
+  // Simulate remediation of the transient release target before an operator retry.
+  await pool.query(
+    "update action_requests set resource = $2 where id = $1 and organization_id = $3",
+    [failedRequestId, "sentinelops/platform@e2e-retry", organizationId],
+  );
+  const retried = await jsonRequest(
+    `${baseUrl}/api/v1/actions/${failedRequestId}/execution/retry`,
+    { method: "POST", headers: { cookie } },
+  );
+  assert.equal(
+    retried.response.status,
+    202,
+    `Execution retry failed: ${JSON.stringify(retried.payload)}`,
+  );
+
+  let retriedDetail;
+  const retryDeadline = Date.now() + 15_000;
+  while (Date.now() < retryDeadline) {
+    retriedDetail = await jsonRequest(
+      `${baseUrl}/api/v1/actions/${failedRequestId}/details`,
+      { headers: { cookie } },
+    );
+    if (retriedDetail.payload.execution?.status === "succeeded") break;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  assert.equal(retriedDetail?.payload.execution?.status, "succeeded");
+  assert.equal(
+    retriedDetail.payload.timeline.filter(
+      (event) => event.eventType === "action.execution_retry_requested",
+    ).length,
+    1,
+  );
+  assert.equal(
+    retriedDetail.payload.timeline.filter(
+      (event) => event.eventType === "action.execution_executing",
+    ).length,
+    2,
+  );
+
   const integrity = await jsonRequest(`${baseUrl}/api/v1/audit/integrity`, {
     headers: { cookie },
   });
@@ -319,6 +414,7 @@ async function exerciseJourney(baseUrl) {
     requestId,
     auditEvents: integrity.payload.eventsChecked,
     notificationJobs: queued.rows[0].count,
+    failureAlerts: failureAlert.rows[0].count,
   };
 }
 
@@ -356,6 +452,7 @@ try {
   console.log(`Request: ${result.requestId}`);
   console.log(`Audit events verified: ${result.auditEvents}`);
   console.log(`Deduplicated notification jobs: ${result.notificationJobs}`);
+  console.log(`Durable execution failure alerts: ${result.failureAlerts}`);
 } finally {
   await cleanup();
 }

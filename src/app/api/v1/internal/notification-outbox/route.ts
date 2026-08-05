@@ -8,6 +8,7 @@ import { hasValidInternalBearer } from "@/lib/server/internal-auth";
 import {
   actionApprovalNotificationSchema,
   policyActivationNotificationSchema,
+  releaseExecutionFailureNotificationSchema,
 } from "@/lib/server/notification-outbox";
 import {
   notificationFailureStatus,
@@ -16,6 +17,7 @@ import {
 import {
   notifySlackOfApproval,
   notifySlackOfPolicyActivation,
+  notifySlackOfReleaseExecutionFailure,
 } from "@/lib/server/slack";
 import { runApprovedReleaseWorker } from "@/lib/server/release-execution-worker";
 
@@ -45,6 +47,14 @@ async function deliver(row: OutboxRow): Promise<DeliveryResult> {
         return { row, delivered: false, reason: "invalid_payload" };
       }
       const result = await notifySlackOfApproval(parsed.data);
+      return { row, delivered: result.delivered, reason: result.reason };
+    }
+    if (row.event_type === "action.execution_failed") {
+      const parsed = releaseExecutionFailureNotificationSchema.safeParse(row.payload);
+      if (!parsed.success) {
+        return { row, delivered: false, reason: "invalid_payload" };
+      }
+      const result = await notifySlackOfReleaseExecutionFailure(parsed.data);
       return { row, delivered: result.delivered, reason: result.reason };
     }
     if (!row.event_type.startsWith("policy.activation_")) {

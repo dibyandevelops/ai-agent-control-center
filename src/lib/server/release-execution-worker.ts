@@ -5,6 +5,7 @@ import { appendAuditEvent } from "./audit";
 import { withTransaction } from "./db";
 import { getServerEnv } from "./env";
 import { createIdempotentGitHubDraftRelease } from "./github-draft-release";
+import { enqueueReleaseExecutionFailureNotification } from "./notification-outbox";
 import {
   dryRunReleaseResult,
   resolveReleaseExecutionPlan,
@@ -157,6 +158,19 @@ async function finalizeRelease(input: {
         attemptCount: input.release.execution_attempt_count,
       },
     });
+    if (input.status === "failed") {
+      await enqueueReleaseExecutionFailureNotification(client, {
+        organizationId: updated.organization_id,
+        payload: {
+          requestId: input.release.id,
+          agentName: input.release.agent_name,
+          action: input.release.action,
+          resource: input.release.resource,
+          error: input.summary,
+          attemptCount: input.release.execution_attempt_count,
+        },
+      });
+    }
     return true;
   });
 }
