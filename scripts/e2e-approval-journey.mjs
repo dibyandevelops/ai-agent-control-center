@@ -677,6 +677,7 @@ async function exerciseJourney(baseUrl) {
     );
     assert.equal(containmentResolved.response.status, 200);
     assert.equal(containmentResolved.payload.status, "resolved");
+    assert.equal(containmentResolved.payload.containmentLifted, true);
     containmentResolutions += 1;
 
     const governanceAfterResolution = await approveContainedGovernance();

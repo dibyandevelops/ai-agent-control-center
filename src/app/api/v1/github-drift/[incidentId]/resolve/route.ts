@@ -99,6 +99,7 @@ export async function POST(
       return {
         id: incident.id,
         status: "resolved" as const,
+        containmentLifted: incident.severity === "critical",
         resumableGovernanceIds: resumable.rows.map((row) => row.id),
       };
     });
@@ -116,6 +117,7 @@ export async function POST(
     return NextResponse.json({
       id: result.id,
       status: result.status,
+      containmentLifted: result.containmentLifted,
       resumedOperations: result.resumableGovernanceIds.length,
     });
   } catch (error) {

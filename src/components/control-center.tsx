@@ -2261,15 +2261,16 @@ export function ControlCenter() {
       );
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        containmentLifted?: boolean;
         resumedOperations?: number;
       };
       if (!response.ok) throw new Error(payload.error || "Incident could not be resolved.");
       await refreshLiveWorkspace();
-      setToast(
-        payload.resumedOperations
+      setToast(payload.containmentLifted
+        ? payload.resumedOperations
           ? `Containment lifted. ${payload.resumedOperations} approved operation${payload.resumedOperations === 1 ? "" : "s"} resumed.`
-          : "Containment lifted and resolution preserved in the audit chain.",
-      );
+          : "Containment lifted and resolution preserved in the audit chain."
+        : "GitHub governance incident resolved and preserved in the audit chain.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Incident could not be resolved.";
       setToast(message);

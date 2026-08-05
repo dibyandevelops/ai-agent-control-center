@@ -135,7 +135,11 @@ export function GitHubDriftIncidents({
                     onClick={() => void (incident.status === "open" ? acknowledge(incident) : resolve(incident))}
                   >
                     {loadingId === incident.id ? <LoaderCircle className="animate-spin" /> : incident.status === "open" ? <ShieldAlert /> : <ShieldCheck />}
-                    {incident.status === "open" ? "Acknowledge incident" : "Resolve and lift containment"}
+                    {incident.status === "open"
+                      ? "Acknowledge incident"
+                      : incident.severity === "critical"
+                        ? "Resolve and lift containment"
+                        : "Resolve incident"}
                   </button>
                 </div>
               ) : null}
