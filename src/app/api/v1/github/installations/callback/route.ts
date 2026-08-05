@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getOperatorSession } from "@/lib/server/auth";
 import { connectGitHubInstallation } from "@/lib/server/github-connections";
 import { withTransaction } from "@/lib/server/db";
 import {
@@ -18,31 +17,39 @@ const callbackSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const operator = await getOperatorSession();
-    if (!operator) {
-      return NextResponse.json({ error: "Operator authentication required." }, { status: 401 });
-    }
     const input = callbackSchema.parse({
       installationId: request.nextUrl.searchParams.get("installation_id"),
       state: request.nextUrl.searchParams.get("state"),
       code: request.nextUrl.searchParams.get("code"),
     });
     const stateHash = createHash("sha256").update(input.state).digest("hex");
-    await withTransaction(async (client) => {
-      const claimed = await client.query(
-        `update github_app_connection_states
+    const operator = await withTransaction(async (client) => {
+      const claimed = await client.query<{
+        organization_id: string;
+        operator_id: string;
+        email: string;
+      }>(
+        `update github_app_connection_states connection_state
             set consumed_at = now()
-          where state_hash = $1
-            and organization_id = $2
-            and operator_id = $3
-            and consumed_at is null
-            and expires_at > now()
-          returning state_hash`,
-        [stateHash, operator.organizationId, operator.id],
+           from operators op
+          where connection_state.state_hash = $1
+            and op.id = connection_state.operator_id
+            and op.organization_id = connection_state.organization_id
+            and op.status = 'active'
+            and connection_state.consumed_at is null
+            and connection_state.expires_at > now()
+          returning connection_state.organization_id, connection_state.operator_id, op.email`,
+        [stateHash],
       );
-      if (!claimed.rows[0]) {
+      const row = claimed.rows[0];
+      if (!row) {
         throw new Error("This GitHub installation link is invalid, expired, or already used.");
       }
+      return {
+        organizationId: row.organization_id,
+        id: row.operator_id,
+        email: row.email,
+      };
     });
 
     const userToken = await exchangeGitHubUserCode(input.code);
