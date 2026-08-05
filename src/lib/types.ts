@@ -70,6 +70,31 @@ export interface Approval {
   status: ApprovalStatus;
 }
 
+export interface ReleaseGovernanceQueueItem {
+  id: string;
+  requestId: string;
+  agentName: string;
+  action: string;
+  resource: string;
+  operation: "publish" | "cancel";
+  status:
+    | "pending"
+    | "approved"
+    | "executing"
+    | "failed";
+  requestReason: string;
+  requestedByOperatorId: string;
+  requestedBy: string;
+  requestedAt: string;
+  expiresAt: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  executionAttemptCount: number;
+  executionSummary: string | null;
+  executionErrorCode: string | null;
+  executionCompletedAt: string | null;
+}
+
 export interface Policy {
   id: string;
   name: string;

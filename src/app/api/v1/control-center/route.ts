@@ -23,6 +23,7 @@ export async function GET() {
       policiesResult,
       auditResult,
       policyActivationsResult,
+      releaseGovernanceResult,
       notificationOutboxResult,
     ] =
       await Promise.all([
@@ -252,6 +253,52 @@ export async function GET() {
           limit 100
         `, [operator.organizationId]),
         pool.query<{
+          id: string;
+          action_request_id: string;
+          agent_name: string;
+          action: string;
+          resource: string;
+          operation: "publish" | "cancel";
+          status: "pending" | "approved" | "executing" | "failed";
+          request_reason: string;
+          requested_by_operator_id: string;
+          requested_by_email: string;
+          requested_at: Date;
+          expires_at: Date;
+          reviewed_by_email: string | null;
+          reviewed_at: Date | null;
+          execution_attempt_count: number;
+          execution_summary: string | null;
+          execution_error_code: string | null;
+          execution_completed_at: Date | null;
+        }>(`
+          select governance.id, governance.action_request_id,
+                 agent.name as agent_name, action.action, action.resource,
+                 governance.operation, governance.status,
+                 governance.request_reason,
+                 governance.requested_by_operator_id,
+                 governance.requested_by_email, governance.requested_at,
+                 governance.expires_at, governance.reviewed_by_email,
+                 governance.reviewed_at, governance.execution_attempt_count,
+                 governance.execution_summary, governance.execution_error_code,
+                 governance.execution_completed_at
+          from release_draft_governance_requests governance
+          join action_requests action on action.id = governance.action_request_id
+          join agents agent on agent.id = action.agent_id
+          where governance.organization_id = $1
+            and governance.status in ('pending', 'approved', 'executing', 'failed')
+          order by
+            case governance.status
+              when 'pending' then 0
+              when 'failed' then 1
+              when 'approved' then 2
+              else 3
+            end,
+            governance.expires_at asc,
+            governance.requested_at desc
+          limit 100
+        `, [operator.organizationId]),
+        pool.query<{
           pending: string;
           processing: string;
           delivered: string;
@@ -393,6 +440,26 @@ export async function GET() {
             }
           : null,
         simulation: row.simulation_evidence,
+      })),
+      releaseGovernance: releaseGovernanceResult.rows.map((row) => ({
+        id: row.id,
+        requestId: row.action_request_id,
+        agentName: row.agent_name,
+        action: row.action,
+        resource: row.resource,
+        operation: row.operation,
+        status: row.status,
+        requestReason: row.request_reason,
+        requestedByOperatorId: row.requested_by_operator_id,
+        requestedBy: row.requested_by_email,
+        requestedAt: row.requested_at.toISOString(),
+        expiresAt: row.expires_at.toISOString(),
+        reviewedBy: row.reviewed_by_email,
+        reviewedAt: row.reviewed_at?.toISOString() ?? null,
+        executionAttemptCount: row.execution_attempt_count,
+        executionSummary: row.execution_summary,
+        executionErrorCode: row.execution_error_code,
+        executionCompletedAt: row.execution_completed_at?.toISOString() ?? null,
       })),
       audit: auditResult.rows.map((row) => {
         const status = String(row.payload.status ?? row.payload.decision ?? "");

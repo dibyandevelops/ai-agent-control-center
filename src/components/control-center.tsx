@@ -64,6 +64,7 @@ import type {
   OperatorIdentity,
   Policy,
   PolicyActivationRequest,
+  ReleaseGovernanceQueueItem,
   RiskLevel,
 } from "@/lib/types";
 import { OperatorManagement } from "@/components/operator-management";
@@ -74,6 +75,7 @@ import {
   PolicyActivationQueue,
   PolicyHistoryDialog,
 } from "@/components/policy-governance";
+import { ReleaseGovernanceQueue } from "@/components/release-governance-queue";
 
 type View =
   | "overview"
@@ -94,6 +96,7 @@ interface LiveControlCenterPayload {
   approvals: Approval[];
   policies: Policy[];
   policyActivations: PolicyActivationRequest[];
+  releaseGovernance: ReleaseGovernanceQueueItem[];
   audit: AuditEvent[];
   integrations: Integration[];
 }
@@ -752,12 +755,28 @@ function AgentsView({
 
 function ApprovalsView({
   approvals,
+  releaseGovernance,
+  operatorId,
   onDecision,
+  onReleaseDecision,
+  onReleaseRetry,
+  onViewEvidence,
   canDecide,
+  canGovernReleases,
 }: {
   approvals: Approval[];
+  releaseGovernance: ReleaseGovernanceQueueItem[];
+  operatorId: string | null;
   onDecision: (approval: Approval, decision: "approved" | "denied") => void;
+  onReleaseDecision: (
+    governanceId: string,
+    decision: "approved" | "rejected",
+    reason: string,
+  ) => Promise<void>;
+  onReleaseRetry: (governanceId: string) => Promise<void>;
+  onViewEvidence: (requestId: string) => void;
   canDecide: boolean;
+  canGovernReleases: boolean;
 }) {
   return (
     <main className="page">
@@ -781,6 +800,14 @@ function ApprovalsView({
           <EmptyState icon={CheckCircle2} title="Everything is reviewed" description="New high-impact agent actions will appear here." />
         </section>
       )}
+      <ReleaseGovernanceQueue
+        items={releaseGovernance}
+        operatorId={operatorId}
+        canGovern={canGovernReleases}
+        onDecision={onReleaseDecision}
+        onRetry={onReleaseRetry}
+        onViewEvidence={onViewEvidence}
+      />
     </main>
   );
 }
@@ -1912,6 +1939,7 @@ export function ControlCenter() {
   const [approvalList, setApprovalList] = useState(initialApprovals);
   const [policyList, setPolicyList] = useState(initialPolicies);
   const [policyActivationList, setPolicyActivationList] = useState<PolicyActivationRequest[]>([]);
+  const [releaseGovernanceList, setReleaseGovernanceList] = useState<ReleaseGovernanceQueueItem[]>([]);
   const [auditList, setAuditList] = useState(initialAuditEvents);
   const [integrationList, setIntegrationList] = useState(integrations);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
@@ -1924,6 +1952,7 @@ export function ControlCenter() {
       setApprovalList(payload.approvals);
       setPolicyList(payload.policies);
       setPolicyActivationList(payload.policyActivations);
+      setReleaseGovernanceList(payload.releaseGovernance);
       setAuditList(payload.audit);
       setIntegrationList(payload.integrations);
       setOperatorIdentity(payload.operator);
@@ -2034,6 +2063,17 @@ export function ControlCenter() {
     };
   }, [refreshLiveWorkspace]);
 
+  const releaseWorkerActive = releaseGovernanceList.some(
+    (item) => item.status === "approved" || item.status === "executing",
+  );
+  useEffect(() => {
+    if (workspaceMode !== "live" || !releaseWorkerActive) return;
+    const timer = window.setInterval(() => {
+      void refreshLiveWorkspace().catch(() => undefined);
+    }, 2_000);
+    return () => window.clearInterval(timer);
+  }, [refreshLiveWorkspace, releaseWorkerActive, workspaceMode]);
+
   useEffect(() => {
     if (!hydrated || workspaceMode !== "demo") return;
     window.localStorage.setItem(
@@ -2065,6 +2105,8 @@ export function ControlCenter() {
   const canManagePolicies =
     workspaceMode !== "live" || operatorIdentity?.role === "admin";
   const canManageOperators =
+    workspaceMode === "live" && operatorIdentity?.role === "admin";
+  const canGovernReleases =
     workspaceMode === "live" && operatorIdentity?.role === "admin";
 
   async function connectLiveWorkspace(email: string, password: string) {
@@ -2232,6 +2274,48 @@ export function ControlCenter() {
     setToast(`${approval.request} was ${decision}.`);
   }
 
+  async function decideReleaseGovernance(
+    governanceId: string,
+    decision: "approved" | "rejected",
+    reason: string,
+  ) {
+    try {
+      const response = await fetch(
+        `/api/v1/release-governance/${governanceId}/decision`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ decision, reason }),
+        },
+      );
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Release decision could not be recorded.");
+      await refreshLiveWorkspace();
+      setToast(`Release operation was ${decision}.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Release decision could not be recorded.";
+      setToast(message);
+      throw error;
+    }
+  }
+
+  async function retryReleaseGovernance(governanceId: string) {
+    try {
+      const response = await fetch(
+        `/api/v1/release-governance/${governanceId}/retry`,
+        { method: "POST" },
+      );
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Release operation could not be retried.");
+      await refreshLiveWorkspace();
+      setToast("The independently approved release operation was returned to the worker.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Release operation could not be retried.";
+      setToast(message);
+      throw error;
+    }
+  }
+
   function register(agent: Agent) {
     setAgentList((current) => [agent, ...current]);
     setAuditList((current) => [
@@ -2362,7 +2446,7 @@ export function ControlCenter() {
       <Sidebar
         view={view}
         open={sidebarOpen}
-        pendingCount={pendingApprovals.length}
+        pendingCount={pendingApprovals.length + releaseGovernanceList.filter((item) => item.status === "pending").length}
         canManageOperators={canManageOperators}
         onSelect={setView}
         onClose={() => setSidebarOpen(false)}
@@ -2406,8 +2490,14 @@ export function ControlCenter() {
         {view === "approvals" && (
           <ApprovalsView
             approvals={pendingApprovals}
+            releaseGovernance={releaseGovernanceList}
+            operatorId={operatorIdentity?.id ?? null}
             onDecision={decide}
+            onReleaseDecision={decideReleaseGovernance}
+            onReleaseRetry={retryReleaseGovernance}
+            onViewEvidence={setSelectedRequestId}
             canDecide={canApprove}
+            canGovernReleases={canGovernReleases}
           />
         )}
         {view === "policies" && (

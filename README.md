@@ -363,6 +363,12 @@ used in the recording.
   request publication or cancellation of a successfully created GitHub draft.
 - `POST /api/v1/release-governance/:governanceId/decision` requires a different
   administrator and starts the approved GitHub operation asynchronously.
+- `POST /api/v1/release-governance/:governanceId/retry` requires an
+  administrator and requeues only failed operations that already received an
+  independent approval. It cannot manufacture or replace approval evidence.
+- The live **Approvals** view includes a separate release-governance queue with
+  deadline countdowns, urgency and escalation indicators, full evidence links,
+  independent review controls, and recovery for failed GitHub operations.
 - `POST /api/v1/actions/:requestId/outcome` lets the originating organization
   report `executing`, `succeeded`, `failed`, or `cancelled` and records each
   transition as audit evidence.

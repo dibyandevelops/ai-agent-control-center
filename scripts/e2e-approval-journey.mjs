@@ -372,6 +372,16 @@ async function exerciseJourney(baseUrl) {
     [organizationId, governanceId],
   );
   assert.equal(governanceNotification.rows[0].count, 1);
+  const governanceQueue = await jsonRequest(`${baseUrl}/api/v1/control-center`, {
+    headers: { cookie },
+  });
+  assert.equal(governanceQueue.response.status, 200);
+  assert.equal(
+    governanceQueue.payload.releaseGovernance.find(
+      (item) => item.id === governanceId,
+    )?.status,
+    "pending",
+  );
 
   const selfApproval = await jsonRequest(
     `${baseUrl}/api/v1/release-governance/${governanceId}/decision`,
@@ -436,6 +446,46 @@ async function exerciseJourney(baseUrl) {
     ).length,
     1,
   );
+
+  if (!remoteBaseUrl) {
+    const governanceRetried = await jsonRequest(
+      `${baseUrl}/api/v1/release-governance/${governanceId}/retry`,
+      { method: "POST", headers: { cookie } },
+    );
+    assert.equal(
+      governanceRetried.response.status,
+      202,
+      `Governance retry failed: ${JSON.stringify(governanceRetried.payload)}`,
+    );
+
+    let retriedGovernance;
+    const governanceRetryDeadline = Date.now() + 15_000;
+    while (Date.now() < governanceRetryDeadline) {
+      const queue = await jsonRequest(`${baseUrl}/api/v1/control-center`, {
+        headers: { cookie },
+      });
+      retriedGovernance = queue.payload.releaseGovernance.find(
+        (item) => item.id === governanceId,
+      );
+      if (
+        retriedGovernance?.status === "failed" &&
+        retriedGovernance.executionAttemptCount >= 2
+      ) break;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    assert.equal(retriedGovernance?.status, "failed");
+    assert.equal(retriedGovernance?.executionAttemptCount, 2);
+    const retriedGovernanceDetail = await jsonRequest(
+      `${baseUrl}/api/v1/actions/${requestId}/details`,
+      { headers: { cookie } },
+    );
+    assert.equal(
+      retriedGovernanceDetail.payload.timeline.filter(
+        (event) => event.eventType === `release.draft_${governanceOperation}_retry_requested`,
+      ).length,
+      1,
+    );
+  }
 
   let failureAlerts = 0;
   if (!remoteBaseUrl) {
