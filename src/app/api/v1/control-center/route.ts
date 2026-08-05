@@ -310,11 +310,17 @@ export async function GET() {
           actor_login: string;
           external_reference: string | null;
           detected_at: Date;
+          status: "open" | "acknowledged";
+          acknowledged_by_email: string | null;
+          acknowledged_at: Date | null;
+          acknowledgment_note: string | null;
         }>(`
           select id, action_request_id, repository, tag_name, event_action,
-                 severity, reason, actor_login, external_reference, detected_at
+                 severity, reason, actor_login, external_reference, detected_at,
+                 status, acknowledged_by_email, acknowledged_at,
+                 acknowledgment_note
           from github_release_drift_incidents
-          where organization_id = $1 and status = 'open'
+          where organization_id = $1 and status in ('open', 'acknowledged')
           order by
             case severity when 'critical' then 0 else 1 end,
             detected_at desc
@@ -354,6 +360,9 @@ export async function GET() {
     const githubWebhookConfigured = Boolean(
       env.GITHUB_WEBHOOK_SECRET && env.GITHUB_WEBHOOK_ORGANIZATION_SLUG,
     );
+    const activeCriticalContainments = githubDriftResult.rows.filter(
+      (incident) => incident.severity === "critical",
+    ).length;
     const githubStatus = githubDriftResult.rows.length > 0
       ? "attention"
       : latestGitHubEvidence
@@ -534,7 +543,7 @@ export async function GET() {
           connected: githubConnected,
           category: "Engineering",
           events: githubDriftResult.rows.length > 0
-            ? `${githubDriftResult.rows.length} open governance incident${githubDriftResult.rows.length === 1 ? "" : "s"}`
+            ? `${githubDriftResult.rows.length} active governance incident${githubDriftResult.rows.length === 1 ? "" : "s"}`
             : latestGitHubEvidence
             ? "Governed draft verified"
             : githubConnected
@@ -543,7 +552,9 @@ export async function GET() {
           status: githubStatus,
           repository: env.GITHUB_REPOSITORY,
           mode:
-            env.GITHUB_DRY_RUN === "false"
+            activeCriticalContainments > 0
+              ? `Release containment active · ${activeCriticalContainments} target${activeCriticalContainments === 1 ? "" : "s"} frozen`
+              : env.GITHUB_DRY_RUN === "false"
               ? githubWebhookConfigured
                 ? "Draft release · Drift protected"
                 : "Draft release · Webhook required"
@@ -562,6 +573,10 @@ export async function GET() {
             actorLogin: row.actor_login,
             externalReference: row.external_reference,
             detectedAt: row.detected_at.toISOString(),
+            status: row.status,
+            acknowledgedBy: row.acknowledged_by_email,
+            acknowledgedAt: row.acknowledged_at?.toISOString() ?? null,
+            acknowledgmentNote: row.acknowledgment_note,
           })),
         },
         {

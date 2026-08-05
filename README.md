@@ -351,7 +351,11 @@ cancellation are accepted only when matching SentinelOps evidence exists.
 Direct publishing, editing, deletion, or unpublishing creates a visible
 incident, queues a Slack alert, and appends tamper-evident audit events. An
 administrator can acknowledge the incident with an investigation note from the
-Integrations screen.
+Integrations screen. Critical incidents freeze publish and cancel automation
+for the affected repository and tag. Acknowledgment does not lift that freeze;
+an administrator must record a remediation note and explicitly resolve the
+incident. Resolution removes containment and resumes any already-approved
+operation that was waiting behind it.
 
 Optional `.env.local` values let you customize the demonstration:
 
@@ -400,8 +404,11 @@ used in the recording.
   deduplicates replays, reconciles each mutation with SentinelOps evidence, and
   records unmatched mutations as release-drift incidents.
 - `POST /api/v1/github-drift/:incidentId/acknowledge` requires an administrator,
-  preserves the investigation note in the audit chain, and clears the incident
-  from the open response queue.
+  preserves the investigation note in the audit chain, and keeps critical
+  release containment active.
+- `POST /api/v1/github-drift/:incidentId/resolve` requires an acknowledged
+  incident and an administrator remediation note, records containment release
+  in the audit chain, and resumes matching approved operations.
 - `POST /api/v1/actions/:requestId/outcome` lets the originating organization
   report `executing`, `succeeded`, `failed`, or `cancelled` and records each
   transition as audit evidence.

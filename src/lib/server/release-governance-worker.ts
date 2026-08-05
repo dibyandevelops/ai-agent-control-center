@@ -5,6 +5,7 @@ import { appendAuditEvent } from "./audit";
 import { withTransaction } from "./db";
 import { getServerEnv } from "./env";
 import { transitionGitHubDraftRelease } from "./github-draft-release";
+import { findActiveReleaseContainment } from "./github-release-containment";
 import { resolveReleaseExecutionPlan } from "./release-execution-core";
 
 interface ClaimedGovernance {
@@ -39,6 +40,14 @@ async function claimGovernance(input: {
           join action_requests action on action.id = governance.action_request_id
           where action.decision_status = 'approved'
             and action.execution_status = 'succeeded'
+            and not exists (
+              select 1
+              from github_release_drift_incidents incident
+              where incident.organization_id = governance.organization_id
+                and incident.severity = 'critical'
+                and incident.status in ('open', 'acknowledged')
+                and lower(incident.containment_resource) = lower(action.resource)
+            )
             and ($2::uuid is null or governance.id = $2::uuid)
             and (
               governance.status = 'approved'
@@ -146,6 +155,26 @@ async function finalizeGovernance(input: {
 async function executeGovernance(workerId: string, governance: ClaimedGovernance) {
   const env = getServerEnv();
   try {
+    const containment = await withTransaction((client) =>
+      findActiveReleaseContainment(client, {
+        organizationId: governance.organization_id,
+        resource: governance.resource,
+      })
+    );
+    if (containment) {
+      const finalized = await finalizeGovernance({
+        workerId,
+        governance,
+        status: "failed",
+        summary: `Execution stopped by critical GitHub incident ${containment.id}.`,
+        errorCode: "GITHUB_RELEASE_CONTAINMENT_ACTIVE",
+      });
+      return {
+        id: governance.id,
+        status: finalized ? "failed" : "skipped",
+        error: `Execution stopped by critical GitHub incident ${containment.id}.`,
+      };
+    }
     if (!env.GITHUB_TOKEN) throw new Error("GITHUB_TOKEN is required.");
     const plan = resolveReleaseExecutionPlan({
       mode: "github_draft",

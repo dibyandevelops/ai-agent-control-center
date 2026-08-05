@@ -8,6 +8,10 @@ import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
 import { canReviewReleaseGovernance } from "@/lib/server/release-governance";
 import { runApprovedDraftGovernanceWorker } from "@/lib/server/release-governance-worker";
+import {
+  findActiveReleaseContainment,
+  releaseContainmentMessage,
+} from "@/lib/server/github-release-containment";
 
 export const maxDuration = 60;
 
@@ -33,17 +37,21 @@ export async function POST(
         id: string;
         action_request_id: string;
         operation: "publish" | "cancel";
+        resource: string;
         status: string;
         requested_by_operator_id: string;
         requested_by_email: string;
         expires_at: Date;
       }>(
         `
-          select id, action_request_id, operation, status,
-                 requested_by_operator_id, requested_by_email, expires_at
-          from release_draft_governance_requests
-          where id = $1 and organization_id = $2
-          for update
+          select governance.id, governance.action_request_id,
+                 governance.operation, governance.status, action.resource,
+                 governance.requested_by_operator_id,
+                 governance.requested_by_email, governance.expires_at
+          from release_draft_governance_requests governance
+          join action_requests action on action.id = governance.action_request_id
+          where governance.id = $1 and governance.organization_id = $2
+          for update of governance
         `,
         [governanceId, operator.organizationId],
       );
@@ -85,6 +93,15 @@ export async function POST(
         throw new ConflictError(
           "A different administrator must review this release operation.",
         );
+      }
+      if (input.decision === "approved") {
+        const containment = await findActiveReleaseContainment(client, {
+          organizationId: operator.organizationId,
+          resource: governance.resource,
+        });
+        if (containment) {
+          throw new ConflictError(releaseContainmentMessage(containment.id));
+        }
       }
 
       await client.query(

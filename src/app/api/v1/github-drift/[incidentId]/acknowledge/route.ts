@@ -32,10 +32,12 @@ export async function POST(
         repository: string;
         tag_name: string;
         event_action: string;
+        severity: "high" | "critical";
         status: string;
       }>(
         `
-          select id, action_request_id, repository, tag_name, event_action, status
+          select id, action_request_id, repository, tag_name, event_action,
+                 severity, status
           from github_release_drift_incidents
           where id = $1 and organization_id = $2
           for update
@@ -72,7 +74,11 @@ export async function POST(
           note: input.note,
         },
       });
-      return { id: incident.id, status: "acknowledged" as const };
+      return {
+        id: incident.id,
+        status: "acknowledged" as const,
+        containmentActive: incident.severity === "critical",
+      };
     });
     return NextResponse.json(result);
   } catch (error) {

@@ -231,6 +231,23 @@ export async function POST(request: NextRequest) {
           externalReference: payload.release.html_url ?? null,
         },
       });
+      if (classification.outcome === "drift" && classification.severity === "critical") {
+        await appendAuditEvent(client, {
+          organizationId: evidenceOrganizationId,
+          requestId: evidence?.id ?? null,
+          eventType: "github.release_containment_activated",
+          actorType: "system",
+          actorId: "github-release-webhook",
+          payload: {
+            status: "blocked",
+            incidentId,
+            repository: payload.repository.full_name,
+            tagName: payload.release.tag_name,
+            resource,
+            reason: classification.reason,
+          },
+        });
+      }
       return { status: classification.outcome, incidentId };
     });
     return NextResponse.json(result, { status: result.status === "duplicate" ? 200 : 202 });

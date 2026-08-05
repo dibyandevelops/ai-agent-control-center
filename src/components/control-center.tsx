@@ -1571,6 +1571,7 @@ function IntegrationsView({
   onRetryDeadLetters,
   canAcknowledgeDrift,
   onAcknowledgeDrift,
+  onResolveDrift,
   onViewEvidence,
 }: {
   items: Integration[];
@@ -1579,6 +1580,7 @@ function IntegrationsView({
   onRetryDeadLetters: () => Promise<void>;
   canAcknowledgeDrift: boolean;
   onAcknowledgeDrift: (incidentId: string, note: string) => Promise<void>;
+  onResolveDrift: (incidentId: string, note: string) => Promise<void>;
   onViewEvidence: (requestId: string) => void;
 }) {
   const [demoItems, setDemoItems] = useState(integrations);
@@ -1688,6 +1690,7 @@ function IntegrationsView({
         incidents={driftIncidents}
         canAcknowledge={canAcknowledgeDrift}
         onAcknowledge={onAcknowledgeDrift}
+        onResolve={onResolveDrift}
         onViewEvidence={onViewEvidence}
       />
     </main>
@@ -2246,6 +2249,34 @@ export function ControlCenter() {
     }
   }
 
+  async function resolveGitHubDrift(incidentId: string, note: string) {
+    try {
+      const response = await fetch(
+        `/api/v1/github-drift/${incidentId}/resolve`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ note }),
+        },
+      );
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        resumedOperations?: number;
+      };
+      if (!response.ok) throw new Error(payload.error || "Incident could not be resolved.");
+      await refreshLiveWorkspace();
+      setToast(
+        payload.resumedOperations
+          ? `Containment lifted. ${payload.resumedOperations} approved operation${payload.resumedOperations === 1 ? "" : "s"} resumed.`
+          : "Containment lifted and resolution preserved in the audit chain.",
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Incident could not be resolved.";
+      setToast(message);
+      throw error;
+    }
+  }
+
   async function decide(
     approval: Approval,
     decision: "approved" | "denied",
@@ -2563,6 +2594,7 @@ export function ControlCenter() {
             onRetryDeadLetters={retryDeadNotifications}
             canAcknowledgeDrift={canGovernReleases}
             onAcknowledgeDrift={acknowledgeGitHubDrift}
+            onResolveDrift={resolveGitHubDrift}
             onViewEvidence={setSelectedRequestId}
           />
         )}

@@ -8,6 +8,10 @@ import { ConflictError, NotFoundError } from "@/lib/server/errors";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
 import { enqueueReleaseGovernanceNotification } from "@/lib/server/notification-outbox";
+import {
+  findActiveReleaseContainment,
+  releaseContainmentMessage,
+} from "@/lib/server/github-release-containment";
 import { releaseGovernanceLabel } from "@/lib/server/release-governance";
 import { resolveReleaseExecutionPlan } from "@/lib/server/release-execution-core";
 
@@ -74,6 +78,14 @@ export async function POST(
             ? error.message
             : "The GitHub draft target is not eligible for governance.",
         );
+      }
+
+      const containment = await findActiveReleaseContainment(client, {
+        organizationId: operator.organizationId,
+        resource: action.resource,
+      });
+      if (containment) {
+        throw new ConflictError(releaseContainmentMessage(containment.id));
       }
 
       const terminal = await client.query<{ operation: string }>(

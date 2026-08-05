@@ -302,4 +302,8 @@ export interface GitHubDriftIncident {
   actorLogin: string;
   externalReference: string | null;
   detectedAt: string;
+  status: "open" | "acknowledged";
+  acknowledgedBy: string | null;
+  acknowledgedAt: string | null;
+  acknowledgmentNote: string | null;
 }

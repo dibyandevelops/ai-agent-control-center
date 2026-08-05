@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ExternalLink, LoaderCircle, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ExternalLink, LoaderCircle, LockKeyhole, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import type { GitHubDriftIncident } from "@/lib/types";
 
@@ -15,11 +15,13 @@ export function GitHubDriftIncidents({
   incidents,
   canAcknowledge,
   onAcknowledge,
+  onResolve,
   onViewEvidence,
 }: {
   incidents: GitHubDriftIncident[];
   canAcknowledge: boolean;
   onAcknowledge: (incidentId: string, note: string) => Promise<void>;
+  onResolve: (incidentId: string, note: string) => Promise<void>;
   onViewEvidence: (requestId: string) => void;
 }) {
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -33,6 +35,18 @@ export function GitHubDriftIncidents({
     setLoadingId(incident.id);
     try {
       await onAcknowledge(incident.id, note);
+      setNotes((current) => ({ ...current, [incident.id]: "" }));
+    } finally {
+      setLoadingId("");
+    }
+  }
+
+  async function resolve(incident: GitHubDriftIncident) {
+    const note = notes[incident.id]?.trim();
+    if (!note || loadingId) return;
+    setLoadingId(incident.id);
+    try {
+      await onResolve(incident.id, note);
       setNotes((current) => ({ ...current, [incident.id]: "" }));
     } finally {
       setLoadingId("");
@@ -54,7 +68,7 @@ export function GitHubDriftIncidents({
           </div>
         </div>
         <span className="rounded-full border border-red-400/30 bg-red-400/10 px-3 py-1 text-xs font-semibold text-red-300">
-          {incidents.length} open
+          {incidents.length} active
         </span>
       </div>
 
@@ -73,9 +87,15 @@ export function GitHubDriftIncidents({
                   </h4>
                 </div>
                 <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${incident.severity === "critical" ? "border-red-400/40 bg-red-400/10 text-red-300" : "border-sentinel-amber/40 bg-sentinel-amber/10 text-sentinel-amber"}`}>
-                  {incident.severity}
+                  {incident.severity} · {incident.status}
                 </span>
               </div>
+              {incident.severity === "critical" ? (
+                <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-3 text-xs font-semibold leading-5 text-red-100">
+                  <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
+                  Publish and cancel automation for this repository and tag is frozen until resolution.
+                </div>
+              ) : null}
 
               <div className="mt-4 flex items-start gap-2 rounded-lg border border-red-400/20 bg-red-400/5 px-3 py-3 text-xs leading-5 text-red-100">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
@@ -92,23 +112,30 @@ export function GitHubDriftIncidents({
                 </div>
               </dl>
 
+              {incident.status === "acknowledged" ? (
+                <div className="mt-4 rounded-lg border border-sentinel-line bg-sentinel-canvas/60 px-3 py-3 text-xs leading-5 text-sentinel-muted">
+                  <span className="font-semibold text-sentinel-text">Acknowledged by {incident.acknowledgedBy ?? "an administrator"}</span>
+                  {incident.acknowledgmentNote ? <p className="mt-1 break-words">{incident.acknowledgmentNote}</p> : null}
+                </div>
+              ) : null}
+
               {canAcknowledge ? (
                 <div className="mt-4 space-y-2">
                   <input
                     className="h-10 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-xs text-sentinel-text outline-none placeholder:text-sentinel-dim focus:border-red-300/60"
                     value={note}
                     onChange={(event) => setNotes((current) => ({ ...current, [incident.id]: event.target.value }))}
-                    placeholder="Investigation or containment note (required)"
-                    aria-label={`Acknowledgment note for ${incident.repository} ${incident.tagName}`}
+                    placeholder={incident.status === "open" ? "Investigation or containment note (required)" : "Resolution and remediation note (required)"}
+                    aria-label={`${incident.status === "open" ? "Acknowledgment" : "Resolution"} note for ${incident.repository} ${incident.tagName}`}
                   />
                   <button
                     type="button"
                     className="secondary-button w-full justify-center"
                     disabled={!note.trim() || Boolean(loadingId)}
-                    onClick={() => void acknowledge(incident)}
+                    onClick={() => void (incident.status === "open" ? acknowledge(incident) : resolve(incident))}
                   >
-                    {loadingId === incident.id ? <LoaderCircle className="animate-spin" /> : <ShieldAlert />}
-                    Acknowledge incident
+                    {loadingId === incident.id ? <LoaderCircle className="animate-spin" /> : incident.status === "open" ? <ShieldAlert /> : <ShieldCheck />}
+                    {incident.status === "open" ? "Acknowledge incident" : "Resolve and lift containment"}
                   </button>
                 </div>
               ) : null}

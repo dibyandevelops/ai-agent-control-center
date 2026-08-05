@@ -446,6 +446,8 @@ async function exerciseJourney(baseUrl) {
 
   let driftIncidents = 0;
   let driftNotifications = 0;
+  let containmentBlocks = 0;
+  let containmentResolutions = 0;
   if (!remoteBaseUrl) {
     const driftPayload = JSON.stringify({
       action: "edited",
@@ -534,6 +536,165 @@ async function exerciseJourney(baseUrl) {
     assert.equal(
       driftDetail.payload.timeline.filter(
         (event) => event.eventType === "github.release_drift_acknowledged",
+      ).length,
+      1,
+    );
+
+    const containmentTag = `e2e-containment-${runId}`;
+    const containmentResource = `${releaseRepository}@${containmentTag}`;
+    const containmentAction = await pool.query(
+      `
+        insert into action_requests (
+          organization_id, agent_id, policy_id, policy_version_id,
+          idempotency_key, action, resource, environment, risk, context,
+          decision_status, decision_reason, decided_by, decided_at,
+          execution_status, execution_started_at, execution_completed_at,
+          execution_external_reference, execution_summary,
+          execution_attempt_count
+        )
+        select organization_id, agent_id, policy_id, policy_version_id,
+               $2, action, $3, environment, risk, context,
+               'approved', 'E2E containment fixture approved.',
+               'e2e-containment-fixture', now(),
+               'succeeded', now(), now(),
+               'https://github.com/sentinelops/platform/releases/tag/untagged-containment',
+               'E2E containment fixture created.', 1
+        from action_requests
+        where id = $1 and organization_id = $4
+        returning id
+      `,
+      [
+        requestId,
+        `enterprise-containment-${runId}`,
+        containmentResource,
+        organizationId,
+      ],
+    );
+    const containmentRequestId = containmentAction.rows[0].id;
+    const requestContainedGovernance = () => jsonRequest(
+      `${baseUrl}/api/v1/actions/${containmentRequestId}/draft-governance`,
+      {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          operation: "publish",
+          reason: "E2E publish request must respect critical containment.",
+        }),
+      },
+    );
+    const pendingBeforeContainment = await requestContainedGovernance();
+    assert.equal(pendingBeforeContainment.response.status, 201);
+    const containedGovernanceId = pendingBeforeContainment.payload.id;
+    const approveContainedGovernance = () => jsonRequest(
+      `${baseUrl}/api/v1/release-governance/${containedGovernanceId}/decision`,
+      {
+        method: "POST",
+        headers: { cookie: reviewerCookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          decision: "approved",
+          reason: "E2E reviewer validates containment before execution.",
+        }),
+      },
+    );
+    const containmentPayload = JSON.stringify({
+      action: "published",
+      release: {
+        id: 2_345_678,
+        tag_name: containmentTag,
+        draft: false,
+        html_url: `https://github.com/${releaseRepository}/releases/tag/${containmentTag}`,
+      },
+      repository: { full_name: releaseRepository },
+      sender: { login: "outside-release-manager" },
+    });
+    const containmentSignature = `sha256=${createHmac("sha256", githubWebhookSecret)
+      .update(containmentPayload)
+      .digest("hex")}`;
+    const containmentDelivery = await jsonRequest(`${baseUrl}/api/v1/webhooks/github`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-github-event": "release",
+        "x-github-delivery": randomUUID(),
+        "x-hub-signature-256": containmentSignature,
+      },
+      body: containmentPayload,
+    });
+    assert.equal(containmentDelivery.response.status, 202);
+    assert.equal(containmentDelivery.payload.status, "drift");
+
+    const blockedBeforeAcknowledgment = await requestContainedGovernance();
+    assert.equal(blockedBeforeAcknowledgment.response.status, 409);
+    assert.match(blockedBeforeAcknowledgment.payload.error, /frozen by critical GitHub incident/i);
+    containmentBlocks += 1;
+    const approvalBlockedBeforeAcknowledgment = await approveContainedGovernance();
+    assert.equal(approvalBlockedBeforeAcknowledgment.response.status, 409);
+    assert.match(approvalBlockedBeforeAcknowledgment.payload.error, /frozen by critical GitHub incident/i);
+    containmentBlocks += 1;
+
+    const containmentAcknowledged = await jsonRequest(
+      `${baseUrl}/api/v1/github-drift/${containmentDelivery.payload.incidentId}/acknowledge`,
+      {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ note: "E2E administrator started containment investigation." }),
+      },
+    );
+    assert.equal(containmentAcknowledged.response.status, 200);
+    assert.equal(containmentAcknowledged.payload.containmentActive, true);
+    const blockedAfterAcknowledgment = await requestContainedGovernance();
+    assert.equal(blockedAfterAcknowledgment.response.status, 409);
+    assert.match(blockedAfterAcknowledgment.payload.error, /frozen by critical GitHub incident/i);
+    containmentBlocks += 1;
+    const approvalBlockedAfterAcknowledgment = await approveContainedGovernance();
+    assert.equal(approvalBlockedAfterAcknowledgment.response.status, 409);
+    assert.match(approvalBlockedAfterAcknowledgment.payload.error, /frozen by critical GitHub incident/i);
+    containmentBlocks += 1;
+
+    const containmentWorkspace = await jsonRequest(`${baseUrl}/api/v1/control-center`, {
+      headers: { cookie },
+    });
+    const containedGitHub = containmentWorkspace.payload.integrations.find(
+      (integration) => integration.name === "GitHub",
+    );
+    assert.match(containedGitHub.mode, /Containment active/i);
+    assert.equal(
+      containedGitHub.driftIncidents.find(
+        (incident) => incident.id === containmentDelivery.payload.incidentId,
+      )?.status,
+      "acknowledged",
+    );
+
+    const containmentResolved = await jsonRequest(
+      `${baseUrl}/api/v1/github-drift/${containmentDelivery.payload.incidentId}/resolve`,
+      {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          note: "E2E investigation confirmed the target is safe and access was remediated.",
+        }),
+      },
+    );
+    assert.equal(containmentResolved.response.status, 200);
+    assert.equal(containmentResolved.payload.status, "resolved");
+    containmentResolutions += 1;
+
+    const governanceAfterResolution = await approveContainedGovernance();
+    assert.equal(governanceAfterResolution.response.status, 200);
+    assert.equal(governanceAfterResolution.payload.status, "approved");
+    const containmentDetail = await jsonRequest(
+      `${baseUrl}/api/v1/actions/${containmentRequestId}/details`,
+      { headers: { cookie } },
+    );
+    assert.equal(
+      containmentDetail.payload.timeline.filter(
+        (event) => event.eventType === "github.release_containment_activated",
+      ).length,
+      1,
+    );
+    assert.equal(
+      containmentDetail.payload.timeline.filter(
+        (event) => event.eventType === "github.release_containment_resolved",
       ).length,
       1,
     );
@@ -700,6 +861,8 @@ async function exerciseJourney(baseUrl) {
     governanceNotifications: governanceNotification.rows[0].count,
     driftIncidents,
     driftNotifications,
+    containmentBlocks,
+    containmentResolutions,
   };
 }
 
@@ -742,6 +905,8 @@ try {
   console.log(`Governance review alerts: ${result.governanceNotifications}`);
   console.log(`GitHub drift incidents reconciled: ${result.driftIncidents}`);
   console.log(`GitHub drift alerts queued: ${result.driftNotifications}`);
+  console.log(`Critical containment blocks enforced: ${result.containmentBlocks}`);
+  console.log(`Critical containments resolved: ${result.containmentResolutions}`);
 } finally {
   await cleanup();
 }
