@@ -1098,13 +1098,27 @@ async function exerciseJourney(baseUrl) {
   };
 }
 
+async function retryTransientTransaction(operation, attempts = 5) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      const retryable = error?.code === "40P01" || error?.code === "40001";
+      if (!retryable || attempt === attempts) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** (attempt - 1)));
+    }
+  }
+}
+
 async function cleanup() {
   if (organizationId) {
     await pool.query(
       "update policies set active_version_id = null where organization_id = $1",
       [organizationId],
     ).catch(() => undefined);
-    await pool.query("delete from organizations where id = $1", [organizationId]);
+    await retryTransientTransaction(() =>
+      pool.query("delete from organizations where id = $1", [organizationId]),
+    );
   }
   if (server && server.exitCode === null) {
     server.kill("SIGTERM");
