@@ -76,6 +76,7 @@ import {
   PolicyHistoryDialog,
 } from "@/components/policy-governance";
 import { ReleaseGovernanceQueue } from "@/components/release-governance-queue";
+import { GitHubDriftIncidents } from "@/components/github-drift-incidents";
 
 type View =
   | "overview"
@@ -1568,15 +1569,23 @@ function IntegrationsView({
   live,
   canRetryDeadLetters,
   onRetryDeadLetters,
+  canAcknowledgeDrift,
+  onAcknowledgeDrift,
+  onViewEvidence,
 }: {
   items: Integration[];
   live: boolean;
   canRetryDeadLetters: boolean;
   onRetryDeadLetters: () => Promise<void>;
+  canAcknowledgeDrift: boolean;
+  onAcknowledgeDrift: (incidentId: string, note: string) => Promise<void>;
+  onViewEvidence: (requestId: string) => void;
 }) {
   const [demoItems, setDemoItems] = useState(integrations);
   const [retrying, setRetrying] = useState(false);
   const visibleItems = live ? items : demoItems;
+  const driftIncidents = visibleItems.find((item) => item.name === "GitHub")
+    ?.driftIncidents ?? [];
   function toggle(id: string) {
     setDemoItems((current) =>
       current.map((item) =>
@@ -1675,6 +1684,12 @@ function IntegrationsView({
           </article>
         ))}
       </div>
+      <GitHubDriftIncidents
+        incidents={driftIncidents}
+        canAcknowledge={canAcknowledgeDrift}
+        onAcknowledge={onAcknowledgeDrift}
+        onViewEvidence={onViewEvidence}
+      />
     </main>
   );
 }
@@ -2210,6 +2225,27 @@ export function ControlCenter() {
     }
   }
 
+  async function acknowledgeGitHubDrift(incidentId: string, note: string) {
+    try {
+      const response = await fetch(
+        `/api/v1/github-drift/${incidentId}/acknowledge`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ note }),
+        },
+      );
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Incident could not be acknowledged.");
+      await refreshLiveWorkspace();
+      setToast("GitHub governance incident acknowledged and preserved in the audit chain.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Incident could not be acknowledged.";
+      setToast(message);
+      throw error;
+    }
+  }
+
   async function decide(
     approval: Approval,
     decision: "approved" | "denied",
@@ -2525,6 +2561,9 @@ export function ControlCenter() {
             live={workspaceMode === "live"}
             canRetryDeadLetters={canManagePolicies}
             onRetryDeadLetters={retryDeadNotifications}
+            canAcknowledgeDrift={canGovernReleases}
+            onAcknowledgeDrift={acknowledgeGitHubDrift}
+            onViewEvidence={setSelectedRequestId}
           />
         )}
         {view === "credentials" && operatorIdentity?.role === "admin" && (

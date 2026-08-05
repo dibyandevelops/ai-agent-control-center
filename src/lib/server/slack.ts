@@ -104,3 +104,25 @@ export async function notifySlackOfReleaseGovernance(input: {
     ].join("\n"),
   );
 }
+
+export async function notifySlackOfGitHubDrift(input: {
+  incidentId: string;
+  repository: string;
+  tagName: string;
+  eventAction: string;
+  severity: "high" | "critical";
+  actorLogin: string;
+  reason: string;
+  externalReference: string | null;
+}) {
+  return postSlackText(
+    [
+      `SentinelOps — ${input.severity.toUpperCase()} GitHub release governance incident`,
+      `Mutation: ${input.eventAction} ${input.repository}@${input.tagName}`,
+      `GitHub actor: @${input.actorLogin}`,
+      `Reason: ${input.reason}`,
+      `Incident: ${input.incidentId}`,
+      ...(input.externalReference ? [`Evidence: ${input.externalReference}`] : []),
+    ].join("\n"),
+  );
+}

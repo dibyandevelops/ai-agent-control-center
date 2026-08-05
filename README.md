@@ -11,6 +11,7 @@ first real vertical slice supports:
 - database-backed operator accounts with role-based access;
 - PostgreSQL persistence;
 - hash-chained audit evidence;
+- signed GitHub webhook reconciliation and release-drift incidents;
 - agent-reported execution outcomes;
 - optional Slack approval notifications; and
 - a control center that can switch between preview and live data.
@@ -293,6 +294,8 @@ test repository with `Contents: Read and write`:
 ```bash
 GITHUB_TOKEN=github_pat_your_complete_token
 GITHUB_REPOSITORY=your-account/sentinelops-release-sandbox
+GITHUB_WEBHOOK_SECRET=replace-with-openssl-rand-hex-32
+GITHUB_WEBHOOK_ORGANIZATION_SLUG=aperture-labs
 GITHUB_RELEASE_MODE=draft
 GITHUB_DRY_RUN=true
 ```
@@ -325,6 +328,30 @@ Only after the dry run is verified should `GITHUB_DRY_RUN` be changed to
 `false`. Even then, the client is hard-limited to creating a **draft** release
 in `GITHUB_REPOSITORY`; it cannot publish the release. Existing draft tags are
 treated as idempotent replays, while an existing published tag is rejected.
+
+### Detect GitHub changes outside SentinelOps
+
+Generate a webhook secret without committing it:
+
+```bash
+openssl rand -hex 32
+```
+
+In the GitHub sandbox repository, open **Settings → Webhooks → Add webhook** and
+configure:
+
+- Payload URL: `https://your-sentinelops-host/api/v1/webhooks/github`
+- Content type: `application/json`
+- Secret: the same value as `GITHUB_WEBHOOK_SECRET`
+- Events: select **Releases**
+
+The endpoint verifies `X-Hub-Signature-256` against the unmodified request body
+and deduplicates `X-GitHub-Delivery`. Release creation, publication, and
+cancellation are accepted only when matching SentinelOps evidence exists.
+Direct publishing, editing, deletion, or unpublishing creates a visible
+incident, queues a Slack alert, and appends tamper-evident audit events. An
+administrator can acknowledge the incident with an investigation note from the
+Integrations screen.
 
 Optional `.env.local` values let you customize the demonstration:
 
@@ -369,6 +396,12 @@ used in the recording.
 - The live **Approvals** view includes a separate release-governance queue with
   deadline countdowns, urgency and escalation indicators, full evidence links,
   independent review controls, and recovery for failed GitHub operations.
+- `POST /api/v1/webhooks/github` verifies signed GitHub `release` deliveries,
+  deduplicates replays, reconciles each mutation with SentinelOps evidence, and
+  records unmatched mutations as release-drift incidents.
+- `POST /api/v1/github-drift/:incidentId/acknowledge` requires an administrator,
+  preserves the investigation note in the audit chain, and clears the incident
+  from the open response queue.
 - `POST /api/v1/actions/:requestId/outcome` lets the originating organization
   report `executing`, `succeeded`, `failed`, or `cancelled` and records each
   transition as audit evidence.

@@ -288,4 +288,18 @@ export interface Integration {
   mode?: string;
   url?: string | null;
   deadLetters?: number;
+  driftIncidents?: GitHubDriftIncident[];
+}
+
+export interface GitHubDriftIncident {
+  id: string;
+  requestId: string | null;
+  repository: string;
+  tagName: string;
+  eventAction: string;
+  severity: "high" | "critical";
+  reason: string;
+  actorLogin: string;
+  externalReference: string | null;
+  detectedAt: string;
 }

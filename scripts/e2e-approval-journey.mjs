@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHash, randomBytes, randomUUID, scrypt as scryptCallback } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID, scrypt as scryptCallback } from "node:crypto";
 import { once } from "node:events";
 import { spawn } from "node:child_process";
 import net from "node:net";
@@ -33,6 +33,7 @@ const operatorEmail = `admin-${runId}@sentinelops.test`;
 const reviewerEmail = `reviewer-${runId}@sentinelops.test`;
 const operatorPassword = `E2E-${randomBytes(18).toString("base64url")}!`;
 const agentApiKey = `sop_live_${randomBytes(24).toString("base64url")}`;
+const githubWebhookSecret = randomBytes(32).toString("hex");
 let organizationId = null;
 let server = null;
 
@@ -181,6 +182,8 @@ async function startServer() {
       ...process.env,
       NODE_ENV: "production",
       GITHUB_REPOSITORY: process.env.GITHUB_REPOSITORY || "sentinelops/platform",
+      GITHUB_WEBHOOK_SECRET: githubWebhookSecret,
+      GITHUB_WEBHOOK_ORGANIZATION_SLUG: organizationSlug,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -440,6 +443,101 @@ async function exerciseJourney(baseUrl) {
     ).length,
     1,
   );
+
+  let driftIncidents = 0;
+  let driftNotifications = 0;
+  if (!remoteBaseUrl) {
+    const driftPayload = JSON.stringify({
+      action: "edited",
+      release: {
+        id: 1_234_567,
+        tag_name: `e2e-${runId}`,
+        draft: true,
+        html_url: `https://github.com/${releaseRepository}/releases/tag/untagged-e2e`,
+      },
+      repository: { full_name: releaseRepository },
+      sender: { login: "outside-release-manager" },
+    });
+    const deliveryId = randomUUID();
+    const signature = `sha256=${createHmac("sha256", githubWebhookSecret)
+      .update(driftPayload)
+      .digest("hex")}`;
+    const driftDelivery = await jsonRequest(`${baseUrl}/api/v1/webhooks/github`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-github-event": "release",
+        "x-github-delivery": deliveryId,
+        "x-hub-signature-256": signature,
+      },
+      body: driftPayload,
+    });
+    assert.equal(driftDelivery.response.status, 202);
+    assert.equal(driftDelivery.payload.status, "drift");
+    assert(driftDelivery.payload.incidentId);
+
+    const duplicateDelivery = await jsonRequest(`${baseUrl}/api/v1/webhooks/github`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-github-event": "release",
+        "x-github-delivery": deliveryId,
+        "x-hub-signature-256": signature,
+      },
+      body: driftPayload,
+    });
+    assert.equal(duplicateDelivery.response.status, 200);
+    assert.equal(duplicateDelivery.payload.status, "duplicate");
+
+    const driftWorkspace = await jsonRequest(`${baseUrl}/api/v1/control-center`, {
+      headers: { cookie },
+    });
+    const githubIntegration = driftWorkspace.payload.integrations.find(
+      (integration) => integration.name === "GitHub",
+    );
+    assert.equal(githubIntegration.status, "attention");
+    assert.equal(githubIntegration.driftIncidents.length, 1);
+    driftIncidents = githubIntegration.driftIncidents.length;
+    const driftAlert = await pool.query(
+      `
+        select count(*)::int as count
+        from notification_outbox
+        where organization_id = $1
+          and event_type = 'github.release_drift_detected'
+          and payload->>'incidentId' = $2
+      `,
+      [organizationId, driftDelivery.payload.incidentId],
+    );
+    assert.equal(driftAlert.rows[0].count, 1);
+    driftNotifications = driftAlert.rows[0].count;
+
+    const acknowledged = await jsonRequest(
+      `${baseUrl}/api/v1/github-drift/${driftDelivery.payload.incidentId}/acknowledge`,
+      {
+        method: "POST",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({ note: "E2E administrator opened an investigation." }),
+      },
+    );
+    assert.equal(acknowledged.response.status, 200);
+    assert.equal(acknowledged.payload.status, "acknowledged");
+    const driftDetail = await jsonRequest(
+      `${baseUrl}/api/v1/actions/${requestId}/details`,
+      { headers: { cookie } },
+    );
+    assert.equal(
+      driftDetail.payload.timeline.filter(
+        (event) => event.eventType === "github.release_drift_detected",
+      ).length,
+      1,
+    );
+    assert.equal(
+      driftDetail.payload.timeline.filter(
+        (event) => event.eventType === "github.release_drift_acknowledged",
+      ).length,
+      1,
+    );
+  }
   assert.equal(
     governanceDetail.payload.timeline.filter(
       (event) => event.eventType === `release.draft_${governanceOperation}_executing`,
@@ -600,6 +698,8 @@ async function exerciseJourney(baseUrl) {
     failureAlerts,
     governanceId,
     governanceNotifications: governanceNotification.rows[0].count,
+    driftIncidents,
+    driftNotifications,
   };
 }
 
@@ -640,6 +740,8 @@ try {
   console.log(`Durable execution failure alerts: ${result.failureAlerts}`);
   console.log(`Four-eyes release governance: ${result.governanceId}`);
   console.log(`Governance review alerts: ${result.governanceNotifications}`);
+  console.log(`GitHub drift incidents reconciled: ${result.driftIncidents}`);
+  console.log(`GitHub drift alerts queued: ${result.driftNotifications}`);
 } finally {
   await cleanup();
 }

@@ -63,6 +63,47 @@ export type ReleaseGovernanceNotificationPayload = z.infer<
   typeof releaseGovernanceNotificationSchema
 >;
 
+export const githubDriftNotificationSchema = z.object({
+  incidentId: z.string().uuid(),
+  requestId: z.string().uuid().nullable(),
+  repository: z.string().trim().min(3).max(300),
+  tagName: z.string().trim().min(1).max(200),
+  eventAction: z.string().trim().min(1).max(80),
+  severity: z.enum(["high", "critical"]),
+  actorLogin: z.string().trim().min(1).max(200),
+  reason: z.string().trim().min(1).max(1_000),
+  externalReference: z.string().url().nullable(),
+});
+
+export type GitHubDriftNotificationPayload = z.infer<
+  typeof githubDriftNotificationSchema
+>;
+
+export async function enqueueGitHubDriftNotification(
+  client: PoolClient,
+  input: {
+    organizationId: string;
+    payload: GitHubDriftNotificationPayload;
+  },
+) {
+  const result = await client.query<{ id: string }>(
+    `
+      insert into notification_outbox (
+        organization_id, channel, event_type, dedupe_key, payload
+      )
+      values ($1, 'slack', 'github.release_drift_detected', $2, $3::jsonb)
+      on conflict (channel, dedupe_key) do nothing
+      returning id
+    `,
+    [
+      input.organizationId,
+      `github-drift:${input.payload.incidentId}`,
+      JSON.stringify(input.payload),
+    ],
+  );
+  return { enqueued: Boolean(result.rows[0]), id: result.rows[0]?.id ?? null };
+}
+
 export async function enqueueReleaseGovernanceNotification(
   client: PoolClient,
   input: {

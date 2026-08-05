@@ -24,6 +24,7 @@ export async function GET() {
       auditResult,
       policyActivationsResult,
       releaseGovernanceResult,
+      githubDriftResult,
       notificationOutboxResult,
     ] =
       await Promise.all([
@@ -299,6 +300,27 @@ export async function GET() {
           limit 100
         `, [operator.organizationId]),
         pool.query<{
+          id: string;
+          action_request_id: string | null;
+          repository: string;
+          tag_name: string;
+          event_action: string;
+          severity: "high" | "critical";
+          reason: string;
+          actor_login: string;
+          external_reference: string | null;
+          detected_at: Date;
+        }>(`
+          select id, action_request_id, repository, tag_name, event_action,
+                 severity, reason, actor_login, external_reference, detected_at
+          from github_release_drift_incidents
+          where organization_id = $1 and status = 'open'
+          order by
+            case severity when 'critical' then 0 else 1 end,
+            detected_at desc
+          limit 50
+        `, [operator.organizationId]),
+        pool.query<{
           pending: string;
           processing: string;
           delivered: string;
@@ -329,7 +351,12 @@ export async function GET() {
     const githubRepositoryConfigured = Boolean(env.GITHUB_REPOSITORY);
     const githubConnected =
       githubTokenConfigured && githubRepositoryConfigured;
-    const githubStatus = latestGitHubEvidence
+    const githubWebhookConfigured = Boolean(
+      env.GITHUB_WEBHOOK_SECRET && env.GITHUB_WEBHOOK_ORGANIZATION_SLUG,
+    );
+    const githubStatus = githubDriftResult.rows.length > 0
+      ? "attention"
+      : latestGitHubEvidence
       ? "verified"
       : githubConnected
         ? "configured"
@@ -503,10 +530,12 @@ export async function GET() {
           id: "int-github",
           name: "GitHub",
           description:
-            "Govern release creation and preserve execution evidence.",
+            "Govern releases and detect changes made outside SentinelOps.",
           connected: githubConnected,
           category: "Engineering",
-          events: latestGitHubEvidence
+          events: githubDriftResult.rows.length > 0
+            ? `${githubDriftResult.rows.length} open governance incident${githubDriftResult.rows.length === 1 ? "" : "s"}`
+            : latestGitHubEvidence
             ? "Governed draft verified"
             : githubConnected
               ? "Ready for validation"
@@ -515,11 +544,25 @@ export async function GET() {
           repository: env.GITHUB_REPOSITORY,
           mode:
             env.GITHUB_DRY_RUN === "false"
-              ? "Draft release"
+              ? githubWebhookConfigured
+                ? "Draft release · Drift protected"
+                : "Draft release · Webhook required"
               : "Read-only dry run",
           url: env.GITHUB_REPOSITORY
             ? `https://github.com/${env.GITHUB_REPOSITORY}`
             : null,
+          driftIncidents: githubDriftResult.rows.map((row) => ({
+            id: row.id,
+            requestId: row.action_request_id,
+            repository: row.repository,
+            tagName: row.tag_name,
+            eventAction: row.event_action,
+            severity: row.severity,
+            reason: row.reason,
+            actorLogin: row.actor_login,
+            externalReference: row.external_reference,
+            detectedAt: row.detected_at.toISOString(),
+          })),
         },
         {
           id: "int-slack",

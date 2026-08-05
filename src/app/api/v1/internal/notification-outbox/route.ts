@@ -7,6 +7,7 @@ import { apiError } from "@/lib/server/http";
 import { hasValidInternalBearer } from "@/lib/server/internal-auth";
 import {
   actionApprovalNotificationSchema,
+  githubDriftNotificationSchema,
   policyActivationNotificationSchema,
   releaseExecutionFailureNotificationSchema,
   releaseGovernanceNotificationSchema,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/server/notification-outbox-core";
 import {
   notifySlackOfApproval,
+  notifySlackOfGitHubDrift,
   notifySlackOfPolicyActivation,
   notifySlackOfReleaseExecutionFailure,
   notifySlackOfReleaseGovernance,
@@ -66,6 +68,14 @@ async function deliver(row: OutboxRow): Promise<DeliveryResult> {
         return { row, delivered: false, reason: "invalid_payload" };
       }
       const result = await notifySlackOfReleaseGovernance(parsed.data);
+      return { row, delivered: result.delivered, reason: result.reason };
+    }
+    if (row.event_type === "github.release_drift_detected") {
+      const parsed = githubDriftNotificationSchema.safeParse(row.payload);
+      if (!parsed.success) {
+        return { row, delivered: false, reason: "invalid_payload" };
+      }
+      const result = await notifySlackOfGitHubDrift(parsed.data);
       return { row, delivered: result.delivered, reason: result.reason };
     }
     if (!row.event_type.startsWith("policy.activation_")) {

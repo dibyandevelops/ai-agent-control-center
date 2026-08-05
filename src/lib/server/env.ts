@@ -14,6 +14,11 @@ const serverEnvSchema = z.object({
   POLICY_ACTIVATION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   POLICY_ACTIVATION_REMINDER_MINUTES: z.coerce.number().int().min(5).max(1440).default(240),
   GITHUB_TOKEN: z.string().min(1).optional(),
+  GITHUB_WEBHOOK_SECRET: z.string().min(32).optional(),
+  GITHUB_WEBHOOK_ORGANIZATION_SLUG: z
+    .string()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .optional(),
   GITHUB_REPOSITORY: z
     .string()
     .regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/)
@@ -55,6 +60,9 @@ export function getServerEnv(): ServerEnv {
     POLICY_ACTIVATION_REMINDER_MINUTES:
       process.env.POLICY_ACTIVATION_REMINDER_MINUTES || undefined,
     GITHUB_TOKEN: process.env.GITHUB_TOKEN || undefined,
+    GITHUB_WEBHOOK_SECRET: process.env.GITHUB_WEBHOOK_SECRET || undefined,
+    GITHUB_WEBHOOK_ORGANIZATION_SLUG:
+      process.env.GITHUB_WEBHOOK_ORGANIZATION_SLUG || undefined,
     GITHUB_REPOSITORY: process.env.GITHUB_REPOSITORY || undefined,
     GITHUB_RELEASE_MODE: process.env.GITHUB_RELEASE_MODE || undefined,
     GITHUB_DRY_RUN: process.env.GITHUB_DRY_RUN || undefined,
