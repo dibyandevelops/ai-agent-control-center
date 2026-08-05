@@ -225,6 +225,29 @@ export interface ActionDetail {
     completedAt: string | null;
     externalReference: string | null;
   };
+  draftGovernance: Array<{
+    id: string;
+    operation: "publish" | "cancel";
+    status:
+      | "pending"
+      | "approved"
+      | "rejected"
+      | "expired"
+      | "executing"
+      | "succeeded"
+      | "failed";
+    requestReason: string;
+    requestedByOperatorId: string;
+    requestedBy: string;
+    requestedAt: string;
+    expiresAt: string;
+    reviewedBy: string | null;
+    reviewReason: string | null;
+    reviewedAt: string | null;
+    executionSummary: string | null;
+    executionErrorCode: string | null;
+    executionExternalReference: string | null;
+  }>;
   timeline: ActionDetailEvent[];
 }
 

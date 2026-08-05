@@ -84,3 +84,23 @@ export async function notifySlackOfReleaseExecutionFailure(input: {
     ].join("\n"),
   );
 }
+
+export async function notifySlackOfReleaseGovernance(input: {
+  governanceId: string;
+  requestId: string;
+  operation: "publish" | "cancel";
+  resource: string;
+  requestedBy: string;
+  expiresAt: string;
+}) {
+  return postSlackText(
+    [
+      `SentinelOps — independent approval required to ${input.operation} GitHub draft`,
+      `Release: ${input.resource}`,
+      `Requested by: ${input.requestedBy}`,
+      `Review deadline: ${input.expiresAt}`,
+      `Governance request: ${input.governanceId}`,
+      `Action evidence: ${input.requestId}`,
+    ].join("\n"),
+  );
+}

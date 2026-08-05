@@ -27,6 +27,16 @@ export const decisionSchema = z.object({
   reason: z.string().min(3).max(1_000),
 });
 
+export const releaseGovernanceRequestSchema = z.object({
+  operation: z.enum(["publish", "cancel"]),
+  reason: z.string().trim().min(3).max(1_000),
+});
+
+export const releaseGovernanceDecisionSchema = z.object({
+  decision: z.enum(["approved", "rejected"]),
+  reason: z.string().trim().min(3).max(1_000),
+});
+
 export const executionOutcomeSchema = z
   .object({
     status: z.enum(["executing", "succeeded", "failed", "cancelled"]),

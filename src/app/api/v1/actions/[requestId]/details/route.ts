@@ -108,6 +108,35 @@ export async function GET(
         `,
         [requestId, operator.organizationId],
       );
+    const governanceResult = await pool.query<{
+      id: string;
+      operation: "publish" | "cancel";
+      status: "pending" | "approved" | "rejected" | "expired" | "executing" | "succeeded" | "failed";
+      request_reason: string;
+      requested_by_operator_id: string;
+      requested_by_email: string;
+      requested_at: Date;
+      expires_at: Date;
+      reviewed_by_email: string | null;
+      review_reason: string | null;
+      reviewed_at: Date | null;
+      execution_summary: string | null;
+      execution_error_code: string | null;
+      execution_external_reference: string | null;
+    }>(
+      `
+        select id, operation, status, request_reason,
+               requested_by_operator_id, requested_by_email,
+               requested_at, expires_at, reviewed_by_email,
+               review_reason, reviewed_at, execution_summary,
+               execution_error_code, execution_external_reference
+        from release_draft_governance_requests
+        where action_request_id = $1 and organization_id = $2
+        order by requested_at desc, id desc
+        limit 20
+      `,
+      [requestId, operator.organizationId],
+    );
 
     const row = requestResult.rows[0];
     if (!row) {
@@ -145,6 +174,24 @@ export async function GET(
           row.execution_external_reference,
         ),
       },
+      draftGovernance: governanceResult.rows.map((governance) => ({
+        id: governance.id,
+        operation: governance.operation,
+        status: governance.status,
+        requestReason: governance.request_reason,
+        requestedByOperatorId: governance.requested_by_operator_id,
+        requestedBy: governance.requested_by_email,
+        requestedAt: governance.requested_at.toISOString(),
+        expiresAt: governance.expires_at.toISOString(),
+        reviewedBy: governance.reviewed_by_email,
+        reviewReason: governance.review_reason,
+        reviewedAt: governance.reviewed_at?.toISOString() ?? null,
+        executionSummary: governance.execution_summary,
+        executionErrorCode: governance.execution_error_code,
+        executionExternalReference: safeEvidenceReference(
+          governance.execution_external_reference,
+        ),
+      })),
       timeline: timelineResult.rows.map((event) => ({
         id: event.id,
         time: event.created_at.toISOString(),

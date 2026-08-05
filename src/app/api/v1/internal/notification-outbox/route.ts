@@ -9,6 +9,7 @@ import {
   actionApprovalNotificationSchema,
   policyActivationNotificationSchema,
   releaseExecutionFailureNotificationSchema,
+  releaseGovernanceNotificationSchema,
 } from "@/lib/server/notification-outbox";
 import {
   notificationFailureStatus,
@@ -18,8 +19,10 @@ import {
   notifySlackOfApproval,
   notifySlackOfPolicyActivation,
   notifySlackOfReleaseExecutionFailure,
+  notifySlackOfReleaseGovernance,
 } from "@/lib/server/slack";
 import { runApprovedReleaseWorker } from "@/lib/server/release-execution-worker";
+import { runApprovedDraftGovernanceWorker } from "@/lib/server/release-governance-worker";
 
 export const maxDuration = 60;
 
@@ -57,6 +60,14 @@ async function deliver(row: OutboxRow): Promise<DeliveryResult> {
       const result = await notifySlackOfReleaseExecutionFailure(parsed.data);
       return { row, delivered: result.delivered, reason: result.reason };
     }
+    if (row.event_type === "release.draft_governance_requested") {
+      const parsed = releaseGovernanceNotificationSchema.safeParse(row.payload);
+      if (!parsed.success) {
+        return { row, delivered: false, reason: "invalid_payload" };
+      }
+      const result = await notifySlackOfReleaseGovernance(parsed.data);
+      return { row, delivered: result.delivered, reason: result.reason };
+    }
     if (!row.event_type.startsWith("policy.activation_")) {
       return { row, delivered: false, reason: "unsupported_event_type" };
     }
@@ -91,7 +102,10 @@ async function runNotificationOutbox(request: NextRequest) {
       );
     }
 
-    const releaseExecutions = await runApprovedReleaseWorker();
+    const [releaseExecutions, releaseGovernanceExecutions] = await Promise.all([
+      runApprovedReleaseWorker(),
+      runApprovedDraftGovernanceWorker(),
+    ]);
 
     const workerId = randomUUID();
     const claimed = await withTransaction(async (client) => {
@@ -196,6 +210,7 @@ async function runNotificationOutbox(request: NextRequest) {
       claimed: claimed.length,
       ...outcomes,
       releaseExecutions,
+      releaseGovernanceExecutions,
     });
   } catch (error) {
     return apiError(error);

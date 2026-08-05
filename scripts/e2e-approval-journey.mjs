@@ -30,6 +30,7 @@ const pool = new Pool({
 const runId = randomUUID();
 const organizationSlug = `sentinelops-e2e-${runId}`;
 const operatorEmail = `admin-${runId}@sentinelops.test`;
+const reviewerEmail = `reviewer-${runId}@sentinelops.test`;
 const operatorPassword = `E2E-${randomBytes(18).toString("base64url")}!`;
 const agentApiKey = `sop_live_${randomBytes(24).toString("base64url")}`;
 let organizationId = null;
@@ -89,6 +90,16 @@ async function setupTenant() {
         returning id
       `,
       [organizationId, operatorEmail, await passwordHash(operatorPassword)],
+    );
+    await client.query(
+      `
+        insert into operators (
+          organization_id, email, display_name, role, password_hash,
+          password_change_required, password_changed_at
+        )
+        values ($1, $2, 'E2E Independent Reviewer', 'admin', $3, false, now())
+      `,
+      [organizationId, reviewerEmail, await passwordHash(operatorPassword)],
     );
 
     await client.query(
@@ -166,7 +177,11 @@ async function startServer() {
   const output = [];
   server = spawn("pnpm", ["exec", "next", "start", "-H", "127.0.0.1", "-p", String(port)], {
     cwd: process.cwd(),
-    env: { ...process.env, NODE_ENV: "production" },
+    env: {
+      ...process.env,
+      NODE_ENV: "production",
+      GITHUB_REPOSITORY: process.env.GITHUB_REPOSITORY || "sentinelops/platform",
+    },
     stdio: ["ignore", "pipe", "pipe"],
   });
   for (const stream of [server.stdout, server.stderr]) {
@@ -203,6 +218,23 @@ async function exerciseJourney(baseUrl) {
     authorization: `Bearer ${agentApiKey}`,
     "content-type": "application/json",
   };
+  const login = await jsonRequest(`${baseUrl}/api/v1/session`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: operatorEmail, password: operatorPassword }),
+  });
+  assert.equal(login.response.status, 200);
+  assert.equal(login.payload.operator.role, "admin");
+  const cookie = login.response.headers.get("set-cookie")?.split(";")[0];
+  assert(cookie, "Operator session cookie was not returned.");
+  const workspace = await jsonRequest(`${baseUrl}/api/v1/control-center`, {
+    headers: { cookie },
+  });
+  assert.equal(workspace.response.status, 200);
+  const releaseRepository = workspace.payload.integrations.find(
+    (integration) => integration.name === "GitHub",
+  )?.repository || "sentinelops/platform";
+  const releaseTag = `e2e-${runId}`;
   const evaluationBody = {
     idempotencyKey: `enterprise-journey-${runId}`,
     agent: {
@@ -213,7 +245,7 @@ async function exerciseJourney(baseUrl) {
       provider: "OpenAI",
     },
     action: "deploy.release",
-    resource: "sentinelops/platform@e2e",
+    resource: `${releaseRepository}@${releaseTag}`,
     environment: "production",
     context: { changeTicket: "E2E-1001" },
   };
@@ -254,16 +286,6 @@ async function exerciseJourney(baseUrl) {
   );
   assert.equal(queued.rows[0].count, 1);
 
-  const login = await jsonRequest(`${baseUrl}/api/v1/session`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email: operatorEmail, password: operatorPassword }),
-  });
-  assert.equal(login.response.status, 200);
-  assert.equal(login.payload.operator.role, "admin");
-  const cookie = login.response.headers.get("set-cookie")?.split(";")[0];
-  assert(cookie, "Operator session cookie was not returned.");
-
   const approval = await jsonRequest(
     `${baseUrl}/api/v1/actions/${requestId}/decision`,
     {
@@ -297,7 +319,10 @@ async function exerciseJourney(baseUrl) {
   assert.equal(detail.response.status, 200);
   assert.equal(detail.payload.decision.status, "approved");
   assert.equal(detail.payload.execution.status, "succeeded");
-  assert.match(detail.payload.execution.externalReference, /^dry-run:\/\//);
+  assert.match(
+    detail.payload.execution.externalReference,
+    remoteBaseUrl ? /^https:\/\/github\.com\// : /^dry-run:\/\//,
+  );
   assert.deepEqual(
     detail.payload.timeline.map((event) => event.eventType),
     [
@@ -308,6 +333,112 @@ async function exerciseJourney(baseUrl) {
     ],
   );
 
+  if (!remoteBaseUrl) {
+    await pool.query(
+      `
+        update action_requests
+        set execution_external_reference = 'https://github.com/sentinelops/platform/releases/tag/untagged-e2e'
+        where id = $1 and organization_id = $2
+      `,
+      [requestId, organizationId],
+    );
+  }
+  const governanceOperation = remoteBaseUrl ? "cancel" : "publish";
+  const governanceRequested = await jsonRequest(
+    `${baseUrl}/api/v1/actions/${requestId}/draft-governance`,
+    {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({
+        operation: governanceOperation,
+        reason: `E2E ${governanceOperation} requires an independent administrator.`,
+      }),
+    },
+  );
+  assert.equal(
+    governanceRequested.response.status,
+    201,
+    `Draft governance request failed: ${JSON.stringify(governanceRequested.payload)}`,
+  );
+  const governanceId = governanceRequested.payload.id;
+  const governanceNotification = await pool.query(
+    `
+      select count(*)::int as count
+      from notification_outbox
+      where organization_id = $1
+        and event_type = 'release.draft_governance_requested'
+        and payload->>'governanceId' = $2
+    `,
+    [organizationId, governanceId],
+  );
+  assert.equal(governanceNotification.rows[0].count, 1);
+
+  const selfApproval = await jsonRequest(
+    `${baseUrl}/api/v1/release-governance/${governanceId}/decision`,
+    {
+      method: "POST",
+      headers: { cookie, "content-type": "application/json" },
+      body: JSON.stringify({
+        decision: "approved",
+        reason: "The maker must not be allowed to approve this.",
+      }),
+    },
+  );
+  assert.equal(selfApproval.response.status, 409);
+  assert.match(selfApproval.payload.error, /different administrator/i);
+
+  const reviewerLogin = await jsonRequest(`${baseUrl}/api/v1/session`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: reviewerEmail, password: operatorPassword }),
+  });
+  assert.equal(reviewerLogin.response.status, 200);
+  const reviewerCookie = reviewerLogin.response.headers.get("set-cookie")?.split(";")[0];
+  assert(reviewerCookie, "Independent reviewer session cookie was not returned.");
+  const governanceApproved = await jsonRequest(
+    `${baseUrl}/api/v1/release-governance/${governanceId}/decision`,
+    {
+      method: "POST",
+      headers: { cookie: reviewerCookie, "content-type": "application/json" },
+      body: JSON.stringify({
+        decision: "approved",
+        reason: `Independent E2E reviewer approved ${governanceOperation} execution.`,
+      }),
+    },
+  );
+  assert.equal(governanceApproved.response.status, 200);
+  assert.equal(governanceApproved.payload.status, "approved");
+
+  let governanceDetail;
+  const governanceDeadline = Date.now() + 15_000;
+  while (Date.now() < governanceDeadline) {
+    governanceDetail = await jsonRequest(
+      `${baseUrl}/api/v1/actions/${requestId}/details`,
+      { headers: { cookie: reviewerCookie } },
+    );
+    const governanceStatus = governanceDetail.payload.draftGovernance?.[0]?.status;
+    if (governanceStatus === "succeeded" || governanceStatus === "failed") break;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  assert.equal(
+    governanceDetail?.payload.draftGovernance?.[0]?.status,
+    remoteBaseUrl ? "succeeded" : "failed",
+  );
+  assert.equal(
+    governanceDetail.payload.timeline.filter(
+      (event) => event.eventType === `release.draft_${governanceOperation}_approved`,
+    ).length,
+    1,
+  );
+  assert.equal(
+    governanceDetail.payload.timeline.filter(
+      (event) => event.eventType === `release.draft_${governanceOperation}_executing`,
+    ).length,
+    1,
+  );
+
+  let failureAlerts = 0;
+  if (!remoteBaseUrl) {
   const failedEvaluationBody = {
     ...evaluationBody,
     idempotencyKey: `enterprise-retry-${runId}`,
@@ -363,11 +494,12 @@ async function exerciseJourney(baseUrl) {
     [organizationId, failedRequestId],
   );
   assert.equal(failureAlert.rows[0].count, 1);
+  failureAlerts = failureAlert.rows[0].count;
 
   // Simulate remediation of the transient release target before an operator retry.
   await pool.query(
     "update action_requests set resource = $2 where id = $1 and organization_id = $3",
-    [failedRequestId, "sentinelops/platform@e2e-retry", organizationId],
+    [failedRequestId, `${releaseRepository}@e2e-retry-${runId}`, organizationId],
   );
   const retried = await jsonRequest(
     `${baseUrl}/api/v1/actions/${failedRequestId}/execution/retry`,
@@ -402,6 +534,7 @@ async function exerciseJourney(baseUrl) {
     ).length,
     2,
   );
+  }
 
   const integrity = await jsonRequest(`${baseUrl}/api/v1/audit/integrity`, {
     headers: { cookie },
@@ -414,7 +547,9 @@ async function exerciseJourney(baseUrl) {
     requestId,
     auditEvents: integrity.payload.eventsChecked,
     notificationJobs: queued.rows[0].count,
-    failureAlerts: failureAlert.rows[0].count,
+    failureAlerts,
+    governanceId,
+    governanceNotifications: governanceNotification.rows[0].count,
   };
 }
 
@@ -453,6 +588,8 @@ try {
   console.log(`Audit events verified: ${result.auditEvents}`);
   console.log(`Deduplicated notification jobs: ${result.notificationJobs}`);
   console.log(`Durable execution failure alerts: ${result.failureAlerts}`);
+  console.log(`Four-eyes release governance: ${result.governanceId}`);
+  console.log(`Governance review alerts: ${result.governanceNotifications}`);
 } finally {
   await cleanup();
 }

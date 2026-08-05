@@ -1074,18 +1074,24 @@ function ActionDetailDrawer({
   canRetryExecution,
   onExecutionRetried,
   onNotify,
+  operatorId,
+  canGovernReleases,
 }: {
   requestId: string | null;
   onClose: () => void;
   canRetryExecution: boolean;
   onExecutionRetried: () => Promise<void>;
   onNotify: (message: string) => void;
+  operatorId: string | null;
+  canGovernReleases: boolean;
 }) {
   const [detail, setDetail] = useState<ActionDetail | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(Boolean(requestId));
   const [retrying, setRetrying] = useState(false);
   const [refreshSequence, setRefreshSequence] = useState(0);
+  const [governanceReason, setGovernanceReason] = useState("");
+  const [governanceLoading, setGovernanceLoading] = useState("");
 
   useEffect(() => {
     if (!requestId) return;
@@ -1158,6 +1164,76 @@ function ActionDetailDrawer({
       );
     } finally {
       setRetrying(false);
+    }
+  }
+
+  async function requestDraftGovernance(operation: "publish" | "cancel") {
+    if (!requestId || !governanceReason.trim() || governanceLoading) return;
+    setGovernanceLoading(`request-${operation}`);
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/v1/actions/${requestId}/draft-governance`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ operation, reason: governanceReason.trim() }),
+        },
+      );
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || "Draft governance request could not be created.");
+      }
+      setGovernanceReason("");
+      await onExecutionRetried();
+      setRefreshSequence((value) => value + 1);
+      onNotify(
+        `${operation === "publish" ? "Publication" : "Cancellation"} now requires a second administrator.`,
+      );
+    } catch (governanceError) {
+      setError(
+        governanceError instanceof Error
+          ? governanceError.message
+          : "Draft governance request could not be created.",
+      );
+    } finally {
+      setGovernanceLoading("");
+    }
+  }
+
+  async function decideDraftGovernance(
+    governanceId: string,
+    decision: "approved" | "rejected",
+  ) {
+    if (!governanceReason.trim() || governanceLoading) return;
+    setGovernanceLoading(`${decision}-${governanceId}`);
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/v1/release-governance/${governanceId}/decision`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ decision, reason: governanceReason.trim() }),
+        },
+      );
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || "Governance decision could not be recorded.");
+      }
+      setGovernanceReason("");
+      await onExecutionRetried();
+      setRefreshSequence((value) => value + 1);
+      window.setTimeout(() => setRefreshSequence((value) => value + 1), 1_000);
+      onNotify(`Draft operation was ${decision}.`);
+    } catch (governanceError) {
+      setError(
+        governanceError instanceof Error
+          ? governanceError.message
+          : "Governance decision could not be recorded.",
+      );
+    } finally {
+      setGovernanceLoading("");
     }
   }
 
@@ -1284,6 +1360,125 @@ function ActionDetailDrawer({
                   ) : null}
                 </section>
               </div>
+
+              {(detail.execution.externalReference?.startsWith("https://github.com/") ||
+                detail.draftGovernance.length > 0) ? (
+                <section className="rounded-xl border border-sentinel-lime/25 bg-sentinel-lime/5 p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sentinel-lime">
+                        Independent release control
+                      </span>
+                      <h3 className="mt-2 text-base font-semibold text-sentinel-text">
+                        Publish or cancel GitHub draft
+                      </h3>
+                      <p className="mt-1 text-xs leading-5 text-sentinel-muted">
+                        Draft creation approval cannot publish this release. A different administrator must approve either operation.
+                      </p>
+                    </div>
+                    <ShieldCheck className="h-5 w-5 shrink-0 text-sentinel-lime" />
+                  </div>
+
+                  {detail.draftGovernance[0] ? (
+                    <div className="mt-4 rounded-xl border border-sentinel-line bg-sentinel-canvas/60 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <strong className="text-xs font-semibold capitalize text-sentinel-text">
+                          {detail.draftGovernance[0].operation} draft
+                        </strong>
+                        <span className={`mode ${detail.draftGovernance[0].status === "failed" || detail.draftGovernance[0].status === "rejected" ? "mode-block" : detail.draftGovernance[0].status === "succeeded" ? "mode-monitor" : "mode-approval"}`}>
+                          {detail.draftGovernance[0].status}
+                        </span>
+                      </div>
+                      <p className="mt-2 break-words text-xs leading-5 text-sentinel-muted">
+                        {detail.draftGovernance[0].requestReason}
+                      </p>
+                      <p className="mt-2 break-all text-[10px] text-sentinel-dim">
+                        Requested by {detail.draftGovernance[0].requestedBy}
+                      </p>
+                      {detail.draftGovernance[0].reviewedBy ? (
+                        <p className="mt-1 break-all text-[10px] text-sentinel-dim">
+                          Reviewed by {detail.draftGovernance[0].reviewedBy}
+                        </p>
+                      ) : null}
+                      {detail.draftGovernance[0].executionSummary ? (
+                        <p className="mt-3 text-xs leading-5 text-sentinel-muted">
+                          {detail.draftGovernance[0].executionSummary}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {detail.draftGovernance[0]?.status === "pending" ? (
+                    detail.draftGovernance[0].requestedByOperatorId === operatorId ? (
+                      <div className="mt-4 rounded-lg border border-sentinel-amber/25 bg-sentinel-amber/5 px-3 py-2 text-xs leading-5 text-sentinel-amber">
+                        A different administrator must review this request.
+                      </div>
+                    ) : canGovernReleases ? (
+                      <div className="mt-4 space-y-3">
+                        <input
+                          className="h-10 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-xs text-sentinel-text outline-none placeholder:text-sentinel-dim focus:border-sentinel-lime/60"
+                          value={governanceReason}
+                          onChange={(event) => setGovernanceReason(event.target.value)}
+                          placeholder="Independent review note (required)"
+                          aria-label="Independent release review note"
+                        />
+                        <div className="grid grid-cols-2 gap-2 max-[360px]:grid-cols-1">
+                          <button
+                            type="button"
+                            className="secondary-button justify-center"
+                            disabled={!governanceReason.trim() || Boolean(governanceLoading)}
+                            onClick={() => void decideDraftGovernance(detail.draftGovernance[0].id, "rejected")}
+                          >
+                            <XCircle /> Reject
+                          </button>
+                          <button
+                            type="button"
+                            className="primary-button justify-center"
+                            disabled={!governanceReason.trim() || Boolean(governanceLoading)}
+                            onClick={() => void decideDraftGovernance(detail.draftGovernance[0].id, "approved")}
+                          >
+                            {governanceLoading ? <LoaderCircle className="animate-spin" /> : <Check />}
+                            Approve operation
+                          </button>
+                        </div>
+                      </div>
+                    ) : null
+                  ) : null}
+
+                  {(!detail.draftGovernance[0] ||
+                    ["rejected", "expired", "failed"].includes(detail.draftGovernance[0].status)) &&
+                    canGovernReleases ? (
+                    <div className="mt-4 space-y-3">
+                      <input
+                        className="h-10 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-xs text-sentinel-text outline-none placeholder:text-sentinel-dim focus:border-sentinel-lime/60"
+                        value={governanceReason}
+                        onChange={(event) => setGovernanceReason(event.target.value)}
+                        placeholder="Reason and change ticket (required)"
+                        aria-label="Release governance request reason"
+                      />
+                      <div className="grid grid-cols-2 gap-2 max-[420px]:grid-cols-1">
+                        <button
+                          type="button"
+                          className="secondary-button justify-center"
+                          disabled={!governanceReason.trim() || Boolean(governanceLoading)}
+                          onClick={() => void requestDraftGovernance("cancel")}
+                        >
+                          <XCircle /> Request cancellation
+                        </button>
+                        <button
+                          type="button"
+                          className="primary-button justify-center"
+                          disabled={!governanceReason.trim() || Boolean(governanceLoading)}
+                          onClick={() => void requestDraftGovernance("publish")}
+                        >
+                          {governanceLoading ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />}
+                          Request publication
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
 
               <section>
                 <div className="mb-4 flex items-center gap-2">
@@ -2282,6 +2477,8 @@ export function ControlCenter() {
         canRetryExecution={workspaceMode === "live" && operatorIdentity?.role === "admin"}
         onExecutionRetried={refreshLiveWorkspace}
         onNotify={setToast}
+        operatorId={operatorIdentity?.id ?? null}
+        canGovernReleases={workspaceMode === "live" && operatorIdentity?.role === "admin"}
       />
       {toast && <Toast message={toast} onClose={() => setToast("")} />}
     </div>

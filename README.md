@@ -193,6 +193,14 @@ whose repository differs from that configured sandbox, and GitHub releases
 remain drafts. Set the mode to `disabled` to retain the manual agent-reported
 outcome flow.
 
+Draft creation approval never authorizes publication. After a GitHub draft is
+created, an administrator must open its **Action evidence**, enter a reason,
+and request either publication or cancellation. SentinelOps records a separate
+governance request. A different administrator must approve it before the
+release-governance worker can call GitHub. The database rejects maker/checker
+identity reuse, allows only one active operation per draft, and records request,
+review, worker, and terminal evidence in the original audit timeline.
+
 Operator roles are deliberately small for the MVP:
 
 - `admin` can view data, decide actions, manage policies, manage agent API
@@ -351,6 +359,10 @@ used in the recording.
   and ordered audit timeline for the dashboard evidence drawer.
 - `POST /api/v1/actions/:requestId/decision` requires an authenticated operator
   with the `admin` or `approver` role and records an atomic approval or denial.
+- `POST /api/v1/actions/:requestId/draft-governance` lets an administrator
+  request publication or cancellation of a successfully created GitHub draft.
+- `POST /api/v1/release-governance/:governanceId/decision` requires a different
+  administrator and starts the approved GitHub operation asynchronously.
 - `POST /api/v1/actions/:requestId/outcome` lets the originating organization
   report `executing`, `succeeded`, `failed`, or `cancelled` and records each
   transition as audit evidence.

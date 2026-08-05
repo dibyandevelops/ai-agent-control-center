@@ -50,6 +50,44 @@ export type ReleaseExecutionFailureNotificationPayload = z.infer<
   typeof releaseExecutionFailureNotificationSchema
 >;
 
+export const releaseGovernanceNotificationSchema = z.object({
+  governanceId: z.string().uuid(),
+  requestId: z.string().uuid(),
+  operation: z.enum(["publish", "cancel"]),
+  resource: z.string().trim().min(1).max(500),
+  requestedBy: z.string().email(),
+  expiresAt: z.string().datetime(),
+});
+
+export type ReleaseGovernanceNotificationPayload = z.infer<
+  typeof releaseGovernanceNotificationSchema
+>;
+
+export async function enqueueReleaseGovernanceNotification(
+  client: PoolClient,
+  input: {
+    organizationId: string;
+    payload: ReleaseGovernanceNotificationPayload;
+  },
+) {
+  const result = await client.query<{ id: string }>(
+    `
+      insert into notification_outbox (
+        organization_id, channel, event_type, dedupe_key, payload
+      )
+      values ($1, 'slack', 'release.draft_governance_requested', $2, $3::jsonb)
+      on conflict (channel, dedupe_key) do nothing
+      returning id
+    `,
+    [
+      input.organizationId,
+      `release-governance:${input.payload.governanceId}:requested`,
+      JSON.stringify(input.payload),
+    ],
+  );
+  return { enqueued: Boolean(result.rows[0]), id: result.rows[0]?.id ?? null };
+}
+
 export async function enqueueReleaseExecutionFailureNotification(
   client: PoolClient,
   input: {

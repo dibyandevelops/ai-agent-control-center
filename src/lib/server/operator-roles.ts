@@ -5,7 +5,8 @@ export type OperatorCapability =
   | "manage_policies"
   | "manage_operators"
   | "manage_api_keys"
-  | "retry_execution";
+  | "retry_execution"
+  | "govern_releases";
 
 const capabilities: Record<OperatorRole, ReadonlySet<OperatorCapability>> = {
   admin: new Set([
@@ -15,6 +16,7 @@ const capabilities: Record<OperatorRole, ReadonlySet<OperatorCapability>> = {
     "manage_operators",
     "manage_api_keys",
     "retry_execution",
+    "govern_releases",
   ]),
   approver: new Set(["read", "approve"]),
   auditor: new Set(["read"]),

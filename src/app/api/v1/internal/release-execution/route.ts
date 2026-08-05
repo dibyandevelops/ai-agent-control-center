@@ -3,6 +3,7 @@ import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
 import { hasValidInternalBearer } from "@/lib/server/internal-auth";
 import { runApprovedReleaseWorker } from "@/lib/server/release-execution-worker";
+import { runApprovedDraftGovernanceWorker } from "@/lib/server/release-governance-worker";
 
 export const maxDuration = 60;
 
@@ -21,7 +22,11 @@ async function runReleaseExecution(request: NextRequest) {
         { status: 401 },
       );
     }
-    return NextResponse.json(await runApprovedReleaseWorker());
+    const [draftCreation, draftGovernance] = await Promise.all([
+      runApprovedReleaseWorker(),
+      runApprovedDraftGovernanceWorker(),
+    ]);
+    return NextResponse.json({ draftCreation, draftGovernance });
   } catch (error) {
     return apiError(error);
   }

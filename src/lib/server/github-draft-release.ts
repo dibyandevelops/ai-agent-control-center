@@ -1,8 +1,79 @@
 interface GitHubReleaseResponse {
+  id?: number;
   draft?: boolean;
   html_url?: string;
   tag_name?: string;
   message?: string;
+}
+
+export async function transitionGitHubDraftRelease(input: {
+  token: string;
+  repository: string;
+  tagName: string;
+  operation: "publish" | "cancel";
+}) {
+  const releasePath =
+    `/repos/${input.repository}/releases/tags/${encodeURIComponent(input.tagName)}`;
+  let release: GitHubReleaseResponse;
+  try {
+    release = await githubRequest(input.token, releasePath);
+  } catch (error) {
+    if (
+      input.operation === "cancel" &&
+      error instanceof GitHubRequestError &&
+      error.status === 404
+    ) {
+      return {
+        replayed: true,
+        summary: `GitHub draft release ${input.tagName} was already absent.`,
+        externalReference: null,
+      };
+    }
+    throw error;
+  }
+  if (!release.id) {
+    throw new Error("GitHub did not return a release identifier.");
+  }
+
+  if (input.operation === "publish") {
+    if (release.draft === false) {
+      return {
+        replayed: true,
+        summary: `GitHub release ${input.tagName} was already published.`,
+        externalReference: release.html_url ?? null,
+      };
+    }
+    if (release.draft !== true) {
+      throw new Error("GitHub did not identify the release as a draft.");
+    }
+    const published = await githubRequest(
+      input.token,
+      `/repos/${input.repository}/releases/${release.id}`,
+      { method: "PATCH", body: JSON.stringify({ draft: false }) },
+    );
+    if (published.draft !== false || !published.html_url) {
+      throw new Error("GitHub did not confirm release publication.");
+    }
+    return {
+      replayed: false,
+      summary: `GitHub release ${input.tagName} published successfully.`,
+      externalReference: published.html_url,
+    };
+  }
+
+  if (release.draft !== true) {
+    throw new Error("A published GitHub release cannot be cancelled as a draft.");
+  }
+  await githubRequest(
+    input.token,
+    `/repos/${input.repository}/releases/${release.id}`,
+    { method: "DELETE" },
+  );
+  return {
+    replayed: false,
+    summary: `GitHub draft release ${input.tagName} cancelled successfully.`,
+    externalReference: null,
+  };
 }
 
 class GitHubRequestError extends Error {
