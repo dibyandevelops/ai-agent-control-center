@@ -3,6 +3,7 @@ import { getOperatorSession } from "@/lib/server/auth";
 import { getPool } from "@/lib/server/db";
 import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
+import { listOrganizationGitHubConnections } from "@/lib/server/github-connections";
 import type { PolicyActivationSimulation } from "@/lib/types";
 
 export async function GET() {
@@ -26,6 +27,7 @@ export async function GET() {
       releaseGovernanceResult,
       githubDriftResult,
       notificationOutboxResult,
+      githubConnections,
     ] =
       await Promise.all([
         pool.query<{
@@ -343,6 +345,7 @@ export async function GET() {
           `,
           [operator.organizationId],
         ),
+        listOrganizationGitHubConnections(operator.organizationId),
       ]);
 
     const latestGitHubEvidence = auditResult.rows.find((row) => {
@@ -355,10 +358,19 @@ export async function GET() {
     });
     const githubTokenConfigured = Boolean(env.GITHUB_TOKEN);
     const githubRepositoryConfigured = Boolean(env.GITHUB_REPOSITORY);
-    const githubConnected =
-      githubTokenConfigured && githubRepositoryConfigured;
+    const githubAppConfigured = Boolean(
+      env.GITHUB_APP_ID && env.GITHUB_APP_PRIVATE_KEY,
+    );
+    const githubAppRegistered = githubConnections.some((connection) =>
+      connection.status === "active" &&
+      connection.repositories.some((repository) => repository.enabled)
+    );
+    const githubAppConnected = githubAppConfigured && githubAppRegistered;
+    const githubConnected = githubAppConnected ||
+      (githubTokenConfigured && githubRepositoryConfigured);
     const githubWebhookConfigured = Boolean(
-      env.GITHUB_WEBHOOK_SECRET && env.GITHUB_WEBHOOK_ORGANIZATION_SLUG,
+      env.GITHUB_WEBHOOK_SECRET &&
+      (githubAppRegistered || env.GITHUB_WEBHOOK_ORGANIZATION_SLUG),
     );
     const activeCriticalContainments = githubDriftResult.rows.filter(
       (incident) => incident.severity === "critical",
@@ -369,7 +381,7 @@ export async function GET() {
       ? "verified"
       : githubConnected
         ? "configured"
-        : githubTokenConfigured || githubRepositoryConfigured
+        : githubAppRegistered || githubTokenConfigured || githubRepositoryConfigured
           ? "attention"
           : "not_connected";
     const notificationOutbox = notificationOutboxResult.rows[0];
@@ -550,16 +562,26 @@ export async function GET() {
               ? "Ready for validation"
               : "Not configured",
           status: githubStatus,
-          repository: env.GITHUB_REPOSITORY,
+          repository: githubConnections[0]?.repositories[0]?.fullName ?? env.GITHUB_REPOSITORY,
+          authenticationMode: githubAppRegistered
+            ? "github_app"
+            : githubTokenConfigured && githubRepositoryConfigured
+              ? "legacy_pat"
+              : "not_configured",
+          githubConnections,
           mode:
             activeCriticalContainments > 0
               ? `Release containment active · ${activeCriticalContainments} target${activeCriticalContainments === 1 ? "" : "s"} frozen`
+              : githubAppRegistered && !githubAppConfigured
+              ? "GitHub App credentials required"
               : env.GITHUB_DRY_RUN === "false"
               ? githubWebhookConfigured
                 ? "Draft release · Drift protected"
                 : "Draft release · Webhook required"
               : "Read-only dry run",
-          url: env.GITHUB_REPOSITORY
+          url: githubConnections[0]?.repositories[0]?.fullName
+            ? `https://github.com/${githubConnections[0].repositories[0].fullName}`
+            : env.GITHUB_REPOSITORY
             ? `https://github.com/${env.GITHUB_REPOSITORY}`
             : null,
           driftIncidents: githubDriftResult.rows.map((row) => ({

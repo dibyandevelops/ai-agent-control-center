@@ -77,6 +77,7 @@ import {
 } from "@/components/policy-governance";
 import { ReleaseGovernanceQueue } from "@/components/release-governance-queue";
 import { GitHubDriftIncidents } from "@/components/github-drift-incidents";
+import { GitHubAppConnection } from "@/components/github-app-connection";
 
 type View =
   | "overview"
@@ -1573,6 +1574,8 @@ function IntegrationsView({
   onAcknowledgeDrift,
   onResolveDrift,
   onViewEvidence,
+  onRefresh,
+  onNotify,
 }: {
   items: Integration[];
   live: boolean;
@@ -1582,6 +1585,8 @@ function IntegrationsView({
   onAcknowledgeDrift: (incidentId: string, note: string) => Promise<void>;
   onResolveDrift: (incidentId: string, note: string) => Promise<void>;
   onViewEvidence: (requestId: string) => void;
+  onRefresh: () => Promise<void>;
+  onNotify: (message: string) => void;
 }) {
   const [demoItems, setDemoItems] = useState(integrations);
   const [retrying, setRetrying] = useState(false);
@@ -1683,6 +1688,14 @@ function IntegrationsView({
                 </button>
               )}
             </div>
+            {live && integration.name === "GitHub" ? (
+              <GitHubAppConnection
+                integration={integration}
+                canManage={canAcknowledgeDrift}
+                onChanged={onRefresh}
+                onNotify={onNotify}
+              />
+            ) : null}
           </article>
         ))}
       </div>
@@ -2597,6 +2610,8 @@ export function ControlCenter() {
             onAcknowledgeDrift={acknowledgeGitHubDrift}
             onResolveDrift={resolveGitHubDrift}
             onViewEvidence={setSelectedRequestId}
+            onRefresh={refreshLiveWorkspace}
+            onNotify={setToast}
           />
         )}
         {view === "credentials" && operatorIdentity?.role === "admin" && (

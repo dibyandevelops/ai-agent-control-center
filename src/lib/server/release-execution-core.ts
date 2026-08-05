@@ -28,7 +28,6 @@ export function resolveReleaseExecutionPlan(input: {
   action: string;
   resource: string;
   context: Record<string, unknown>;
-  configuredRepository?: string;
 }): ReleaseExecutionPlan {
   if (!["deploy.release", "github.release.create"].includes(input.action)) {
     throw new Error(`Automated execution does not support ${input.action}.`);
@@ -57,20 +56,6 @@ export function resolveReleaseExecutionPlan(input: {
   }
   const changeTicket = contextString(input.context, ["changeTicket"])
     ?? "SENTINELOPS-AUTO";
-
-  if (input.mode === "github_draft") {
-    if (!input.configuredRepository) {
-      throw new Error("GITHUB_REPOSITORY is required for GitHub draft execution.");
-    }
-    if (
-      requestedRepository.toLowerCase()
-      !== input.configuredRepository.toLowerCase()
-    ) {
-      throw new Error(
-        "Approved release repository does not match the configured GitHub repository.",
-      );
-    }
-  }
 
   return {
     mode: input.mode,

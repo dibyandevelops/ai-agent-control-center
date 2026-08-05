@@ -189,10 +189,11 @@ above can be invoked for immediate operator recovery.
 
 `RELEASE_EXECUTION_MODE=dry_run` is the safe default and records execution
 evidence without calling a GitHub write API. Use `github_draft` only after
-configuring `GITHUB_TOKEN` and `GITHUB_REPOSITORY`; the worker refuses a request
-whose repository differs from that configured sandbox, and GitHub releases
-remain drafts. Set the mode to `disabled` to retain the manual agent-reported
-outcome flow.
+configuring the GitHub App and connecting an installation from **Integrations**.
+The worker accepts only repositories synchronized for the request's
+organization, mints a short-lived installation token when work begins, and
+never stores that token. GitHub releases remain drafts. Set the mode to
+`disabled` to retain the manual agent-reported outcome flow.
 
 Draft creation approval never authorizes publication. After a GitHub draft is
 created, an administrator must open its **Action evidence**, enter a reason,
@@ -288,19 +289,40 @@ Add the complete agent key printed by `pnpm db:seed` to `.env.local`:
 SENTINELOPS_AGENT_API_KEY=sop_live_your_complete_key
 ```
 
-For the GitHub sandbox integration, add a fine-grained token restricted to one
-test repository with `Contents: Read and write`:
+Create a GitHub App for SentinelOps with:
+
+- Repository permission **Contents: Read and write**;
+- webhook events **Releases**, **Installation**, and **Installation repositories**;
+- webhook URL `https://your-sentinelops-host/api/v1/webhooks/github`; and
+- a private key generated from the GitHub App settings page.
+
+Add the App identity and webhook secret to `.env.local` (use escaped newlines
+when entering the private key in Vercel):
 
 ```bash
-GITHUB_TOKEN=github_pat_your_complete_token
-GITHUB_REPOSITORY=your-account/sentinelops-release-sandbox
+GITHUB_APP_ID=123456
+GITHUB_APP_SLUG=your-sentinelops-app-slug
+GITHUB_APP_CLIENT_ID=Iv1.your_client_id
+GITHUB_APP_CLIENT_SECRET=your_client_secret
+GITHUB_APP_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
 GITHUB_WEBHOOK_SECRET=replace-with-openssl-rand-hex-32
-GITHUB_WEBHOOK_ORGANIZATION_SLUG=aperture-labs
 GITHUB_RELEASE_MODE=draft
 GITHUB_DRY_RUN=true
 ```
 
-Verify access without changing GitHub:
+Enable **Request user authorization (OAuth) during installation** and set the
+callback URL to
+`https://your-sentinelops-host/api/v1/github/installations/callback`. Then open
+**Integrations → GitHub** and choose **Install or connect GitHub App**. GitHub
+verifies that the signed-in installer can access the installation before
+SentinelOps links its repositories. A GitHub installation can belong to only
+one SentinelOps organization.
+
+`GITHUB_TOKEN`, `GITHUB_REPOSITORY`, and
+`GITHUB_WEBHOOK_ORGANIZATION_SLUG` remain supported temporarily for the existing
+sandbox migration. They should not be used for new customer organizations.
+
+Verify legacy sandbox access without changing GitHub:
 
 ```bash
 pnpm github:verify
@@ -337,8 +359,7 @@ Generate a webhook secret without committing it:
 openssl rand -hex 32
 ```
 
-In the GitHub sandbox repository, open **Settings → Webhooks → Add webhook** and
-configure:
+For the legacy sandbox webhook, open **Settings → Webhooks → Add webhook** and configure:
 
 - Payload URL: `https://your-sentinelops-host/api/v1/webhooks/github`
 - Content type: `application/json`
@@ -403,6 +424,10 @@ used in the recording.
 - `POST /api/v1/webhooks/github` verifies signed GitHub `release` deliveries,
   deduplicates replays, reconciles each mutation with SentinelOps evidence, and
   records unmatched mutations as release-drift incidents.
+- `GET/POST /api/v1/github/connections` lists or connects GitHub App
+  installations only for the signed-in administrator's organization.
+- `POST /api/v1/github/connections/:connectionId/sync` refreshes the authorized
+  repository list and disables repositories removed from the installation.
 - `POST /api/v1/github-drift/:incidentId/acknowledge` requires an administrator,
   preserves the investigation note in the audit chain, and keeps critical
   release containment active.

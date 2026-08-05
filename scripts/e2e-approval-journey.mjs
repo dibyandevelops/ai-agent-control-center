@@ -34,6 +34,9 @@ const reviewerEmail = `reviewer-${runId}@sentinelops.test`;
 const operatorPassword = `E2E-${randomBytes(18).toString("base64url")}!`;
 const agentApiKey = `sop_live_${randomBytes(24).toString("base64url")}`;
 const githubWebhookSecret = randomBytes(32).toString("hex");
+const connectedRepository = remoteBaseUrl
+  ? process.env.GITHUB_REPOSITORY || "sentinelops/platform"
+  : `sentinelops/e2e-${runId}`;
 let organizationId = null;
 let server = null;
 
@@ -115,6 +118,35 @@ async function setupTenant() {
       ],
     );
 
+    const installation = await client.query(
+      `insert into github_app_installations (
+         organization_id, github_installation_id, account_login, account_type,
+         repository_selection, permissions, created_by_operator_id,
+         created_by_email
+       ) values ($1, $2, 'sentinelops-e2e', 'Organization', 'selected',
+                 '{"contents":"write","metadata":"read"}'::jsonb, $3, $4)
+       returning id`,
+      [
+        organizationId,
+        Number.parseInt(createHash("sha256").update(runId).digest("hex").slice(0, 12), 16),
+        operator.rows[0].id,
+        operatorEmail,
+      ],
+    );
+    await client.query(
+      `insert into github_app_repositories (
+         organization_id, installation_id, github_repository_id, full_name,
+         owner_login, name, private, default_branch
+       ) values ($1, $2, $3, $4, split_part($4, '/', 1),
+                 split_part($4, '/', 2), true, 'main')`,
+      [
+        organizationId,
+        installation.rows[0].id,
+        Number.parseInt(createHash("sha256").update(`${runId}:repository`).digest("hex").slice(0, 12), 16),
+        connectedRepository,
+      ],
+    );
+
     const policy = await client.query(
       `
         insert into policies (
@@ -181,7 +213,7 @@ async function startServer() {
     env: {
       ...process.env,
       NODE_ENV: "production",
-      GITHUB_REPOSITORY: process.env.GITHUB_REPOSITORY || "sentinelops/platform",
+      GITHUB_REPOSITORY: connectedRepository,
       GITHUB_WEBHOOK_SECRET: githubWebhookSecret,
       GITHUB_WEBHOOK_ORGANIZATION_SLUG: organizationSlug,
     },
@@ -237,6 +269,12 @@ async function exerciseJourney(baseUrl) {
   const releaseRepository = workspace.payload.integrations.find(
     (integration) => integration.name === "GitHub",
   )?.repository || "sentinelops/platform";
+  const githubIntegration = workspace.payload.integrations.find(
+    (integration) => integration.name === "GitHub",
+  );
+  assert.equal(githubIntegration.authenticationMode, "github_app");
+  assert.equal(githubIntegration.githubConnections.length, 1);
+  assert.equal(githubIntegration.githubConnections[0].repositories[0].fullName, releaseRepository);
   const releaseTag = `e2e-${runId}`;
   const evaluationBody = {
     idempotencyKey: `enterprise-journey-${runId}`,

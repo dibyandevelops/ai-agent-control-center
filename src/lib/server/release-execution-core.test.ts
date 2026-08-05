@@ -25,14 +25,13 @@ describe("release execution planning", () => {
     );
   });
 
-  it("refuses an unconfigured repository in GitHub mode", () => {
-    expect(() => resolveReleaseExecutionPlan({
+  it("allows a syntactically valid tenant repository in GitHub mode", () => {
+    expect(resolveReleaseExecutionPlan({
       mode: "github_draft",
       action: "deploy.release",
       resource: "example/other-repository@v1.0.0",
       context: {},
-      configuredRepository: "dibyandevelops/sentinelops-release-sandbox",
-    })).toThrow("does not match");
+    }).repository).toBe("example/other-repository");
   });
 
   it("rejects unsupported actions and malformed release targets", () => {

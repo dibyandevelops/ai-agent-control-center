@@ -5,6 +5,7 @@ import { appendAuditEvent } from "./audit";
 import { withTransaction } from "./db";
 import { getServerEnv } from "./env";
 import { transitionGitHubDraftRelease } from "./github-draft-release";
+import { resolveGitHubRepositoryCredential } from "./github-connections";
 import { findActiveReleaseContainment } from "./github-release-containment";
 import { resolveReleaseExecutionPlan } from "./release-execution-core";
 
@@ -153,7 +154,6 @@ async function finalizeGovernance(input: {
 }
 
 async function executeGovernance(workerId: string, governance: ClaimedGovernance) {
-  const env = getServerEnv();
   try {
     const containment = await withTransaction((client) =>
       findActiveReleaseContainment(client, {
@@ -175,16 +175,18 @@ async function executeGovernance(workerId: string, governance: ClaimedGovernance
         error: `Execution stopped by critical GitHub incident ${containment.id}.`,
       };
     }
-    if (!env.GITHUB_TOKEN) throw new Error("GITHUB_TOKEN is required.");
     const plan = resolveReleaseExecutionPlan({
       mode: "github_draft",
       action: governance.action,
       resource: governance.resource,
       context: governance.context,
-      configuredRepository: env.GITHUB_REPOSITORY,
+    });
+    const credential = await resolveGitHubRepositoryCredential({
+      organizationId: governance.organization_id,
+      repository: plan.repository,
     });
     const outcome = await transitionGitHubDraftRelease({
-      token: env.GITHUB_TOKEN,
+      token: credential.token,
       repository: plan.repository,
       tagName: plan.tagName,
       operation: governance.operation,

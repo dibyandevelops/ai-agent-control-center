@@ -289,6 +289,25 @@ export interface Integration {
   url?: string | null;
   deadLetters?: number;
   driftIncidents?: GitHubDriftIncident[];
+  authenticationMode?: "github_app" | "legacy_pat" | "not_configured";
+  githubConnections?: GitHubConnection[];
+}
+
+export interface GitHubConnection {
+  id: string;
+  installationId: string;
+  accountLogin: string;
+  accountType: string;
+  status: "active" | "suspended" | "disconnected";
+  repositorySelection: "all" | "selected";
+  lastSyncedAt: string;
+  repositories: Array<{
+    id: string;
+    fullName: string;
+    private: boolean;
+    defaultBranch: string;
+    enabled: boolean;
+  }>;
 }
 
 export interface GitHubDriftIncident {

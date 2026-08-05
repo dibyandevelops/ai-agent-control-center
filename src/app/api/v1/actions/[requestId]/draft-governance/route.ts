@@ -3,7 +3,6 @@ import { appendAuditEvent } from "@/lib/server/audit";
 import { getOperatorSession } from "@/lib/server/auth";
 import { releaseGovernanceRequestSchema } from "@/lib/server/contracts";
 import { withTransaction } from "@/lib/server/db";
-import { getServerEnv } from "@/lib/server/env";
 import { ConflictError, NotFoundError } from "@/lib/server/errors";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
@@ -32,8 +31,6 @@ export async function POST(
     }
     const { requestId } = await context.params;
     const input = releaseGovernanceRequestSchema.parse(await request.json());
-    const env = getServerEnv();
-
     const result = await withTransaction(async (client) => {
       const actionResult = await client.query<{
         id: string;
@@ -70,7 +67,6 @@ export async function POST(
           action: action.action,
           resource: action.resource,
           context: action.context,
-          configuredRepository: env.GITHUB_REPOSITORY,
         });
       } catch (error) {
         throw new ConflictError(

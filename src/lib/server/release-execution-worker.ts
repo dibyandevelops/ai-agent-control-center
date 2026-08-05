@@ -5,6 +5,7 @@ import { appendAuditEvent } from "./audit";
 import { withTransaction } from "./db";
 import { getServerEnv } from "./env";
 import { createIdempotentGitHubDraftRelease } from "./github-draft-release";
+import { resolveGitHubRepositoryCredential } from "./github-connections";
 import { enqueueReleaseExecutionFailureNotification } from "./notification-outbox";
 import {
   dryRunReleaseResult,
@@ -188,19 +189,21 @@ async function executeClaimedRelease(
       action: release.action,
       resource: release.resource,
       context: release.context,
-      configuredRepository: env.GITHUB_REPOSITORY,
     });
-    if (plan.mode === "github_draft" && !env.GITHUB_TOKEN) {
-      throw new Error("GITHUB_TOKEN is required for GitHub draft execution.");
-    }
     const outcome = plan.mode === "github_draft"
-      ? await createIdempotentGitHubDraftRelease({
-          token: env.GITHUB_TOKEN ?? "",
-          repository: plan.repository,
-          tagName: plan.tagName,
-          targetCommitish: plan.targetCommitish,
-          changeTicket: plan.changeTicket,
-        })
+      ? await (async () => {
+          const credential = await resolveGitHubRepositoryCredential({
+            organizationId: release.organization_id,
+            repository: plan.repository,
+          });
+          return createIdempotentGitHubDraftRelease({
+            token: credential.token,
+            repository: plan.repository,
+            tagName: plan.tagName,
+            targetCommitish: plan.targetCommitish,
+            changeTicket: plan.changeTicket,
+          });
+        })()
       : dryRunReleaseResult(plan);
     const finalized = await finalizeRelease({
       workerId,

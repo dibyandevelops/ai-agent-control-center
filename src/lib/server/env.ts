@@ -14,6 +14,11 @@ const serverEnvSchema = z.object({
   POLICY_ACTIVATION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   POLICY_ACTIVATION_REMINDER_MINUTES: z.coerce.number().int().min(5).max(1440).default(240),
   GITHUB_TOKEN: z.string().min(1).optional(),
+  GITHUB_APP_ID: z.string().regex(/^\d+$/).optional(),
+  GITHUB_APP_SLUG: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
+  GITHUB_APP_CLIENT_ID: z.string().min(10).optional(),
+  GITHUB_APP_CLIENT_SECRET: z.string().min(20).optional(),
+  GITHUB_APP_PRIVATE_KEY: z.string().min(100).optional(),
   GITHUB_WEBHOOK_SECRET: z.string().min(32).optional(),
   GITHUB_WEBHOOK_ORGANIZATION_SLUG: z
     .string()
@@ -60,6 +65,12 @@ export function getServerEnv(): ServerEnv {
     POLICY_ACTIVATION_REMINDER_MINUTES:
       process.env.POLICY_ACTIVATION_REMINDER_MINUTES || undefined,
     GITHUB_TOKEN: process.env.GITHUB_TOKEN || undefined,
+    GITHUB_APP_ID: process.env.GITHUB_APP_ID || undefined,
+    GITHUB_APP_SLUG: process.env.GITHUB_APP_SLUG || undefined,
+    GITHUB_APP_CLIENT_ID: process.env.GITHUB_APP_CLIENT_ID || undefined,
+    GITHUB_APP_CLIENT_SECRET: process.env.GITHUB_APP_CLIENT_SECRET || undefined,
+    GITHUB_APP_PRIVATE_KEY:
+      process.env.GITHUB_APP_PRIVATE_KEY?.replace(/\\n/g, "\n") || undefined,
     GITHUB_WEBHOOK_SECRET: process.env.GITHUB_WEBHOOK_SECRET || undefined,
     GITHUB_WEBHOOK_ORGANIZATION_SLUG:
       process.env.GITHUB_WEBHOOK_ORGANIZATION_SLUG || undefined,

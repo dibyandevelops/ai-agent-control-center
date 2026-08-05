@@ -17,11 +17,7 @@ const supportedEvidenceStatuses = ["executing", "succeeded"];
 export async function POST(request: NextRequest) {
   try {
     const env = getServerEnv();
-    if (
-      !env.GITHUB_WEBHOOK_SECRET ||
-      !env.GITHUB_WEBHOOK_ORGANIZATION_SLUG ||
-      !env.GITHUB_REPOSITORY
-    ) {
+    if (!env.GITHUB_WEBHOOK_SECRET) {
       return NextResponse.json(
         { error: "GitHub release webhook is not configured." },
         { status: 503 },
@@ -56,10 +52,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "GitHub webhook payload must be valid JSON." }, { status: 400 });
     }
     const payload = githubReleaseWebhookSchema.parse(json);
-    if (
-      payload.repository.full_name.toLowerCase() !==
-      env.GITHUB_REPOSITORY.toLowerCase()
-    ) {
+    const repositoryOwner = await getPool().query<{ organization_id: string }>(
+      `select repository.organization_id
+         from github_app_repositories repository
+         join github_app_installations installation
+           on installation.id = repository.installation_id
+          and installation.organization_id = repository.organization_id
+        where lower(repository.full_name) = lower($1)
+          and repository.enabled = true
+          and installation.status = 'active'
+        limit 1`,
+      [payload.repository.full_name],
+    );
+    let ownerOrganizationId = repositoryOwner.rows[0]?.organization_id ?? null;
+    const legacyRepositoryMatches = Boolean(
+      env.GITHUB_REPOSITORY &&
+      env.GITHUB_REPOSITORY.toLowerCase() === payload.repository.full_name.toLowerCase(),
+    );
+    if (!ownerOrganizationId && legacyRepositoryMatches && env.GITHUB_WEBHOOK_ORGANIZATION_SLUG) {
+      const legacyOwner = await getPool().query<{ id: string }>(
+        "select id from organizations where slug = $1",
+        [env.GITHUB_WEBHOOK_ORGANIZATION_SLUG],
+      );
+      ownerOrganizationId = legacyOwner.rows[0]?.id ?? null;
+    }
+    if (!ownerOrganizationId) {
       await getPool().query(
         `
           insert into github_webhook_deliveries (
@@ -77,18 +94,10 @@ export async function POST(request: NextRequest) {
           payload.sender.login,
         ],
       );
-      return NextResponse.json({ status: "ignored", reason: "repository_mismatch" }, { status: 202 });
+      return NextResponse.json({ status: "ignored", reason: "repository_not_connected" }, { status: 202 });
     }
 
     const result = await withTransaction(async (client) => {
-      const organizationResult = await client.query<{ id: string }>(
-        "select id from organizations where slug = $1",
-        [env.GITHUB_WEBHOOK_ORGANIZATION_SLUG],
-      );
-      const organization = organizationResult.rows[0];
-      if (!organization) {
-        throw new Error("Configured GitHub webhook organization was not found.");
-      }
       const resource = `${payload.repository.full_name}@${payload.release.tag_name}`;
       const evidenceResult = await client.query<{
         id: string;
@@ -121,17 +130,15 @@ export async function POST(request: NextRequest) {
             limit 1
           ) cancellation on true
           where lower(action.resource) = lower($1)
+            and action.organization_id = $3
             and action.action in ('deploy.release', 'github.release.create')
           order by action.requested_at desc
           limit 1
         `,
-        [resource, supportedEvidenceStatuses],
+        [resource, supportedEvidenceStatuses, ownerOrganizationId],
       );
       const evidence = evidenceResult.rows[0];
-      // Governed executions can belong to a temporary verification tenant while
-      // the repository-level webhook has one configured fallback owner. Exact
-      // action evidence wins; unknown mutations remain assigned to that owner.
-      const evidenceOrganizationId = evidence?.organization_id ?? organization.id;
+      const evidenceOrganizationId = ownerOrganizationId;
       const classification = classifyGitHubReleaseMutation({
         action: payload.action,
         draft: payload.release.draft,
