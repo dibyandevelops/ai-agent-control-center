@@ -278,42 +278,26 @@ async function exerciseJourney(baseUrl) {
   assert.equal(approval.response.status, 200);
   assert.equal(approval.payload.status, "approved");
 
-  const executing = await jsonRequest(
-    `${baseUrl}/api/v1/actions/${requestId}/outcome`,
-    {
-      method: "POST",
-      headers: agentHeaders,
-      body: JSON.stringify({
-        status: "executing",
-        summary: "E2E release execution started.",
-      }),
-    },
-  );
-  assert.equal(executing.response.status, 201);
-  assert.equal(executing.payload.execution.status, "executing");
-
-  const completed = await jsonRequest(
-    `${baseUrl}/api/v1/actions/${requestId}/outcome`,
-    {
-      method: "POST",
-      headers: agentHeaders,
-      body: JSON.stringify({
-        status: "succeeded",
-        summary: "E2E release execution completed.",
-        externalReference: "https://github.com/example/sentinelops/actions/runs/1001",
-      }),
-    },
-  );
-  assert.equal(completed.response.status, 201);
-  assert.equal(completed.payload.execution.status, "succeeded");
-
-  const detail = await jsonRequest(
-    `${baseUrl}/api/v1/actions/${requestId}/details`,
-    { headers: { cookie } },
-  );
+  let detail;
+  const executionDeadline = Date.now() + 15_000;
+  while (Date.now() < executionDeadline) {
+    detail = await jsonRequest(
+      `${baseUrl}/api/v1/actions/${requestId}/details`,
+      { headers: { cookie } },
+    );
+    if (detail.payload.execution?.status === "succeeded") break;
+    if (detail.payload.execution?.status === "failed") {
+      throw new Error(
+        `Automated release execution failed: ${detail.payload.execution.summary}`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  assert(detail, "Automated execution details were not returned.");
   assert.equal(detail.response.status, 200);
   assert.equal(detail.payload.decision.status, "approved");
   assert.equal(detail.payload.execution.status, "succeeded");
+  assert.match(detail.payload.execution.externalReference, /^dry-run:\/\//);
   assert.deepEqual(
     detail.payload.timeline.map((event) => event.eventType),
     [

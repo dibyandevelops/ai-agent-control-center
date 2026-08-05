@@ -20,6 +20,11 @@ const serverEnvSchema = z.object({
     .optional(),
   GITHUB_RELEASE_MODE: z.enum(["draft"]).optional(),
   GITHUB_DRY_RUN: z.enum(["true", "false"]).optional(),
+  RELEASE_EXECUTION_MODE: z
+    .enum(["disabled", "dry_run", "github_draft"])
+    .default("dry_run"),
+  RELEASE_EXECUTION_BATCH_SIZE: z.coerce.number().int().min(1).max(25).default(10),
+  RELEASE_EXECUTION_LEASE_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -53,6 +58,12 @@ export function getServerEnv(): ServerEnv {
     GITHUB_REPOSITORY: process.env.GITHUB_REPOSITORY || undefined,
     GITHUB_RELEASE_MODE: process.env.GITHUB_RELEASE_MODE || undefined,
     GITHUB_DRY_RUN: process.env.GITHUB_DRY_RUN || undefined,
+    RELEASE_EXECUTION_MODE:
+      process.env.RELEASE_EXECUTION_MODE || undefined,
+    RELEASE_EXECUTION_BATCH_SIZE:
+      process.env.RELEASE_EXECUTION_BATCH_SIZE || undefined,
+    RELEASE_EXECUTION_LEASE_MINUTES:
+      process.env.RELEASE_EXECUTION_LEASE_MINUTES || undefined,
   });
 
   if (!result.success) {

@@ -17,6 +17,7 @@ import {
   notifySlackOfApproval,
   notifySlackOfPolicyActivation,
 } from "@/lib/server/slack";
+import { runApprovedReleaseWorker } from "@/lib/server/release-execution-worker";
 
 export const maxDuration = 60;
 
@@ -79,6 +80,8 @@ async function runNotificationOutbox(request: NextRequest) {
         { status: 401 },
       );
     }
+
+    const releaseExecutions = await runApprovedReleaseWorker();
 
     const workerId = randomUUID();
     const claimed = await withTransaction(async (client) => {
@@ -179,7 +182,11 @@ async function runNotificationOutbox(request: NextRequest) {
       return { delivered, retried, dead };
     });
 
-    return NextResponse.json({ claimed: claimed.length, ...outcomes });
+    return NextResponse.json({
+      claimed: claimed.length,
+      ...outcomes,
+      releaseExecutions,
+    });
   } catch (error) {
     return apiError(error);
   }

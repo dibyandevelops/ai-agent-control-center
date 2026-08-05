@@ -165,6 +165,10 @@ curl --fail --request POST \
 curl --fail --request POST \
   --header "Authorization: Bearer $SENTINELOPS_CRON_SECRET" \
   http://localhost:3000/api/v1/internal/notification-outbox
+
+curl --fail --request POST \
+  --header "Authorization: Bearer $SENTINELOPS_CRON_SECRET" \
+  http://localhost:3000/api/v1/internal/release-execution
 ```
 
 The dispatcher is disabled when the secret is absent. It marks overdue reviews
@@ -174,6 +178,20 @@ other workers, performs Slack delivery after committing the claim, and retries
 failures with exponential backoff. After five failed attempts, the notification
 is retained in a dead-letter state for investigation. Slack delivery is enabled
 only when `SLACK_APPROVAL_WEBHOOK_URL` is configured.
+
+Approved `deploy.release` and `github.release.create` requests are claimed by
+the automated release worker immediately after the approval response. Claims
+use PostgreSQL row locks and worker leases, so concurrent invocations cannot
+execute the same release twice. The notification-outbox schedule also runs the
+worker as daily recovery for an interrupted lease; the dedicated internal route
+above can be invoked for immediate operator recovery.
+
+`RELEASE_EXECUTION_MODE=dry_run` is the safe default and records execution
+evidence without calling a GitHub write API. Use `github_draft` only after
+configuring `GITHUB_TOKEN` and `GITHUB_REPOSITORY`; the worker refuses a request
+whose repository differs from that configured sandbox, and GitHub releases
+remain drafts. Set the mode to `disabled` to retain the manual agent-reported
+outcome flow.
 
 Operator roles are deliberately small for the MVP:
 

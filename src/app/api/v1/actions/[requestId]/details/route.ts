@@ -3,10 +3,11 @@ import { getOperatorSession } from "@/lib/server/auth";
 import { getPool } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 
-function safeGitHubReference(value: unknown) {
-  return typeof value === "string" && value.startsWith("https://github.com/")
-    ? value
-    : null;
+function safeEvidenceReference(value: unknown) {
+  if (typeof value !== "string") return null;
+  if (value.startsWith("https://github.com/")) return value;
+  if (/^dry-run:\/\/[A-Za-z0-9_.\-/]+$/.test(value)) return value;
+  return null;
 }
 
 export async function GET(
@@ -140,7 +141,7 @@ export async function GET(
         errorCode: row.execution_error_code,
         startedAt: row.execution_started_at?.toISOString() ?? null,
         completedAt: row.execution_completed_at?.toISOString() ?? null,
-        externalReference: safeGitHubReference(
+        externalReference: safeEvidenceReference(
           row.execution_external_reference,
         ),
       },
@@ -156,7 +157,7 @@ export async function GET(
             event.payload.reason ??
             event.event_type,
         ),
-        externalReference: safeGitHubReference(
+        externalReference: safeEvidenceReference(
           event.payload.externalReference,
         ),
       })),

@@ -1036,7 +1036,7 @@ function AuditView({
                           View details
                         </button>
                       ) : null}
-                      {event.externalReference ? (
+                      {event.externalReference?.startsWith("https://github.com/") ? (
                         <a
                           className="text-button"
                           href={event.externalReference}
@@ -1046,6 +1046,13 @@ function AuditView({
                         >
                           <ExternalLink className="h-3.5 w-3.5" /> GitHub
                         </a>
+                      ) : event.externalReference?.startsWith("dry-run://") ? (
+                        <span
+                          className="font-mono text-[10px] text-sentinel-muted"
+                          title={event.externalReference}
+                        >
+                          Dry-run evidence
+                        </span>
                       ) : event.requestId ? null : (
                         <span className="text-sentinel-muted">Recorded</span>
                       )}
@@ -1188,10 +1195,17 @@ function ActionDetailDrawer({
                   <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sentinel-muted">Execution</span>
                   <h3 className="mt-2 text-base font-semibold capitalize text-sentinel-text">{detail.execution.status.replace("_", " ")}</h3>
                   <p className="mt-2 text-xs leading-5 text-sentinel-muted">{detail.execution.summary || "No execution outcome reported."}</p>
-                  {detail.execution.externalReference ? (
+                  {detail.execution.externalReference?.startsWith("https://github.com/") ? (
                     <a className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-sentinel-lime" href={detail.execution.externalReference} target="_blank" rel="noreferrer">
                       <ExternalLink className="h-3.5 w-3.5" /> Open GitHub evidence
                     </a>
+                  ) : detail.execution.externalReference?.startsWith("dry-run://") ? (
+                    <code
+                      className="mt-4 block break-all text-[10px] text-sentinel-lime"
+                      title="No external write was performed"
+                    >
+                      {detail.execution.externalReference}
+                    </code>
                   ) : null}
                 </section>
               </div>
