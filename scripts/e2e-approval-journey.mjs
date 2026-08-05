@@ -11,11 +11,18 @@ const scrypt = promisify(scryptCallback);
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error("DATABASE_URL is required.");
 const remoteBaseUrl = process.env.SENTINELOPS_E2E_BASE_URL?.replace(/\/+$/, "");
+const expectTenantIsolationFailure =
+  process.env.SENTINELOPS_E2E_EXPECT_TENANT_ISOLATION === "true";
 if (remoteBaseUrl) {
   const target = new URL(remoteBaseUrl);
   if (target.protocol !== "https:" && target.hostname !== "127.0.0.1" && target.hostname !== "localhost") {
     throw new Error("SENTINELOPS_E2E_BASE_URL must use HTTPS for a remote deployment.");
   }
+}
+if (expectTenantIsolationFailure && !remoteBaseUrl) {
+  throw new Error(
+    "SENTINELOPS_E2E_EXPECT_TENANT_ISOLATION requires SENTINELOPS_E2E_BASE_URL.",
+  );
 }
 
 const pool = new Pool({
@@ -354,6 +361,32 @@ async function exerciseJourney(baseUrl) {
     );
     if (detail.payload.execution?.status === "succeeded") break;
     if (detail.payload.execution?.status === "failed") {
+      if (expectTenantIsolationFailure) {
+        assert.match(
+          detail.payload.execution.summary,
+          /^Repository .+ is not connected to this organization\.$/,
+        );
+        assert.deepEqual(
+          detail.payload.timeline.map((event) => event.eventType),
+          [
+            "action.evaluated",
+            "action.approved",
+            "action.execution_executing",
+            "action.execution_failed",
+          ],
+        );
+        const integrity = await jsonRequest(`${baseUrl}/api/v1/audit/integrity`, {
+          headers: { cookie },
+        });
+        assert.equal(integrity.response.status, 200);
+        assert.equal(integrity.payload.verified, true);
+        return {
+          requestId,
+          auditEvents: integrity.payload.eventsChecked,
+          notificationJobs: queued.rows[0].count,
+          tenantIsolationVerified: true,
+        };
+      }
       throw new Error(
         `Automated release execution failed: ${detail.payload.execution.summary}`,
       );
@@ -935,6 +968,15 @@ try {
   await setupTenant();
   const baseUrl = remoteBaseUrl || await startServer();
   const result = await exerciseJourney(baseUrl);
+  if (result.tenantIsolationVerified) {
+    console.log(
+      `Remote tenant-isolation journey passed against ${new URL(baseUrl).host}.`,
+    );
+    console.log(`Request: ${result.requestId}`);
+    console.log(`Audit events verified: ${result.auditEvents}`);
+    console.log(`Deduplicated notification jobs: ${result.notificationJobs}`);
+    console.log("Cross-tenant GitHub App execution: blocked");
+  } else {
   console.log(
     remoteBaseUrl
       ? `Remote enterprise approval journey passed against ${new URL(baseUrl).host}.`
@@ -950,6 +992,7 @@ try {
   console.log(`GitHub drift alerts queued: ${result.driftNotifications}`);
   console.log(`Critical containment blocks enforced: ${result.containmentBlocks}`);
   console.log(`Critical containments resolved: ${result.containmentResolutions}`);
+  }
 } finally {
   await cleanup();
 }
