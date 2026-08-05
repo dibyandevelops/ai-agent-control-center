@@ -4,7 +4,7 @@ import { getPool } from "@/lib/server/db";
 import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
 import { listOrganizationGitHubConnections } from "@/lib/server/github-connections";
-import { getOrganizationSlackConnection } from "@/lib/server/slack-connections";
+import { listOrganizationSlackConnections } from "@/lib/server/slack-connections";
 import type { PolicyActivationSimulation } from "@/lib/types";
 
 export async function GET() {
@@ -29,7 +29,7 @@ export async function GET() {
       githubDriftResult,
       notificationOutboxResult,
       githubConnections,
-      slackConnection,
+      slackConnections,
     ] =
       await Promise.all([
         pool.query<{
@@ -348,7 +348,7 @@ export async function GET() {
           [operator.organizationId],
         ),
         listOrganizationGitHubConnections(operator.organizationId),
-        getOrganizationSlackConnection(operator.organizationId),
+        listOrganizationSlackConnections(operator.organizationId),
       ]);
 
     const latestGitHubEvidence = auditResult.rows.find((row) => {
@@ -617,23 +617,23 @@ export async function GET() {
           id: "int-slack",
           name: "Slack",
           description: "Route action and policy activation reviews to the configured workspace.",
-          connected: Boolean(slackConnection),
+          connected: slackConnections.length > 0,
           category: "Communication",
           events: `${queuedNotifications} queued · ${deadNotifications} dead-lettered`,
           deadLetters: deadNotifications,
           status: deadNotifications > 0
             ? "attention"
-            : slackConnection?.status === "active"
+            : slackConnections.some((connection) => connection.status === "active")
               ? "configured"
-              : slackConnection?.status === "error"
+              : slackConnections.some((connection) => connection.status === "error")
                 ? "attention"
                 : "not_connected",
-          mode: slackConnection
-            ? `${slackConnection.teamName} · #${slackConnection.channelName.replace(/^#/, "")}`
+          mode: slackConnections.length > 0
+            ? `${slackConnections.length} routed destination${slackConnections.length === 1 ? "" : "s"}`
             : "Approvals and escalations",
           url: null,
-          slackConnection,
-          slackAuthenticationMode: slackConnection
+          slackConnections,
+          slackAuthenticationMode: slackConnections.length > 0
             ? "oauth"
             : "not_configured",
         },

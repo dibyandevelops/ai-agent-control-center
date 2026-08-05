@@ -184,11 +184,14 @@ route remains the recovery path if that immediate trigger fails. The outbox
 worker claims up to 50 notifications without blocking other workers, performs
 Slack delivery after committing the claim, and retries failures with
 exponential backoff. After five failed attempts, the notification is retained
-in a dead-letter state for investigation. Slack delivery prefers an
-organization-scoped OAuth connection. Webhook URLs are encrypted with
-AES-256-GCM and never returned by the API. Unconnected organizations retain
-their notifications for retry instead of falling back to another tenant's
-destination.
+in a dead-letter state for investigation. Slack delivery uses
+organization-scoped OAuth connections. Each organization can connect multiple
+channels, mark one safe default, and route specialized event families by
+minimum severity. Matching specialized routes receive the alert; when none
+match, the default channel receives it so filtering cannot silently discard an
+important notification. Webhook URLs are encrypted with AES-256-GCM and never
+returned by the API. Unconnected organizations retain their notifications for
+retry instead of falling back to another tenant's destination.
 
 Approved `deploy.release` and `github.release.create` requests are claimed by
 the automated release worker immediately after the approval response. Claims
@@ -555,8 +558,10 @@ used in the recording.
 - Audit events form an organization-level SHA-256 hash chain.
 - PostgreSQL queries are parameterized and use a bounded connection pool.
 - Slack delivery is disabled per organization until an administrator completes
-  the tenant-bound OAuth flow. The reminder dispatcher is separately disabled
-  unless a strong `SENTINELOPS_CRON_SECRET` is configured.
+  the tenant-bound OAuth flow. Multiple destinations remain isolated to that
+  organization, and every routing-rule change is audit logged. The reminder
+  dispatcher is separately disabled unless a strong
+  `SENTINELOPS_CRON_SECRET` is configured.
 
 This MVP is not yet a complete enterprise security product. SSO, SCIM,
 fine-grained operator roles, expiring credentials, webhook signing, audit

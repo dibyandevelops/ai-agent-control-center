@@ -4,10 +4,17 @@ import type { PoolClient } from "pg";
 import { appendAuditEvent } from "./audit";
 import { getPool, withTransaction } from "./db";
 import { getSentinelOpsPublicUrl, getServerEnv } from "./env";
+import { ConflictError, NotFoundError } from "./errors";
 import {
   decryptSlackWebhook,
   encryptSlackWebhook,
 } from "./slack-credential-core";
+import {
+  selectSlackRoutes,
+  shouldRevokeSlackWorkspaceToken,
+  type SlackEventType,
+  type SlackSeverity,
+} from "./slack-routing-core";
 
 interface SlackOAuthResponse {
   ok: boolean;
@@ -38,6 +45,9 @@ interface SlackConnectionRow {
   status: "active" | "error" | "disconnected";
   last_delivery_at: Date | null;
   last_error: string | null;
+  is_default: boolean;
+  event_types: string[];
+  minimum_severity: SlackSeverity;
   updated_at: Date;
 }
 
@@ -104,14 +114,24 @@ export async function saveSlackConnection(input: {
   );
   const encryptedToken = encryptSlackWebhook(input.oauth.access_token, encryptionKey);
   return withTransaction(async (client) => {
+    await client.query(
+      `select pg_advisory_xact_lock(hashtextextended($1::text, 0))`,
+      [input.organizationId],
+    );
+    const defaultResult = await client.query<{ available: boolean }>(
+      `select not exists (
+         select 1 from slack_connections where organization_id = $1 and is_default
+       ) as available`,
+      [input.organizationId],
+    );
     const result = await client.query<{ id: string }>(
       `insert into slack_connections (
          organization_id, team_id, team_name, channel_id, channel_name,
          webhook_ciphertext, webhook_iv, webhook_auth_tag,
          access_token_ciphertext, access_token_iv, access_token_auth_tag, status,
-         connected_by_operator_id, connected_by_email
-       ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', $12, $13)
-       on conflict (organization_id) do update set
+         connected_by_operator_id, connected_by_email, is_default
+       ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', $12, $13, $14)
+       on conflict (organization_id, team_id, channel_id) do update set
          team_id = excluded.team_id,
          team_name = excluded.team_name,
          channel_id = excluded.channel_id,
@@ -142,6 +162,7 @@ export async function saveSlackConnection(input: {
         encryptedToken.authTag,
         input.operatorId,
         input.operatorEmail,
+        defaultResult.rows[0]?.available ?? false,
       ],
     );
     await appendAuditEvent(client, {
@@ -162,14 +183,14 @@ export async function saveSlackConnection(input: {
   });
 }
 
-export async function getOrganizationSlackConnection(organizationId: string) {
+export async function listOrganizationSlackConnections(organizationId: string) {
   const result = await getPool().query<SlackConnectionRow>(
-    `select * from slack_connections where organization_id = $1 limit 1`,
+    `select * from slack_connections
+      where organization_id = $1
+      order by is_default desc, team_name, channel_name`,
     [organizationId],
   );
-  const row = result.rows[0];
-  if (!row) return null;
-  return {
+  return result.rows.map((row) => ({
     id: row.id,
     teamId: row.team_id,
     teamName: row.team_name,
@@ -178,20 +199,40 @@ export async function getOrganizationSlackConnection(organizationId: string) {
     status: row.status,
     lastDeliveryAt: row.last_delivery_at?.toISOString() ?? null,
     lastError: row.last_error,
+    isDefault: row.is_default,
+    eventTypes: row.event_types,
+    minimumSeverity: row.minimum_severity,
     updatedAt: row.updated_at.toISOString(),
-  };
+  }));
 }
 
-export async function resolveSlackDeliveryTarget(organizationId: string) {
+export async function resolveSlackDeliveryTargets(input: {
+  organizationId: string;
+  eventType: SlackEventType;
+  severity: SlackSeverity;
+  connectionId?: string;
+}) {
   const result = await getPool().query<SlackConnectionRow>(
     `select * from slack_connections
       where organization_id = $1 and status in ('active', 'error')
-      limit 1`,
-    [organizationId],
+        and ($2::uuid is null or id = $2::uuid)
+      order by is_default desc, created_at asc`,
+    [input.organizationId, input.connectionId ?? null],
   );
-  const row = result.rows[0];
-  if (row) {
-    return {
+  const selected = input.connectionId
+    ? result.rows
+    : selectSlackRoutes(
+        result.rows.map((row) => ({
+          id: row.id,
+          isDefault: row.is_default,
+          eventTypes: row.event_types,
+          minimumSeverity: row.minimum_severity,
+        })),
+        input.eventType,
+        input.severity,
+      );
+  const selectedIds = new Set(selected.map((route) => route.id));
+  return result.rows.filter((row) => selectedIds.has(row.id)).map((row) => ({
       connectionId: row.id,
       webhookUrl: decryptSlackWebhook(
         {
@@ -202,9 +243,7 @@ export async function resolveSlackDeliveryTarget(organizationId: string) {
         slackConfiguration().encryptionKey,
       ),
       mode: "oauth" as const,
-    };
-  }
-  return null;
+    }));
 }
 
 export async function recordSlackDelivery(input: {
@@ -226,15 +265,26 @@ export async function recordSlackDelivery(input: {
 
 export async function disconnectSlackConnection(input: {
   organizationId: string;
+  connectionId: string;
   operatorEmail: string;
 }) {
   const connectionResult = await getPool().query<SlackConnectionRow>(
-    `select * from slack_connections where organization_id = $1 limit 1`,
-    [input.organizationId],
+    `select * from slack_connections where organization_id = $1 and id = $2 limit 1`,
+    [input.organizationId, input.connectionId],
   );
   const connection = connectionResult.rows[0];
   if (!connection) return false;
+  const siblingResult = await getPool().query<{ count: string }>(
+    `select count(*)::text as count
+       from slack_connections
+      where organization_id = $1 and team_id = $2 and id <> $3`,
+    [input.organizationId, connection.team_id, input.connectionId],
+  );
+  const shouldRevokeWorkspaceToken = shouldRevokeSlackWorkspaceToken(
+    Number(siblingResult.rows[0]?.count ?? 0),
+  );
   if (
+    shouldRevokeWorkspaceToken &&
     connection.access_token_ciphertext &&
     connection.access_token_iv &&
     connection.access_token_auth_tag
@@ -261,22 +311,106 @@ export async function disconnectSlackConnection(input: {
     }
   }
   return withTransaction(async (client) => {
-    const removed = await client.query<{ id: string; team_id: string; channel_id: string }>(
-      `delete from slack_connections
-        where organization_id = $1
-        returning id, team_id, channel_id`,
+    await client.query(
+      `select pg_advisory_xact_lock(hashtextextended($1::text, 0))`,
       [input.organizationId],
     );
+    const removed = await client.query<{ id: string; team_id: string; channel_id: string; is_default: boolean }>(
+      `delete from slack_connections
+        where organization_id = $1 and id = $2
+        returning id, team_id, channel_id, is_default`,
+      [input.organizationId, input.connectionId],
+    );
     if (!removed.rows[0]) return false;
+    if (removed.rows[0].is_default) {
+      await client.query(
+        `update slack_connections set is_default = true, updated_at = now()
+          where id = (
+            select id from slack_connections
+            where organization_id = $1
+            order by created_at asc, id asc
+            limit 1
+          )`,
+        [input.organizationId],
+      );
+    }
     await appendAuditEvent(client, {
       organizationId: input.organizationId,
       requestId: null,
       eventType: "slack.connection_disconnected",
       actorType: "human",
       actorId: input.operatorEmail,
-      payload: removed.rows[0],
+      payload: {
+        ...removed.rows[0],
+        workspaceTokenRevoked: shouldRevokeWorkspaceToken,
+      },
     });
     return true;
+  });
+}
+
+export async function updateSlackConnectionRouting(input: {
+  organizationId: string;
+  connectionId: string;
+  operatorEmail: string;
+  isDefault: boolean;
+  eventTypes: SlackEventType[];
+  minimumSeverity: SlackSeverity;
+}) {
+  return withTransaction(async (client) => {
+    await client.query(
+      `select pg_advisory_xact_lock(hashtextextended($1::text, 0))`,
+      [input.organizationId],
+    );
+    const current = await client.query<SlackConnectionRow>(
+      `select * from slack_connections
+        where organization_id = $1 and id = $2
+        for update`,
+      [input.organizationId, input.connectionId],
+    );
+    const row = current.rows[0];
+    if (!row) throw new NotFoundError("Slack destination not found.");
+    if (row.is_default && !input.isDefault) {
+      throw new ConflictError("Choose another default destination before changing this route.");
+    }
+    if (input.isDefault) {
+      await client.query(
+        `update slack_connections
+          set is_default = false, updated_at = now()
+          where organization_id = $1 and id <> $2 and is_default`,
+        [input.organizationId, input.connectionId],
+      );
+    }
+    const updated = await client.query(
+      `update slack_connections
+        set is_default = $3,
+            event_types = $4::text[],
+            minimum_severity = $5,
+            updated_at = now()
+        where organization_id = $1 and id = $2
+        returning id`,
+      [
+        input.organizationId,
+        input.connectionId,
+        input.isDefault,
+        input.isDefault ? [] : input.eventTypes,
+        input.minimumSeverity,
+      ],
+    );
+    await appendAuditEvent(client, {
+      organizationId: input.organizationId,
+      requestId: null,
+      eventType: "slack.routing_updated",
+      actorType: "human",
+      actorId: input.operatorEmail,
+      payload: {
+        connectionId: input.connectionId,
+        isDefault: input.isDefault,
+        eventTypes: input.isDefault ? [] : input.eventTypes,
+        minimumSeverity: input.minimumSeverity,
+      },
+    });
+    return Boolean(updated.rows[0]);
   });
 }
 

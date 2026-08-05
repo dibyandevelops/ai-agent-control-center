@@ -3,41 +3,61 @@ import "server-only";
 import { formatGitHubAppLifecycleSlackText } from "./notification-outbox-core";
 import {
   recordSlackDelivery,
-  resolveSlackDeliveryTarget,
+  resolveSlackDeliveryTargets,
 } from "./slack-connections";
+import type { SlackEventType, SlackSeverity } from "./slack-routing-core";
 
-async function postSlackText(organizationId: string, text: string) {
-  const target = await resolveSlackDeliveryTarget(organizationId);
-  if (!target) return { delivered: false, reason: "not_configured" };
+async function postSlackText(input: {
+  organizationId: string;
+  eventType: SlackEventType;
+  severity: SlackSeverity;
+  text: string;
+  connectionId?: string;
+}) {
+  const targets = await resolveSlackDeliveryTargets(input);
+  if (targets.length === 0) return { delivered: false, reason: "not_configured", deliveredCount: 0 };
 
-  const response = await fetch(target.webhookUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ text }),
-    signal: AbortSignal.timeout(5_000),
-  });
-
-  const result = {
-    delivered: response.ok,
-    reason: response.ok ? "delivered" : `http_${response.status}`,
+  const deliveries = await Promise.all(targets.map(async (target) => {
+    const response = await fetch(target.webhookUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text: input.text }),
+      signal: AbortSignal.timeout(5_000),
+    });
+    const result = {
+      delivered: response.ok,
+      reason: response.ok ? "delivered" : `http_${response.status}`,
+    };
+    await recordSlackDelivery({ connectionId: target.connectionId, ...result });
+    return result;
+  }));
+  const deliveredCount = deliveries.filter((delivery) => delivery.delivered).length;
+  return {
+    delivered: deliveredCount === deliveries.length,
+    reason: deliveredCount === deliveries.length
+      ? `delivered_${deliveredCount}`
+      : `delivered_${deliveredCount}_of_${deliveries.length}`,
+    deliveredCount,
   };
-  await recordSlackDelivery({ connectionId: target.connectionId, ...result });
-  return result;
 }
 
 export async function sendSlackConnectionTest(input: {
   organizationId: string;
   organizationName: string;
+  connectionId: string;
 }) {
-  return postSlackText(
-    input.organizationId,
-    [
+  return postSlackText({
+    organizationId: input.organizationId,
+    connectionId: input.connectionId,
+    eventType: "action.approval_requested",
+    severity: "info",
+    text: [
       "SentinelOps — Slack connection verified",
       `Organization: ${input.organizationName}`,
       "Tenant routing: organization-scoped OAuth",
       "Status: Ready for governance and security alerts",
     ].join("\n"),
-  );
+  });
 }
 
 export async function notifySlackOfApproval(input: {
@@ -46,18 +66,20 @@ export async function notifySlackOfApproval(input: {
   agentName: string;
   action: string;
   resource: string;
-  risk: string;
+  risk: "low" | "medium" | "high";
 }) {
-  return postSlackText(
-    input.organizationId,
-    [
+  return postSlackText({
+    organizationId: input.organizationId,
+    eventType: "action.approval_requested",
+    severity: input.risk,
+    text: [
       `SentinelOps approval required: ${input.action}`,
       `Agent: ${input.agentName}`,
       `Resource: ${input.resource}`,
       `Risk: ${input.risk}`,
       `Request: ${input.requestId}`,
     ].join("\n"),
-  );
+  });
 }
 
 export async function notifySlackOfPolicyActivation(input: {
@@ -77,16 +99,18 @@ export async function notifySlackOfPolicyActivation(input: {
         : input.kind === "escalation"
           ? "ESCALATION: policy activation still awaiting review"
           : "Policy activation request expired";
-  return postSlackText(
-    input.organizationId,
-    [
+  return postSlackText({
+    organizationId: input.organizationId,
+    eventType: "policy.activation",
+    severity: input.kind === "requested" || input.kind === "reminder" ? "medium" : "high",
+    text: [
       `SentinelOps — ${heading}`,
       `Policy: ${input.policyName} (v${input.versionNumber})`,
       `Requested by: ${input.requestedBy}`,
       `Deadline: ${input.expiresAt}`,
       `Activation request: ${input.requestId}`,
     ].join("\n"),
-  );
+  });
 }
 
 export async function notifySlackOfReleaseExecutionFailure(input: {
@@ -98,9 +122,11 @@ export async function notifySlackOfReleaseExecutionFailure(input: {
   error: string;
   attemptCount: number;
 }) {
-  return postSlackText(
-    input.organizationId,
-    [
+  return postSlackText({
+    organizationId: input.organizationId,
+    eventType: "action.execution_failed",
+    severity: "high",
+    text: [
       `SentinelOps — automated release execution failed`,
       `Agent: ${input.agentName}`,
       `Action: ${input.action}`,
@@ -109,7 +135,7 @@ export async function notifySlackOfReleaseExecutionFailure(input: {
       `Reason: ${input.error}`,
       `Request: ${input.requestId}`,
     ].join("\n"),
-  );
+  });
 }
 
 export async function notifySlackOfReleaseGovernance(input: {
@@ -121,9 +147,11 @@ export async function notifySlackOfReleaseGovernance(input: {
   requestedBy: string;
   expiresAt: string;
 }) {
-  return postSlackText(
-    input.organizationId,
-    [
+  return postSlackText({
+    organizationId: input.organizationId,
+    eventType: "release.draft_governance_requested",
+    severity: "high",
+    text: [
       `SentinelOps — independent approval required to ${input.operation} GitHub draft`,
       `Release: ${input.resource}`,
       `Requested by: ${input.requestedBy}`,
@@ -131,7 +159,7 @@ export async function notifySlackOfReleaseGovernance(input: {
       `Governance request: ${input.governanceId}`,
       `Action evidence: ${input.requestId}`,
     ].join("\n"),
-  );
+  });
 }
 
 export async function notifySlackOfGitHubDrift(input: {
@@ -145,9 +173,11 @@ export async function notifySlackOfGitHubDrift(input: {
   reason: string;
   externalReference: string | null;
 }) {
-  return postSlackText(
-    input.organizationId,
-    [
+  return postSlackText({
+    organizationId: input.organizationId,
+    eventType: "github.release_drift_detected",
+    severity: input.severity,
+    text: [
       `SentinelOps — ${input.severity.toUpperCase()} GitHub release governance incident`,
       `Mutation: ${input.eventAction} ${input.repository}@${input.tagName}`,
       `GitHub actor: @${input.actorLogin}`,
@@ -155,7 +185,7 @@ export async function notifySlackOfGitHubDrift(input: {
       `Incident: ${input.incidentId}`,
       ...(input.externalReference ? [`Evidence: ${input.externalReference}`] : []),
     ].join("\n"),
-  );
+  });
 }
 
 export async function notifySlackOfGitHubAppLifecycle(input: {
@@ -168,8 +198,10 @@ export async function notifySlackOfGitHubAppLifecycle(input: {
   repositories: string[];
   remediationUrl: string;
 }) {
-  return postSlackText(
-    input.organizationId,
-    formatGitHubAppLifecycleSlackText(input),
-  );
+  return postSlackText({
+    organizationId: input.organizationId,
+    eventType: "github.app_lifecycle_alert",
+    severity: input.severity,
+    text: formatGitHubAppLifecycleSlackText(input),
+  });
 }

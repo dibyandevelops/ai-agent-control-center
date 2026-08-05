@@ -291,7 +291,7 @@ export interface Integration {
   driftIncidents?: GitHubDriftIncident[];
   authenticationMode?: "github_app" | "not_configured";
   githubConnections?: GitHubConnection[];
-  slackConnection?: SlackConnection | null;
+  slackConnections?: SlackConnection[];
   slackAuthenticationMode?: "oauth" | "not_configured";
 }
 
@@ -304,6 +304,9 @@ export interface SlackConnection {
   status: "active" | "error" | "disconnected";
   lastDeliveryAt: string | null;
   lastError: string | null;
+  isDefault: boolean;
+  eventTypes: string[];
+  minimumSeverity: "info" | "low" | "medium" | "high" | "critical";
   updatedAt: string;
 }
 
