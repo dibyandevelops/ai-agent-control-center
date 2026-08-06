@@ -22,6 +22,7 @@
     "demo:release": "node --env-file-if-exists=.env.local examples/dry-run-release-agent.mjs"
   },
   "dependencies": {
+    "@node-saml/node-saml": "5.1.0",
     "lucide-react": "^1.14.0",
     "next": "16.2.7",
     "pg": "^8.11.3",

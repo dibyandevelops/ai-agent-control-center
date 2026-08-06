@@ -9,6 +9,7 @@ interface IdentitySettings {
   scimTokenHint: string | null;
   scimTokenCreatedAt: string | null;
   lastScimSyncAt: string | null;
+  saml: { configured: boolean; enabled: boolean; idpEntityId: string | null; entryPoint: string | null; emailAttribute: string; metadataUrl: string | null };
 }
 
 function formatDate(value: string | null) {
@@ -20,6 +21,12 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
   const [domains, setDomains] = useState("");
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState<"save" | "token" | null>(null);
+  const [samlBusy, setSamlBusy] = useState(false);
+  const [samlEntityId, setSamlEntityId] = useState("");
+  const [samlEntryPoint, setSamlEntryPoint] = useState("");
+  const [samlCertificate, setSamlCertificate] = useState("");
+  const [samlEmailAttribute, setSamlEmailAttribute] = useState("email");
+  const [samlEnabled, setSamlEnabled] = useState(false);
   const [error, setError] = useState("");
 
   async function load() {
@@ -40,6 +47,8 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
         if (!cancelled) {
           setSettings(payload);
           setDomains(payload.allowedEmailDomains.join(", "));
+          setSamlEntityId(payload.saml.idpEntityId ?? ""); setSamlEntryPoint(payload.saml.entryPoint ?? "");
+          setSamlEmailAttribute(payload.saml.emailAttribute); setSamlEnabled(payload.saml.enabled);
         }
       } catch (loadError) {
         if (!cancelled) setError(loadError instanceof Error ? loadError.message : "Unable to load identity settings.");
@@ -82,6 +91,17 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
     onNotify("Copied to clipboard.");
   }
 
+  async function saveSaml() {
+    setSamlBusy(true); setError("");
+    try {
+      const response = await fetch("/api/v1/identity/saml", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ idpEntityId: samlEntityId, entryPoint: samlEntryPoint, idpCertificate: samlCertificate, emailAttribute: samlEmailAttribute, enabled: samlEnabled }) });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Unable to save SAML configuration.");
+      setSamlCertificate(""); await load(); onNotify(samlEnabled ? "SAML SSO is enabled for this organization." : "SAML SSO configuration saved in verification mode.");
+    } catch (samlError) { setError(samlError instanceof Error ? samlError.message : "Unable to save SAML configuration."); }
+    finally { setSamlBusy(false); }
+  }
+
   return (
     <section className="mt-5 rounded-app border border-sentinel-line bg-sentinel-surface p-5 shadow-app-1">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -106,6 +126,14 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
         </div>
       </div>
       {token ? <div className="mt-4 rounded-lg border border-sentinel-lime/30 bg-sentinel-lime/10 p-3"><p className="text-xs font-semibold text-sentinel-text">Copy this token now—it cannot be retrieved later.</p><div className="mt-2 flex gap-2"><code className="min-w-0 flex-1 overflow-x-auto rounded bg-sentinel-canvas px-3 py-2 text-xs text-sentinel-text">{token}</code><button className="secondary-button" onClick={() => void copy(token)}><Copy /> Copy</button></div></div> : null}
+
+      <div className="mt-5 rounded-lg border border-sentinel-line bg-sentinel-canvas/50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold text-sentinel-text">SAML SSO connection</p><p className="mt-1 text-[11px] text-sentinel-muted">Paste your IdP metadata values. Keep verification mode on until a test login succeeds.</p></div><span className="rounded-full border border-sentinel-line px-2 py-1 text-[10px] font-semibold uppercase text-sentinel-muted">{settings?.saml.enabled ? "Enabled" : settings?.saml.configured ? "Verification mode" : "Not configured"}</span></div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2"><input className="h-10 rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={samlEntityId} onChange={(e) => setSamlEntityId(e.target.value)} placeholder="IdP entity ID (URL)" /><input className="h-10 rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={samlEntryPoint} onChange={(e) => setSamlEntryPoint(e.target.value)} placeholder="IdP SSO URL" /><input className="h-10 rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={samlEmailAttribute} onChange={(e) => setSamlEmailAttribute(e.target.value)} placeholder="Email attribute, e.g. email" /><label className="flex items-center gap-2 text-xs text-sentinel-muted"><input type="checkbox" checked={samlEnabled} onChange={(e) => setSamlEnabled(e.target.checked)} /> Enable SAML SSO after verification</label></div>
+        <textarea className="mt-3 min-h-28 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas p-3 font-mono text-xs text-sentinel-text" value={samlCertificate} onChange={(e) => setSamlCertificate(e.target.value)} placeholder="IdP X.509 signing certificate (PEM) — re-enter when changing SAML settings" />
+        {settings?.saml.metadataUrl ? <p className="mt-2 break-all text-[11px] text-sentinel-muted">SP metadata: <span className="font-mono text-sentinel-text">{settings.saml.metadataUrl}</span></p> : null}
+        <div className="mt-3 flex justify-end"><button className="secondary-button" disabled={samlBusy || !samlCertificate.trim()} onClick={() => void saveSaml()}>{samlBusy ? <LoaderCircle className="animate-spin" /> : <Save />} Save SAML connection</button></div>
+      </div>
     </section>
   );
 }

@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { appendAuditEvent } from "./audit";
 import { getPool, withTransaction } from "./db";
+import { getSentinelOpsPublicUrl } from "./env";
 import { AuthenticationError, ConflictError, NotFoundError } from "./errors";
 import {
   createScimBearerToken,
@@ -21,6 +22,7 @@ export interface IdentitySettings {
   scimTokenHint: string | null;
   scimTokenCreatedAt: string | null;
   lastScimSyncAt: string | null;
+  saml: { configured: boolean; enabled: boolean; idpEntityId: string | null; entryPoint: string | null; emailAttribute: string; metadataUrl: string | null };
 }
 
 interface IdentitySettingsRow {
@@ -29,27 +31,38 @@ interface IdentitySettingsRow {
   scim_token_hint: string | null;
   scim_token_created_at: Date | null;
   last_scim_sync_at: Date | null;
+  saml_enabled: boolean;
+  saml_idp_entity_id: string | null;
+  saml_entry_point: string | null;
+  saml_email_attribute: string;
 }
 
-function serializeSettings(row: IdentitySettingsRow | undefined): IdentitySettings {
+function serializeSettings(row: IdentitySettingsRow | undefined, organizationId: string): IdentitySettings {
   return {
     allowedEmailDomains: row?.allowed_email_domains ?? [],
     scimConfigured: Boolean(row?.scim_token_hash),
     scimTokenHint: row?.scim_token_hint ?? null,
     scimTokenCreatedAt: row?.scim_token_created_at?.toISOString() ?? null,
     lastScimSyncAt: row?.last_scim_sync_at?.toISOString() ?? null,
+    saml: {
+      configured: Boolean(row?.saml_idp_entity_id && row.saml_entry_point), enabled: row?.saml_enabled ?? false,
+      idpEntityId: row?.saml_idp_entity_id ?? null, entryPoint: row?.saml_entry_point ?? null,
+      emailAttribute: row?.saml_email_attribute ?? "email",
+      metadataUrl: row?.saml_idp_entity_id ? `${getSentinelOpsPublicUrl()}/api/v1/sso/saml/metadata/${organizationId}` : null,
+    },
   };
 }
 
 export async function getOrganizationIdentitySettings(organizationId: string) {
   const result = await getPool().query<IdentitySettingsRow>(
     `select allowed_email_domains, scim_token_hash, scim_token_hint,
-            scim_token_created_at, last_scim_sync_at
+            scim_token_created_at, last_scim_sync_at, saml_enabled,
+            saml_idp_entity_id, saml_entry_point, saml_email_attribute
        from organization_identity_settings
       where organization_id = $1`,
     [organizationId],
   );
-  return serializeSettings(result.rows[0]);
+  return serializeSettings(result.rows[0], organizationId);
 }
 
 export async function assertOrganizationEmailAllowed(organizationId: string, email: string) {

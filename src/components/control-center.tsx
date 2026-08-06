@@ -1830,12 +1830,14 @@ function LiveConnectionDialog({
   error,
   onClose,
   onConnect,
+  onSso,
 }: {
   open: boolean;
   loading: boolean;
   error: string;
   onClose: () => void;
   onConnect: (email: string, password: string) => Promise<void>;
+  onSso: (email: string) => Promise<void>;
 }) {
   const [email, setEmail] = useState("admin@sentinelops.local");
   const [password, setPassword] = useState("");
@@ -1934,6 +1936,14 @@ function LiveConnectionDialog({
               <PlugZap /> {loading ? "Signing in…" : "Sign in"}
             </button>
           </div>
+          <button
+            type="button"
+            className="mt-3 w-full text-center text-sm font-semibold text-sentinel-lime transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={() => void onSso(email)}
+            disabled={loading || !email}
+          >
+            Sign in with your organization SSO
+          </button>
         </form>
       </div>
     </div>
@@ -2187,6 +2197,31 @@ export function ControlCenter({
         error instanceof Error ? error.message : "Connection failed.",
       );
     } finally {
+      setConnectLoading(false);
+    }
+  }
+
+  async function connectLiveWorkspaceWithSso(email: string) {
+    setConnectLoading(true);
+    setWorkspaceError("");
+    try {
+      const response = await fetch("/api/v1/sso/saml/start", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        authorizeUrl?: string;
+      };
+      if (!response.ok || !payload.authorizeUrl) {
+        throw new Error(payload.error || "Organization SSO is not available.");
+      }
+      window.location.assign(payload.authorizeUrl);
+    } catch (error) {
+      setWorkspaceError(
+        error instanceof Error ? error.message : "Unable to start organization SSO.",
+      );
       setConnectLoading(false);
     }
   }
@@ -2647,6 +2682,7 @@ export function ControlCenter({
         error={workspaceError}
         onClose={() => setConnectOpen(false)}
         onConnect={connectLiveWorkspace}
+        onSso={connectLiveWorkspaceWithSso}
       />
       {passwordChangeOpen ? (
         <PasswordChangeDialog

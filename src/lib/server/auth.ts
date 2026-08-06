@@ -284,6 +284,46 @@ export async function loginOperator(email: string, password: string) {
   } satisfies OperatorIdentity;
 }
 
+export async function loginOperatorWithSaml(input: {
+  organizationId: string;
+  email: string;
+}) {
+  const result = await getPool().query<{
+    id: string; organization_id: string; organization_name: string; email: string;
+    display_name: string; role: OperatorRole; password_change_required: boolean;
+    status: "active" | "disabled";
+  }>(
+    `select op.id, op.organization_id, org.name as organization_name, op.email,
+            op.display_name, op.role, op.password_change_required, op.status
+       from operators op join organizations org on org.id = op.organization_id
+      where op.organization_id = $1 and op.email = $2
+      limit 1`,
+    [input.organizationId, input.email.trim().toLowerCase()],
+  );
+  const row = result.rows[0];
+  if (!row || row.status !== "active") return null;
+  const token = `sos_session_${randomBytes(32).toString("base64url")}`;
+  const expiresAt = new Date(Date.now() + sessionDurationMs);
+  await withTransaction(async (client) => {
+    await client.query(
+      `insert into operator_sessions (operator_id, token_hash, expires_at)
+       values ($1, $2, $3)`,
+      [row.id, hashSessionToken(token), expiresAt],
+    );
+    await appendAuditEvent(client, {
+      organizationId: row.organization_id,
+      requestId: null,
+      eventType: "operator.saml_login",
+      actorType: "human",
+      actorId: row.email,
+      payload: { role: row.role },
+    });
+  });
+  const cookieStore = await cookies();
+  cookieStore.set(sessionCookieName, token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", expires: expiresAt, path: "/" });
+  return { id: row.id, organizationId: row.organization_id, organizationName: row.organization_name, email: row.email, displayName: row.display_name, role: row.role, mustChangePassword: row.password_change_required } satisfies OperatorIdentity;
+}
+
 export type PasswordChangeResult =
   | { ok: true; operator: OperatorIdentity }
   | { ok: false; reason: "invalid_current" | "same_password" | "conflict" };

@@ -67,6 +67,24 @@ Open [http://localhost:3000](http://localhost:3000) for the landing page and
 control center. Select **Connect live** and sign in with the operator email and
 password created above.
 
+## Organization SAML SSO
+
+An organization admin can configure SAML SSO from **Dashboard → Team access →
+Enterprise identity**. Paste the IdP entity ID, SSO entry point, signing
+certificate in PEM format, and the assertion attribute containing the operator
+email. SentinelOps exposes its service-provider metadata URL in the same card;
+register its ACS URL with the IdP:
+
+```text
+https://YOUR-DOMAIN/api/v1/sso/saml/callback
+```
+
+Keep SSO disabled until the IdP configuration has been reviewed in staging.
+Once enabled, an existing active operator can enter their email in **Connect
+live** and choose **Sign in with your organization SSO**. SentinelOps validates
+the signed response, its audience, correlation ID, expiry, and the asserted
+email before creating its normal revocable, role-scoped session.
+
 Run the complete isolated approval journey before a pilot or release:
 
 ```bash
