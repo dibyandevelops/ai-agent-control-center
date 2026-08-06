@@ -6,6 +6,7 @@ import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
 import { hashPassword } from "@/lib/server/password";
+import { assertOrganizationEmailAllowed } from "@/lib/server/identity-provisioning";
 
 const createOperatorSchema = z.object({
   email: z.string().email().transform((value) => value.trim().toLowerCase()),
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
     const authorization = await requireAdmin();
     if (!authorization.operator) return authorization.response;
     const input = createOperatorSchema.parse(await request.json());
+    await assertOrganizationEmailAllowed(authorization.operator.organizationId, input.email);
     const passwordHash = await hashPassword(input.password);
 
     const created = await withTransaction(async (client) => {

@@ -19,6 +19,7 @@ import type {
   OperatorIdentity,
   OperatorRole,
 } from "@/lib/types";
+import { IdentityProvisioning } from "@/components/identity-provisioning";
 
 const roles: Array<{ value: OperatorRole; label: string; description: string }> = [
   { value: "admin", label: "Admin", description: "Full platform administration" },
@@ -188,6 +189,8 @@ export function OperatorManagement({
           Role checks are enforced on every protected API request
         </div>
       </section>
+
+      <IdentityProvisioning onNotify={onNotify} />
 
       {error ? (
         <div className="mb-5 flex items-start gap-3 rounded-app border border-sentinel-red/30 bg-sentinel-red/10 px-4 py-3 text-sm text-red-200">

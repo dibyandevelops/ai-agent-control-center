@@ -277,6 +277,58 @@ async function exerciseJourney(baseUrl) {
     headers: { cookie },
   });
   assert.equal(workspace.response.status, 200);
+  const identityDomains = await jsonRequest(`${baseUrl}/api/v1/identity/settings`, {
+    method: "PATCH",
+    headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify({ allowedEmailDomains: ["sentinelops.test"] }),
+  });
+  assert.equal(identityDomains.response.status, 200);
+  assert.deepEqual(identityDomains.payload.allowedEmailDomains, ["sentinelops.test"]);
+  const scimTokenResponse = await jsonRequest(`${baseUrl}/api/v1/identity/scim-token`, {
+    method: "POST",
+    headers: { cookie },
+  });
+  assert.equal(scimTokenResponse.response.status, 201);
+  assert.match(scimTokenResponse.payload.token, /^sos_scim_/);
+  const scimHeaders = {
+    authorization: `Bearer ${scimTokenResponse.payload.token}`,
+    "content-type": "application/scim+json",
+  };
+  const scimCapabilities = await jsonRequest(`${baseUrl}/api/v1/scim/v2/ServiceProviderConfig`, { headers: scimHeaders });
+  assert.equal(scimCapabilities.response.status, 200);
+  assert.equal(scimCapabilities.payload.patch.supported, true);
+  const scimEmail = `scim-${runId}@sentinelops.test`;
+  const scimCreated = await jsonRequest(`${baseUrl}/api/v1/scim/v2/Users`, {
+    method: "POST",
+    headers: scimHeaders,
+    body: JSON.stringify({
+      schemas: ["urn:ietf:params:scim:schemas:core:2.0:User", "urn:sentinelops:schemas:extension:identity:2.0:User"],
+      externalId: `directory-${runId}`,
+      userName: scimEmail,
+      displayName: "SCIM E2E Auditor",
+      active: true,
+      "urn:sentinelops:schemas:extension:identity:2.0:User": { role: "auditor" },
+    }),
+  });
+  assert.equal(scimCreated.response.status, 201, `SCIM user provisioning failed: ${JSON.stringify(scimCreated.payload)}`);
+  assert.equal(scimCreated.payload.userName, scimEmail);
+  assert.equal(scimCreated.payload.active, true);
+  const scimListed = await jsonRequest(`${baseUrl}/api/v1/scim/v2/Users?filter=${encodeURIComponent(`userName eq "${scimEmail}"`)}`, { headers: scimHeaders });
+  assert.equal(scimListed.response.status, 200);
+  assert.equal(scimListed.payload.totalResults, 1);
+  const scimDisabled = await jsonRequest(`${baseUrl}/api/v1/scim/v2/Users/${scimCreated.payload.id}`, {
+    method: "PATCH",
+    headers: scimHeaders,
+    body: JSON.stringify({ schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"], Operations: [{ op: "replace", path: "active", value: false }] }),
+  });
+  assert.equal(scimDisabled.response.status, 200);
+  assert.equal(scimDisabled.payload.active, false);
+  const rejectedScimUser = await jsonRequest(`${baseUrl}/api/v1/scim/v2/Users`, {
+    method: "POST",
+    headers: scimHeaders,
+    body: JSON.stringify({ userName: `outside-${runId}@outside.example`, displayName: "Rejected SCIM User", active: true }),
+  });
+  assert.equal(rejectedScimUser.response.status, 409);
   const releaseRepository = workspace.payload.integrations.find(
     (integration) => integration.name === "GitHub",
   )?.repository || "sentinelops/platform";

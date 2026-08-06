@@ -9,6 +9,7 @@ import { appendAuditEvent } from "./audit";
 import { getPool, withTransaction } from "./db";
 import { hashPassword, verifyPassword } from "./password";
 import type { OperatorRole } from "./operator-roles";
+import { emailMatchesAllowedDomains } from "./identity-core";
 
 const sessionCookieName = "sentinelops_operator_session";
 const sessionDurationMs = 8 * 60 * 60 * 1_000;
@@ -181,6 +182,7 @@ export async function loginOperator(email: string, password: string) {
     password_change_required: boolean;
     status: "active" | "disabled";
     locked_until: Date | null;
+    allowed_email_domains: string[] | null;
   }>(
     `
       select
@@ -193,9 +195,12 @@ export async function loginOperator(email: string, password: string) {
         op.password_hash,
         op.password_change_required,
         op.status,
-        op.locked_until
+        op.locked_until,
+        identity_settings.allowed_email_domains
       from operators op
       join organizations org on org.id = op.organization_id
+      left join organization_identity_settings identity_settings
+        on identity_settings.organization_id = op.organization_id
       where op.email = $1
       limit 1
     `,
@@ -208,6 +213,7 @@ export async function loginOperator(email: string, password: string) {
   }
   const valid = await verifyPassword(password, row.password_hash);
   if (row.status !== "active") return null;
+  if (!emailMatchesAllowedDomains(row.email, row.allowed_email_domains ?? [])) return null;
   if (!valid) {
     if (!row.locked_until || row.locked_until.getTime() <= Date.now()) {
       await recordFailedLogin({

@@ -154,6 +154,39 @@ issues, chat, screenshots, or shell history. The staging tenant includes three
 baseline policies and a pending production-release request for the first manual
 approval demonstration.
 
+### Enterprise identity and SCIM
+
+Administrators can open **Team access** and configure **Enterprise identity**.
+Set the allowed company email domains first, then create a SCIM token and copy
+it into an identity provider such as Okta, Microsoft Entra ID, or Google
+Workspace. The token is shown once, stored only as a SHA-256 hash, and can be
+rotated at any time. The tenant-specific SCIM endpoint is:
+
+```text
+https://sentinelops-staging.vercel.app/api/v1/scim/v2/Users
+```
+
+Use `Authorization: Bearer <SCIM token>`. SentinelOps supports SCIM 2.0 user
+create, list/filter, lookup, and PATCH updates. The optional SentinelOps SCIM
+extension accepts an operator role:
+
+```json
+{
+  "userName": "maya@aperturelabs.com",
+  "displayName": "Maya Patel",
+  "active": true,
+  "urn:sentinelops:schemas:extension:identity:2.0:User": {
+    "role": "approver"
+  }
+}
+```
+
+Disabling a SCIM user revokes their active SentinelOps sessions immediately.
+Every provision, update, deprovision, domain-policy change, and token rotation
+is recorded in the organization's hash-chained audit log. SAML SSO is not
+enabled by this MVP yet: it needs the customer's IdP metadata and a separately
+configured assertion flow, which is the next identity milestone.
+
 Policy activation reviews expire after 24 hours and receive a reminder every
 four hours by default. Override those windows with
 `POLICY_ACTIVATION_TTL_HOURS` and `POLICY_ACTIVATION_REMINDER_MINUTES`. For
