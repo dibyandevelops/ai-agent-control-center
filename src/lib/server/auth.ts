@@ -12,13 +12,53 @@ import type { OperatorRole } from "./operator-roles";
 import { emailMatchesAllowedDomains } from "./identity-core";
 
 const sessionCookieName = "sentinelops_operator_session";
-const sessionDurationMs = 8 * 60 * 60 * 1_000;
+const defaultSessionDurationMinutes = 8 * 60;
+const defaultSessionIdleTimeoutMinutes = 60;
 const failedLoginLimit = 5;
 const failedLoginWindowSeconds = 15 * 60;
 const accountLockSeconds = 15 * 60;
 
 function hashSessionToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+async function createSessionExpiry(
+  client: PoolClient,
+  organizationId: string,
+) {
+  const result = await client.query<{ session_max_duration_minutes: number }>(
+    `select session_max_duration_minutes
+       from organization_identity_settings
+      where organization_id = $1`,
+    [organizationId],
+  );
+  const minutes = result.rows[0]?.session_max_duration_minutes ?? defaultSessionDurationMinutes;
+  return new Date(Date.now() + minutes * 60 * 1_000);
+}
+
+async function recordSessionEnd(input: {
+  sessionId: string;
+  organizationId: string;
+  email: string;
+  reason: "idle_timeout" | "maximum_duration";
+}) {
+  await withTransaction(async (client) => {
+    const revoked = await client.query<{ id: string }>(
+      `update operator_sessions set revoked_at = now()
+        where id = $1 and revoked_at is null
+        returning id`,
+      [input.sessionId],
+    );
+    if (!revoked.rows[0]) return;
+    await appendAuditEvent(client, {
+      organizationId: input.organizationId,
+      requestId: null,
+      eventType: "operator.session_ended",
+      actorType: "system",
+      actorId: input.email,
+      payload: { reason: input.reason },
+    });
+  });
 }
 
 async function recordFailedLogin(operator: {
@@ -115,6 +155,9 @@ export async function getOperatorSession(options?: {
     role: OperatorRole;
     password_change_required: boolean;
     session_id: string;
+    session_expires_at: Date;
+    session_last_seen_at: Date;
+    session_idle_timeout_minutes: number | null;
   }>(
     `
       select
@@ -125,13 +168,17 @@ export async function getOperatorSession(options?: {
         op.display_name,
         op.role,
         op.password_change_required,
-        os.id as session_id
+        os.id as session_id,
+        os.expires_at as session_expires_at,
+        os.last_seen_at as session_last_seen_at,
+        identity_settings.session_idle_timeout_minutes
       from operator_sessions os
       join operators op on op.id = os.operator_id
       join organizations org on org.id = op.organization_id
+      left join organization_identity_settings identity_settings
+        on identity_settings.organization_id = op.organization_id
       where os.token_hash = $1
         and os.revoked_at is null
-        and os.expires_at > now()
         and op.status = 'active'
       limit 1
     `,
@@ -139,6 +186,21 @@ export async function getOperatorSession(options?: {
   );
   const row = result.rows[0];
   if (!row) return null;
+  const now = Date.now();
+  const idleTimeoutMinutes =
+    row.session_idle_timeout_minutes ?? defaultSessionIdleTimeoutMinutes;
+  const endedForMaximumDuration = row.session_expires_at.getTime() <= now;
+  const endedForInactivity =
+    row.session_last_seen_at.getTime() + idleTimeoutMinutes * 60 * 1_000 <= now;
+  if (endedForMaximumDuration || endedForInactivity) {
+    await recordSessionEnd({
+      sessionId: row.session_id,
+      organizationId: row.organization_id,
+      email: row.email,
+      reason: endedForMaximumDuration ? "maximum_duration" : "idle_timeout",
+    });
+    return null;
+  }
   if (
     row.password_change_required &&
     !options?.allowPasswordChangeRequired
@@ -152,7 +214,6 @@ export async function getOperatorSession(options?: {
         update operator_sessions
         set last_seen_at = now()
         where id = $1
-          and last_seen_at < now() - interval '5 minutes'
       `,
       [row.session_id],
     )
@@ -227,7 +288,6 @@ export async function loginOperator(email: string, password: string) {
   if (row.locked_until && row.locked_until.getTime() > Date.now()) return null;
 
   const token = `sos_session_${randomBytes(32).toString("base64url")}`;
-  const expiresAt = new Date(Date.now() + sessionDurationMs);
   const loggedIn = await withTransaction(async (client) => {
     const unlocked = await client.query<{ id: string }>(
       `
@@ -245,6 +305,7 @@ export async function loginOperator(email: string, password: string) {
       [row.id],
     );
     if (!unlocked.rows[0]) return false;
+    const expiresAt = await createSessionExpiry(client, row.organization_id);
     await client.query(
       `
         insert into operator_sessions (operator_id, token_hash, expires_at)
@@ -260,7 +321,7 @@ export async function loginOperator(email: string, password: string) {
       actorId: row.email,
       payload: { role: row.role },
     });
-    return true;
+    return expiresAt;
   });
   if (!loggedIn) return null;
 
@@ -269,7 +330,7 @@ export async function loginOperator(email: string, password: string) {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    expires: expiresAt,
+    expires: loggedIn,
     path: "/",
   });
 
@@ -303,12 +364,12 @@ export async function loginOperatorWithSaml(input: {
   const row = result.rows[0];
   if (!row || row.status !== "active") return null;
   const token = `sos_session_${randomBytes(32).toString("base64url")}`;
-  const expiresAt = new Date(Date.now() + sessionDurationMs);
-  await withTransaction(async (client) => {
+  const expiresAt = await withTransaction(async (client) => {
+    const sessionExpiry = await createSessionExpiry(client, row.organization_id);
     await client.query(
       `insert into operator_sessions (operator_id, token_hash, expires_at)
        values ($1, $2, $3)`,
-      [row.id, hashSessionToken(token), expiresAt],
+      [row.id, hashSessionToken(token), sessionExpiry],
     );
     await appendAuditEvent(client, {
       organizationId: row.organization_id,
@@ -318,6 +379,7 @@ export async function loginOperatorWithSaml(input: {
       actorId: row.email,
       payload: { role: row.role },
     });
+    return sessionExpiry;
   });
   const cookieStore = await cookies();
   cookieStore.set(sessionCookieName, token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", expires: expiresAt, path: "/" });
@@ -360,7 +422,6 @@ export async function changeOperatorPassword(
 
   const newPasswordHash = await hashPassword(newPassword);
   const token = `sos_session_${randomBytes(32).toString("base64url")}`;
-  const expiresAt = new Date(Date.now() + sessionDurationMs);
   const changed = await withTransaction(async (client) => {
     const updateResult = await client.query<{ id: string }>(
       `
@@ -378,6 +439,7 @@ export async function changeOperatorPassword(
       [operator.id, operator.organizationId, newPasswordHash, account.password_hash],
     );
     if (!updateResult.rows[0]) return false;
+    const expiresAt = await createSessionExpiry(client, operator.organizationId);
 
     await client.query(
       `
@@ -403,7 +465,7 @@ export async function changeOperatorPassword(
       actorId: operator.email,
       payload: { sessionsRotated: true },
     });
-    return true;
+    return expiresAt;
   });
   if (!changed) return { ok: false, reason: "conflict" };
 
@@ -412,7 +474,7 @@ export async function changeOperatorPassword(
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    expires: expiresAt,
+    expires: changed,
     path: "/",
   });
   return {

@@ -5,11 +5,21 @@ import { apiError } from "@/lib/server/http";
 import {
   getOrganizationIdentitySettings,
   updateAllowedEmailDomains,
+  updateSessionPolicy,
 } from "@/lib/server/identity-provisioning";
 import { operatorCan } from "@/lib/server/operator-roles";
 
 const updateSchema = z.object({
-  allowedEmailDomains: z.array(z.string().min(3).max(253)).max(25),
+  allowedEmailDomains: z.array(z.string().min(3).max(253)).max(25).optional(),
+  sessionPolicy: z.object({
+    maxDurationMinutes: z.number().int().min(30).max(1440),
+    idleTimeoutMinutes: z.number().int().min(5).max(480),
+  }).optional(),
+}).refine((value) => value.allowedEmailDomains || value.sessionPolicy, {
+  message: "At least one identity setting is required.",
+}).refine((value) => !value.sessionPolicy || value.sessionPolicy.idleTimeoutMinutes <= value.sessionPolicy.maxDurationMinutes, {
+  message: "Idle timeout cannot exceed the maximum session duration.",
+  path: ["sessionPolicy", "idleTimeoutMinutes"],
 });
 
 async function requireAdmin() {
@@ -36,12 +46,15 @@ export async function PATCH(request: NextRequest) {
     const authorization = await requireAdmin();
     if (!authorization.operator) return authorization.response;
     const input = updateSchema.parse(await request.json());
-    return NextResponse.json(await updateAllowedEmailDomains({
+    const context = {
       organizationId: authorization.operator.organizationId,
       operatorId: authorization.operator.id,
       operatorEmail: authorization.operator.email,
-      domains: input.allowedEmailDomains,
-    }));
+    };
+    if (input.allowedEmailDomains) {
+      return NextResponse.json(await updateAllowedEmailDomains({ ...context, domains: input.allowedEmailDomains }));
+    }
+    return NextResponse.json(await updateSessionPolicy({ ...context, ...input.sessionPolicy! }));
   } catch (error) {
     return apiError(error);
   }

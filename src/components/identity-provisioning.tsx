@@ -9,6 +9,7 @@ interface IdentitySettings {
   scimTokenHint: string | null;
   scimTokenCreatedAt: string | null;
   lastScimSyncAt: string | null;
+  sessionPolicy: { maxDurationMinutes: number; idleTimeoutMinutes: number };
   saml: { configured: boolean; enabled: boolean; idpEntityId: string | null; entryPoint: string | null; emailAttribute: string; metadataUrl: string | null };
 }
 
@@ -21,6 +22,9 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
   const [domains, setDomains] = useState("");
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState<"save" | "token" | null>(null);
+  const [sessionPolicyBusy, setSessionPolicyBusy] = useState(false);
+  const [sessionMaxDuration, setSessionMaxDuration] = useState("480");
+  const [sessionIdleTimeout, setSessionIdleTimeout] = useState("60");
   const [samlBusy, setSamlBusy] = useState(false);
   const [samlEntityId, setSamlEntityId] = useState("");
   const [samlEntryPoint, setSamlEntryPoint] = useState("");
@@ -47,6 +51,8 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
         if (!cancelled) {
           setSettings(payload);
           setDomains(payload.allowedEmailDomains.join(", "));
+          setSessionMaxDuration(String(payload.sessionPolicy.maxDurationMinutes));
+          setSessionIdleTimeout(String(payload.sessionPolicy.idleTimeoutMinutes));
           setSamlEntityId(payload.saml.idpEntityId ?? ""); setSamlEntryPoint(payload.saml.entryPoint ?? "");
           setSamlEmailAttribute(payload.saml.emailAttribute); setSamlEnabled(payload.saml.enabled);
         }
@@ -84,6 +90,25 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
       onNotify("New SCIM token created. Copy it now; it will not be shown again.");
     } catch (tokenError) { setError(tokenError instanceof Error ? tokenError.message : "Unable to create SCIM token."); }
     finally { setBusy(null); }
+  }
+
+  async function saveSessionPolicy() {
+    setSessionPolicyBusy(true); setError("");
+    try {
+      const maxDurationMinutes = Number(sessionMaxDuration);
+      const idleTimeoutMinutes = Number(sessionIdleTimeout);
+      const response = await fetch("/api/v1/identity/settings", {
+        method: "PATCH", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionPolicy: { maxDurationMinutes, idleTimeoutMinutes } }),
+      });
+      const payload = (await response.json()) as { sessionPolicy?: IdentitySettings["sessionPolicy"]; error?: string };
+      if (!response.ok || !payload.sessionPolicy) throw new Error(payload.error || "Unable to save the session policy.");
+      setSettings((current) => current ? { ...current, sessionPolicy: payload.sessionPolicy! } : current);
+      setSessionMaxDuration(String(payload.sessionPolicy.maxDurationMinutes));
+      setSessionIdleTimeout(String(payload.sessionPolicy.idleTimeoutMinutes));
+      onNotify("Session-risk policy saved. It applies to new sessions immediately.");
+    } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Unable to save the session policy."); }
+    finally { setSessionPolicyBusy(false); }
   }
 
   async function copy(value: string) {
@@ -124,6 +149,11 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
           <p className="mt-1 text-[11px] text-sentinel-muted">Last SCIM sync: {formatDate(settings?.lastScimSyncAt ?? null)}</p>
           <div className="mt-3 flex justify-end"><button className="secondary-button" disabled={busy !== null} onClick={() => void rotateToken()}>{busy === "token" ? <LoaderCircle className="animate-spin" /> : <KeyRound />}{settings?.scimConfigured ? "Rotate token" : "Create token"}</button></div>
         </div>
+      </div>
+      <div className="mt-5 rounded-lg border border-sentinel-line bg-sentinel-canvas/50 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold text-sentinel-text">Session-risk policy</p><p className="mt-1 max-w-2xl text-[11px] leading-5 text-sentinel-muted">Limit how long an operator can stay signed in and how long an unattended browser remains trusted. The policy applies to every new password and SAML SSO session.</p></div><span className="rounded-full border border-sentinel-line px-2 py-1 text-[10px] font-semibold uppercase text-sentinel-muted">Enforced</span></div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="text-xs text-sentinel-muted">Maximum session duration (minutes)<input type="number" min="30" max="1440" className="mt-2 h-10 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={sessionMaxDuration} onChange={(event) => setSessionMaxDuration(event.target.value)} /></label><label className="text-xs text-sentinel-muted">Idle timeout (minutes)<input type="number" min="5" max="480" className="mt-2 h-10 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={sessionIdleTimeout} onChange={(event) => setSessionIdleTimeout(event.target.value)} /></label></div>
+        <div className="mt-3 flex justify-end"><button className="secondary-button" disabled={sessionPolicyBusy} onClick={() => void saveSessionPolicy()}>{sessionPolicyBusy ? <LoaderCircle className="animate-spin" /> : <Save />} Save session policy</button></div>
       </div>
       {token ? <div className="mt-4 rounded-lg border border-sentinel-lime/30 bg-sentinel-lime/10 p-3"><p className="text-xs font-semibold text-sentinel-text">Copy this token now—it cannot be retrieved later.</p><div className="mt-2 flex gap-2"><code className="min-w-0 flex-1 overflow-x-auto rounded bg-sentinel-canvas px-3 py-2 text-xs text-sentinel-text">{token}</code><button className="secondary-button" onClick={() => void copy(token)}><Copy /> Copy</button></div></div> : null}
 

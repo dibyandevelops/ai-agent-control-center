@@ -22,6 +22,7 @@ export interface IdentitySettings {
   scimTokenHint: string | null;
   scimTokenCreatedAt: string | null;
   lastScimSyncAt: string | null;
+  sessionPolicy: { maxDurationMinutes: number; idleTimeoutMinutes: number };
   saml: { configured: boolean; enabled: boolean; idpEntityId: string | null; entryPoint: string | null; emailAttribute: string; metadataUrl: string | null };
 }
 
@@ -35,6 +36,8 @@ interface IdentitySettingsRow {
   saml_idp_entity_id: string | null;
   saml_entry_point: string | null;
   saml_email_attribute: string;
+  session_max_duration_minutes: number;
+  session_idle_timeout_minutes: number;
 }
 
 function serializeSettings(row: IdentitySettingsRow | undefined, organizationId: string): IdentitySettings {
@@ -44,6 +47,10 @@ function serializeSettings(row: IdentitySettingsRow | undefined, organizationId:
     scimTokenHint: row?.scim_token_hint ?? null,
     scimTokenCreatedAt: row?.scim_token_created_at?.toISOString() ?? null,
     lastScimSyncAt: row?.last_scim_sync_at?.toISOString() ?? null,
+    sessionPolicy: {
+      maxDurationMinutes: row?.session_max_duration_minutes ?? 480,
+      idleTimeoutMinutes: row?.session_idle_timeout_minutes ?? 60,
+    },
     saml: {
       configured: Boolean(row?.saml_idp_entity_id && row.saml_entry_point), enabled: row?.saml_enabled ?? false,
       idpEntityId: row?.saml_idp_entity_id ?? null, entryPoint: row?.saml_entry_point ?? null,
@@ -57,7 +64,8 @@ export async function getOrganizationIdentitySettings(organizationId: string) {
   const result = await getPool().query<IdentitySettingsRow>(
     `select allowed_email_domains, scim_token_hash, scim_token_hint,
             scim_token_created_at, last_scim_sync_at, saml_enabled,
-            saml_idp_entity_id, saml_entry_point, saml_email_attribute
+            saml_idp_entity_id, saml_entry_point, saml_email_attribute,
+            session_max_duration_minutes, session_idle_timeout_minutes
        from organization_identity_settings
       where organization_id = $1`,
     [organizationId],
@@ -102,6 +110,48 @@ export async function updateAllowedEmailDomains(input: {
       payload: { domains, operatorId: input.operatorId },
     });
     return { allowedEmailDomains: domains };
+  });
+}
+
+export async function updateSessionPolicy(input: {
+  organizationId: string;
+  operatorId: string;
+  operatorEmail: string;
+  maxDurationMinutes: number;
+  idleTimeoutMinutes: number;
+}) {
+  if (input.idleTimeoutMinutes > input.maxDurationMinutes) {
+    throw new ConflictError("Idle timeout cannot exceed the maximum session duration.");
+  }
+  return withTransaction(async (client) => {
+    await client.query(
+      `insert into organization_identity_settings (
+         organization_id, session_max_duration_minutes, session_idle_timeout_minutes
+       ) values ($1, $2, $3)
+       on conflict (organization_id) do update set
+         session_max_duration_minutes = excluded.session_max_duration_minutes,
+         session_idle_timeout_minutes = excluded.session_idle_timeout_minutes,
+         updated_at = now()`,
+      [input.organizationId, input.maxDurationMinutes, input.idleTimeoutMinutes],
+    );
+    await appendAuditEvent(client, {
+      organizationId: input.organizationId,
+      requestId: null,
+      eventType: "identity.session_policy_updated",
+      actorType: "human",
+      actorId: input.operatorEmail,
+      payload: {
+        operatorId: input.operatorId,
+        maxDurationMinutes: input.maxDurationMinutes,
+        idleTimeoutMinutes: input.idleTimeoutMinutes,
+      },
+    });
+    return {
+      sessionPolicy: {
+        maxDurationMinutes: input.maxDurationMinutes,
+        idleTimeoutMinutes: input.idleTimeoutMinutes,
+      },
+    };
   });
 }
 
