@@ -12,6 +12,7 @@ import {
   policyActivationNotificationSchema,
   releaseExecutionFailureNotificationSchema,
   releaseGovernanceNotificationSchema,
+  securityDigestNotificationSchema,
 } from "@/lib/server/notification-outbox";
 import {
   notificationFailureStatus,
@@ -24,6 +25,7 @@ import {
   notifySlackOfPolicyActivation,
   notifySlackOfReleaseExecutionFailure,
   notifySlackOfReleaseGovernance,
+  notifySlackOfSecurityDigest,
 } from "@/lib/server/slack";
 import { runApprovedReleaseWorker } from "@/lib/server/release-execution-worker";
 import { runApprovedDraftGovernanceWorker } from "@/lib/server/release-governance-worker";
@@ -101,6 +103,12 @@ async function deliver(row: OutboxRow): Promise<DeliveryResult> {
         organizationId: row.organization_id,
         ...parsed.data,
       });
+      return { row, delivered: result.delivered, reason: result.reason };
+    }
+    if (row.event_type === "security.daily_digest") {
+      const parsed = securityDigestNotificationSchema.safeParse(row.payload);
+      if (!parsed.success) return { row, delivered: false, reason: "invalid_payload" };
+      const result = await notifySlackOfSecurityDigest({ organizationId: row.organization_id, ...parsed.data });
       return { row, delivered: result.delivered, reason: result.reason };
     }
     if (!row.event_type.startsWith("policy.activation_")) {

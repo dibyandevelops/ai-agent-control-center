@@ -205,3 +205,15 @@ export async function notifySlackOfGitHubAppLifecycle(input: {
     text: formatGitHubAppLifecycleSlackText(input),
   });
 }
+
+export async function notifySlackOfSecurityDigest(input: {
+  organizationId: string; date: string; totalEvents: number; mfaEvents: number;
+  sessionEvents: number; credentialEvents: number; identityEvents: number; highlights: string[];
+}) {
+  return postSlackText({ organizationId: input.organizationId, eventType: "security.daily_digest", severity: "info", text: [
+    `SentinelOps — daily security digest (${input.date})`,
+    `Security events: ${input.totalEvents}`,
+    `MFA: ${input.mfaEvents} · Sessions: ${input.sessionEvents} · Credentials: ${input.credentialEvents} · Identity: ${input.identityEvents}`,
+    ...(input.highlights.length ? ["Recent activity:", ...input.highlights.map((item) => `• ${item}`)] : ["No security events recorded in this period."]),
+  ].join("\n") });
+}

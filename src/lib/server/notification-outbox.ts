@@ -91,6 +91,29 @@ export const githubAppLifecycleAlertSchema = z.object({
   remediationUrl: z.string().url(),
 });
 
+export const securityDigestNotificationSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  totalEvents: z.number().int().nonnegative(),
+  mfaEvents: z.number().int().nonnegative(),
+  sessionEvents: z.number().int().nonnegative(),
+  credentialEvents: z.number().int().nonnegative(),
+  identityEvents: z.number().int().nonnegative(),
+  highlights: z.array(z.string().min(1).max(240)).max(5),
+});
+
+export type SecurityDigestNotificationPayload = z.infer<typeof securityDigestNotificationSchema>;
+
+export async function enqueueSecurityDigestNotification(client: PoolClient, input: { organizationId: string; payload: SecurityDigestNotificationPayload }) {
+  const payload = securityDigestNotificationSchema.parse(input.payload);
+  const result = await client.query<{ id: string }>(
+    `insert into notification_outbox (organization_id, channel, event_type, dedupe_key, payload)
+     values ($1, 'slack', 'security.daily_digest', $2, $3::jsonb)
+     on conflict (channel, dedupe_key) do nothing returning id`,
+    [input.organizationId, `security-digest:${input.organizationId}:${payload.date}`, JSON.stringify(payload)],
+  );
+  return notificationEnqueueResult(result);
+}
+
 export type GitHubAppLifecycleAlertPayload = z.infer<
   typeof githubAppLifecycleAlertSchema
 >;

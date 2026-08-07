@@ -5,6 +5,7 @@ export const slackEventTypes = [
   "release.draft_governance_requested",
   "github.release_drift_detected",
   "github.app_lifecycle_alert",
+  "security.daily_digest",
 ] as const;
 
 export type SlackEventType = (typeof slackEventTypes)[number];
