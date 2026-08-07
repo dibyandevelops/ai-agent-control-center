@@ -201,6 +201,7 @@ export async function updateMfaRequirement(input: {
 
 export async function updateSecurityDigestPreferences(input: { organizationId: string; operatorId: string; operatorEmail: string; channels: Array<"slack" | "email">; hourUtc: number }) {
   if (input.channels.length === 0) throw new ConflictError("Choose at least one security digest channel.");
+  if (input.hourUtc !== 8) throw new ConflictError("Security digests are scheduled for 08:00 UTC on the current hosting plan.");
   return withTransaction(async (client) => {
     await client.query(`insert into organization_identity_settings (organization_id, security_digest_channels, security_digest_hour_utc) values ($1,$2::text[],$3)
       on conflict (organization_id) do update set security_digest_channels=excluded.security_digest_channels,security_digest_hour_utc=excluded.security_digest_hour_utc,updated_at=now()`, [input.organizationId, input.channels, input.hourUtc]);

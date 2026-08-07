@@ -18,7 +18,10 @@ const updateSchema = z.object({
     idleTimeoutMinutes: z.number().int().min(5).max(480),
   }).optional(),
   mfaRequiredForSensitiveActions: z.boolean().optional(),
-  securityDigest: z.object({ channels: z.array(z.enum(["slack", "email"])).min(1).max(2), hourUtc: z.number().int().min(0).max(23) }).optional(),
+  // Vercel Hobby only invokes cron jobs once per day. Keep the saved preference
+  // aligned with the configured 08:00 UTC schedule until the deployment moves
+  // to a plan that supports hourly invocations.
+  securityDigest: z.object({ channels: z.array(z.enum(["slack", "email"])).min(1).max(2), hourUtc: z.literal(8) }).optional(),
 }).refine((value) => value.allowedEmailDomains || value.sessionPolicy || value.mfaRequiredForSensitiveActions !== undefined || value.securityDigest, {
   message: "At least one identity setting is required.",
 }).refine((value) => !value.sessionPolicy || value.sessionPolicy.idleTimeoutMinutes <= value.sessionPolicy.maxDurationMinutes, {
