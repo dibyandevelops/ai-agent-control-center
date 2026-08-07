@@ -5,11 +5,13 @@ import { operatorCan } from "@/lib/server/operator-roles";
 import { sendSecurityDigestEmail } from "@/lib/server/security-digest-email";
 import { notifySlackOfSecurityDigest } from "@/lib/server/slack";
 import { getPool } from "@/lib/server/db";
+import { getSentinelOpsPublicUrl } from "@/lib/server/env";
 
+const auditUrl = `${getSentinelOpsPublicUrl()}/dashboard?view=audit&scope=security`;
 const payload = {
   date: new Date().toISOString().slice(0, 10), totalEvents: 0, mfaEvents: 0,
   sessionEvents: 0, credentialEvents: 0, identityEvents: 0,
-  highlights: ["This is a manually requested delivery test."],
+  auditUrl, highlights: [{ label: "This is a manually requested delivery test.", auditUrl }],
 };
 
 export async function POST() {

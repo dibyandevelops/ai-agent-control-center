@@ -98,7 +98,8 @@ export const securityDigestNotificationSchema = z.object({
   sessionEvents: z.number().int().nonnegative(),
   credentialEvents: z.number().int().nonnegative(),
   identityEvents: z.number().int().nonnegative(),
-  highlights: z.array(z.string().min(1).max(240)).max(5),
+  auditUrl: z.string().url(),
+  highlights: z.array(z.object({ label: z.string().min(1).max(240), auditUrl: z.string().url() })).max(5),
 });
 
 export type SecurityDigestNotificationPayload = z.infer<typeof securityDigestNotificationSchema>;

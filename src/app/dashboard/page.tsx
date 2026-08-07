@@ -23,12 +23,14 @@ const dashboardViews = new Set<DashboardView>([
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string | string[] }>;
+  searchParams: Promise<{ view?: string | string[]; eventId?: string | string[] }>;
 }) {
-  const requestedView = (await searchParams).view;
+  const params = await searchParams;
+  const requestedView = params.view;
   const initialView = typeof requestedView === "string" &&
       dashboardViews.has(requestedView as DashboardView)
     ? requestedView as DashboardView
     : "overview";
-  return <ControlCenter initialView={initialView} />;
+  const initialAuditEventId = typeof params.eventId === "string" ? params.eventId : undefined;
+  return <ControlCenter initialView={initialView} initialAuditEventId={initialAuditEventId} />;
 }

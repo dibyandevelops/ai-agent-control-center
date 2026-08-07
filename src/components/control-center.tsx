@@ -949,12 +949,14 @@ function PoliciesView({
 function AuditView({
   audit,
   onOpenDetails,
+  initialEventId,
 }: {
   audit: AuditEvent[];
   onOpenDetails: (requestId: string) => void;
+  initialEventId?: string;
 }) {
-  const [query, setQuery] = useState("");
-  const [scope, setScope] = useState<"all" | "security">("all");
+  const [query, setQuery] = useState(initialEventId ?? "");
+  const [scope, setScope] = useState<"all" | "security">(initialEventId ? "security" : "all");
   const [verifying, setVerifying] = useState(false);
   const [testingDelivery, setTestingDelivery] = useState(false);
   const [deliveryMessage, setDeliveryMessage] = useState("");
@@ -969,7 +971,7 @@ function AuditView({
   } | null>(null);
   const securityEvents = audit.filter((event) => /^(operator\.|identity\.|api_key\.|github_app\.|slack\.)/.test(event.action));
   const filtered = (scope === "security" ? securityEvents : audit).filter((event) =>
-    `${event.agent} ${event.action} ${event.actor}`.toLowerCase().includes(query.toLowerCase()),
+    `${event.id} ${event.agent} ${event.action} ${event.actor}`.toLowerCase().includes(query.toLowerCase()),
   );
   const mfaEvents = securityEvents.filter((event) => event.action.includes("mfa"));
   const sessionEvents = securityEvents.filter((event) => event.action.includes("session"));
@@ -2026,8 +2028,10 @@ function MfaVerificationDialog({
 
 export function ControlCenter({
   initialView = "overview",
+  initialAuditEventId,
 }: {
   initialView?: DashboardView;
+  initialAuditEventId?: string;
 }) {
   const [view, setView] = useState<DashboardView>(initialView);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -2706,6 +2710,7 @@ export function ControlCenter({
           <AuditView
             audit={auditList}
             onOpenDetails={setSelectedRequestId}
+            initialEventId={initialAuditEventId}
           />
         )}
         {view === "integrations" && (
