@@ -24,6 +24,7 @@ export interface IdentitySettings {
   lastScimSyncAt: string | null;
   sessionPolicy: { maxDurationMinutes: number; idleTimeoutMinutes: number };
   mfaRequiredForSensitiveActions: boolean;
+  securityDigest: { channels: Array<"slack" | "email">; hourUtc: number };
   saml: { configured: boolean; enabled: boolean; idpEntityId: string | null; entryPoint: string | null; emailAttribute: string; metadataUrl: string | null };
 }
 
@@ -40,6 +41,8 @@ interface IdentitySettingsRow {
   session_max_duration_minutes: number;
   session_idle_timeout_minutes: number;
   mfa_required_for_sensitive_actions: boolean;
+  security_digest_channels: Array<"slack" | "email">;
+  security_digest_hour_utc: number;
 }
 
 function serializeSettings(row: IdentitySettingsRow | undefined, organizationId: string): IdentitySettings {
@@ -54,6 +57,7 @@ function serializeSettings(row: IdentitySettingsRow | undefined, organizationId:
       idleTimeoutMinutes: row?.session_idle_timeout_minutes ?? 60,
     },
     mfaRequiredForSensitiveActions: row?.mfa_required_for_sensitive_actions ?? false,
+    securityDigest: { channels: row?.security_digest_channels ?? ["slack", "email"], hourUtc: row?.security_digest_hour_utc ?? 8 },
     saml: {
       configured: Boolean(row?.saml_idp_entity_id && row.saml_entry_point), enabled: row?.saml_enabled ?? false,
       idpEntityId: row?.saml_idp_entity_id ?? null, entryPoint: row?.saml_entry_point ?? null,
@@ -70,6 +74,7 @@ export async function getOrganizationIdentitySettings(organizationId: string) {
             saml_idp_entity_id, saml_entry_point, saml_email_attribute,
             session_max_duration_minutes, session_idle_timeout_minutes,
             mfa_required_for_sensitive_actions
+            ,security_digest_channels, security_digest_hour_utc
        from organization_identity_settings
       where organization_id = $1`,
     [organizationId],
@@ -191,6 +196,16 @@ export async function updateMfaRequirement(input: {
       payload: { operatorId: input.operatorId, required: input.required },
     });
     return { mfaRequiredForSensitiveActions: input.required };
+  });
+}
+
+export async function updateSecurityDigestPreferences(input: { organizationId: string; operatorId: string; operatorEmail: string; channels: Array<"slack" | "email">; hourUtc: number }) {
+  if (input.channels.length === 0) throw new ConflictError("Choose at least one security digest channel.");
+  return withTransaction(async (client) => {
+    await client.query(`insert into organization_identity_settings (organization_id, security_digest_channels, security_digest_hour_utc) values ($1,$2::text[],$3)
+      on conflict (organization_id) do update set security_digest_channels=excluded.security_digest_channels,security_digest_hour_utc=excluded.security_digest_hour_utc,updated_at=now()`, [input.organizationId, input.channels, input.hourUtc]);
+    await appendAuditEvent(client, { organizationId: input.organizationId, requestId: null, eventType: "identity.security_digest_preferences_updated", actorType: "human", actorId: input.operatorEmail, payload: { operatorId: input.operatorId, channels: input.channels, hourUtc: input.hourUtc } });
+    return { securityDigest: { channels: input.channels, hourUtc: input.hourUtc } };
   });
 }
 

@@ -7,6 +7,7 @@ import {
   updateAllowedEmailDomains,
   updateSessionPolicy,
   updateMfaRequirement,
+  updateSecurityDigestPreferences,
 } from "@/lib/server/identity-provisioning";
 import { operatorCan } from "@/lib/server/operator-roles";
 
@@ -17,7 +18,8 @@ const updateSchema = z.object({
     idleTimeoutMinutes: z.number().int().min(5).max(480),
   }).optional(),
   mfaRequiredForSensitiveActions: z.boolean().optional(),
-}).refine((value) => value.allowedEmailDomains || value.sessionPolicy || value.mfaRequiredForSensitiveActions !== undefined, {
+  securityDigest: z.object({ channels: z.array(z.enum(["slack", "email"])).min(1).max(2), hourUtc: z.number().int().min(0).max(23) }).optional(),
+}).refine((value) => value.allowedEmailDomains || value.sessionPolicy || value.mfaRequiredForSensitiveActions !== undefined || value.securityDigest, {
   message: "At least one identity setting is required.",
 }).refine((value) => !value.sessionPolicy || value.sessionPolicy.idleTimeoutMinutes <= value.sessionPolicy.maxDurationMinutes, {
   message: "Idle timeout cannot exceed the maximum session duration.",
@@ -60,6 +62,7 @@ export async function PATCH(request: NextRequest) {
     if (input.mfaRequiredForSensitiveActions !== undefined) {
       return NextResponse.json(await updateMfaRequirement({ ...context, required: input.mfaRequiredForSensitiveActions }));
     }
+    if (input.securityDigest) return NextResponse.json(await updateSecurityDigestPreferences({ ...context, ...input.securityDigest }));
     return NextResponse.json(await updateSessionPolicy({ ...context, ...input.sessionPolicy! }));
   } catch (error) {
     return apiError(error);

@@ -22,11 +22,13 @@ async function run(request: NextRequest) {
       let enqueued = 0;
       const date = new Date().toISOString().slice(0, 10);
       for (const [organizationId, organizationEvents] of byOrganization) {
+        const preferencesResult = await client.query<{ security_digest_channels: Array<"slack" | "email">; security_digest_hour_utc: number }>(`select security_digest_channels,security_digest_hour_utc from organization_identity_settings where organization_id=$1`, [organizationId]);
+        const preferences = preferencesResult.rows[0] ?? { security_digest_channels: ["slack", "email"] as Array<"slack" | "email">, security_digest_hour_utc: 8 };
+        if (new Date().getUTCHours() !== preferences.security_digest_hour_utc) continue;
         const count = (value: string) => organizationEvents.filter((event) => event.event_type.includes(value)).length;
-        const digest = await enqueueSecurityDigestNotification(client, { organizationId, payload: { date, totalEvents: organizationEvents.length, mfaEvents: count("mfa"), sessionEvents: count("session"), credentialEvents: organizationEvents.filter((event) => /api_key|github_app|slack/.test(event.event_type)).length, identityEvents: count("identity"), highlights: organizationEvents.slice(0, 5).map((event) => `${event.event_type} by ${event.actor_id}`) } });
-        const email = await enqueueSecurityDigestEmail(client, { organizationId, payload: { date, totalEvents: organizationEvents.length, mfaEvents: count("mfa"), sessionEvents: count("session"), credentialEvents: organizationEvents.filter((event) => /api_key|github_app|slack/.test(event.event_type)).length, identityEvents: count("identity"), highlights: organizationEvents.slice(0, 5).map((event) => `${event.event_type} by ${event.actor_id}`) } });
-        if (digest.enqueued) enqueued += 1;
-        if (email.enqueued) enqueued += 1;
+        const payload = { date, totalEvents: organizationEvents.length, mfaEvents: count("mfa"), sessionEvents: count("session"), credentialEvents: organizationEvents.filter((event) => /api_key|github_app|slack/.test(event.event_type)).length, identityEvents: count("identity"), highlights: organizationEvents.slice(0, 5).map((event) => `${event.event_type} by ${event.actor_id}`) };
+        if (preferences.security_digest_channels.includes("slack")) { const digest = await enqueueSecurityDigestNotification(client, { organizationId, payload }); if (digest.enqueued) enqueued += 1; }
+        if (preferences.security_digest_channels.includes("email")) { const email = await enqueueSecurityDigestEmail(client, { organizationId, payload }); if (email.enqueued) enqueued += 1; }
       }
       return { organizations: byOrganization.size, enqueued };
     });
