@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import { getOperatorSession } from "@/lib/server/auth";
+import { getOperatorSession, requireRecentMfa } from "@/lib/server/auth";
 import { getPool } from "@/lib/server/db";
 import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
@@ -15,6 +15,7 @@ export async function POST() {
     if (!operatorCan(operator.role, "govern_releases")) {
       return NextResponse.json({ error: "Admin role required." }, { status: 403 });
     }
+    await requireRecentMfa(operator);
     const env = getServerEnv();
     if (
       !env.GITHUB_APP_SLUG || !env.GITHUB_APP_ID || !env.GITHUB_APP_PRIVATE_KEY ||

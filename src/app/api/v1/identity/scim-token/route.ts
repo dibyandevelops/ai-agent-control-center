@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOperatorSession } from "@/lib/server/auth";
+import { getOperatorSession, requireRecentMfa } from "@/lib/server/auth";
 import { apiError } from "@/lib/server/http";
 import { rotateOrganizationScimToken } from "@/lib/server/identity-provisioning";
 import { operatorCan } from "@/lib/server/operator-roles";
@@ -11,6 +11,7 @@ export async function POST() {
     if (!operatorCan(operator.role, "manage_operators")) {
       return NextResponse.json({ error: "Admin role required." }, { status: 403 });
     }
+    await requireRecentMfa(operator);
     const token = await rotateOrganizationScimToken({
       organizationId: operator.organizationId,
       operatorId: operator.id,

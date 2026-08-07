@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getOperatorSession } from "@/lib/server/auth";
+import { getOperatorSession, requireRecentMfa } from "@/lib/server/auth";
 import { apiError } from "@/lib/server/http";
 import {
   getOrganizationIdentitySettings,
@@ -37,6 +37,7 @@ export async function GET() {
   try {
     const authorization = await requireAdmin();
     if (!authorization.operator) return authorization.response;
+    await requireRecentMfa(authorization.operator);
     return NextResponse.json(await getOrganizationIdentitySettings(authorization.operator.organizationId));
   } catch (error) {
     return apiError(error);

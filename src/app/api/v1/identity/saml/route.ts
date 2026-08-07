@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getOperatorSession } from "@/lib/server/auth";
+import { getOperatorSession, requireRecentMfa } from "@/lib/server/auth";
 import { apiError } from "@/lib/server/http";
 import { configureSaml } from "@/lib/server/saml-sso";
 import { operatorCan } from "@/lib/server/operator-roles";
@@ -12,6 +12,7 @@ export async function PATCH(request: NextRequest) {
     const operator = await getOperatorSession();
     if (!operator) return NextResponse.json({ error: "Operator authentication required." }, { status: 401 });
     if (!operatorCan(operator.role, "manage_operators")) return NextResponse.json({ error: "Admin role required." }, { status: 403 });
+    await requireRecentMfa(operator);
     const input = schema.parse(await request.json());
     await configureSaml({ organizationId: operator.organizationId, operatorId: operator.id, operatorEmail: operator.email, ...input });
     return NextResponse.json({ configured: true, enabled: input.enabled });

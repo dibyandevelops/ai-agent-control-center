@@ -6,7 +6,7 @@ import {
   hashAgentApiKey,
 } from "@/lib/server/agent-api-key";
 import { appendAuditEvent } from "@/lib/server/audit";
-import { getOperatorSession } from "@/lib/server/auth";
+import { getOperatorSession, requireRecentMfa } from "@/lib/server/auth";
 import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
   try {
     const authorization = await requireAdmin();
     if (!authorization.operator) return authorization.response;
+    await requireRecentMfa(authorization.operator);
     const input = createApiKeySchema.parse(await request.json());
     const apiKey = generateAgentApiKey();
     const created = await withTransaction(async (client) => {
@@ -129,4 +130,3 @@ export async function POST(request: NextRequest) {
     return apiError(error);
   }
 }
-

@@ -5,7 +5,7 @@ import {
   hashAgentApiKey,
 } from "@/lib/server/agent-api-key";
 import { appendAuditEvent } from "@/lib/server/audit";
-import { getOperatorSession } from "@/lib/server/auth";
+import { getOperatorSession, requireRecentMfa } from "@/lib/server/auth";
 import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
@@ -28,6 +28,7 @@ export async function POST(
         { status: 403 },
       );
     }
+    await requireRecentMfa(operator);
     const { keyId } = await context.params;
     const secret = generateAgentApiKey();
     const rotated = await withTransaction(async (client) => {
