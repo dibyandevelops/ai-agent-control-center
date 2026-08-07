@@ -13,6 +13,7 @@ const serverEnvSchema = z.object({
   SLACK_CLIENT_ID: z.string().min(8).optional(),
   SLACK_CLIENT_SECRET: z.string().min(20).optional(),
   SLACK_CREDENTIAL_ENCRYPTION_KEY: z.string().min(43).optional(),
+  MFA_ENCRYPTION_KEY: z.string().min(43).optional(),
   SENTINELOPS_CRON_SECRET: z.string().min(32).optional(),
   ACTION_APPROVAL_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
   POLICY_ACTIVATION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
@@ -52,6 +53,7 @@ export function getServerEnv(): ServerEnv {
     SLACK_CLIENT_SECRET: process.env.SLACK_CLIENT_SECRET || undefined,
     SLACK_CREDENTIAL_ENCRYPTION_KEY:
       process.env.SLACK_CREDENTIAL_ENCRYPTION_KEY || undefined,
+    MFA_ENCRYPTION_KEY: process.env.MFA_ENCRYPTION_KEY || undefined,
     SENTINELOPS_CRON_SECRET:
       process.env.CRON_SECRET ||
       process.env.SENTINELOPS_CRON_SECRET ||

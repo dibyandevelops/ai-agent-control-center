@@ -495,6 +495,19 @@ export async function clearOperatorSession() {
   cookieStore.delete(sessionCookieName);
 }
 
+export async function markCurrentOperatorSessionMfaVerified() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(sessionCookieName)?.value;
+  if (!token?.startsWith("sos_session_")) return false;
+  const result = await getPool().query<{ id: string }>(
+    `update operator_sessions set mfa_verified_at = now()
+      where token_hash = $1 and revoked_at is null and expires_at > now()
+      returning id`,
+    [hashSessionToken(token)],
+  );
+  return Boolean(result.rows[0]);
+}
+
 export interface ApiKeyIdentity {
   keyId: string;
   organizationId: string;
