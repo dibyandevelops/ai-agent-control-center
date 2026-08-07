@@ -10,6 +10,7 @@ import { getPool, withTransaction } from "./db";
 import { hashPassword, verifyPassword } from "./password";
 import type { OperatorRole } from "./operator-roles";
 import { emailMatchesAllowedDomains } from "./identity-core";
+import { AuthenticationError } from "./errors";
 
 const sessionCookieName = "sentinelops_operator_session";
 const defaultSessionDurationMinutes = 8 * 60;
@@ -511,7 +512,7 @@ export async function markCurrentOperatorSessionMfaVerified() {
 export async function requireRecentMfa(operator: OperatorIdentity) {
   const cookieStore = await cookies();
   const token = cookieStore.get(sessionCookieName)?.value;
-  if (!token?.startsWith("sos_session_")) throw new Error("Operator authentication required.");
+  if (!token?.startsWith("sos_session_")) throw new AuthenticationError("Operator authentication required.");
   const result = await getPool().query<{ required: boolean; verified_at: Date | null }>(
     `select settings.mfa_required_for_sensitive_actions as required, os.mfa_verified_at as verified_at
        from operator_sessions os
@@ -521,7 +522,7 @@ export async function requireRecentMfa(operator: OperatorIdentity) {
   );
   const row = result.rows[0];
   if (row?.required && (!row.verified_at || row.verified_at.getTime() < Date.now() - 15 * 60 * 1_000)) {
-    throw new Error("Recent MFA verification is required for this sensitive action.");
+    throw new AuthenticationError("Recent MFA verification is required for this sensitive action.");
   }
 }
 

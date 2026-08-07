@@ -42,7 +42,6 @@ export async function GET() {
   try {
     const authorization = await requireAdmin();
     if (!authorization.operator) return authorization.response;
-    await requireRecentMfa(authorization.operator);
     return NextResponse.json(await getOrganizationIdentitySettings(authorization.operator.organizationId));
   } catch (error) {
     return apiError(error);
