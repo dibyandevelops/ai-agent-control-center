@@ -1,6 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { appendAuditEvent } from "@/lib/server/audit";
-import { getOperatorSession } from "@/lib/server/auth";
+import { getOperatorSession, requireRecentMfa } from "@/lib/server/auth";
 import { releaseGovernanceDecisionSchema } from "@/lib/server/contracts";
 import { withTransaction } from "@/lib/server/db";
 import { ConflictError, NotFoundError } from "@/lib/server/errors";
@@ -30,6 +30,7 @@ export async function POST(
     if (!operatorCan(operator.role, "govern_releases")) {
       return NextResponse.json({ error: "Admin role required." }, { status: 403 });
     }
+    await requireRecentMfa(operator);
     const { governanceId } = await context.params;
     const input = releaseGovernanceDecisionSchema.parse(await request.json());
     const result = await withTransaction(async (client) => {

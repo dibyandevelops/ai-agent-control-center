@@ -508,6 +508,23 @@ export async function markCurrentOperatorSessionMfaVerified() {
   return Boolean(result.rows[0]);
 }
 
+export async function requireRecentMfa(operator: OperatorIdentity) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(sessionCookieName)?.value;
+  if (!token?.startsWith("sos_session_")) throw new Error("Operator authentication required.");
+  const result = await getPool().query<{ required: boolean; verified_at: Date | null }>(
+    `select settings.mfa_required_for_sensitive_actions as required, os.mfa_verified_at as verified_at
+       from operator_sessions os
+       left join organization_identity_settings settings on settings.organization_id = $2
+      where os.token_hash = $1 and os.revoked_at is null and os.expires_at > now() limit 1`,
+    [hashSessionToken(token), operator.organizationId],
+  );
+  const row = result.rows[0];
+  if (row?.required && (!row.verified_at || row.verified_at.getTime() < Date.now() - 15 * 60 * 1_000)) {
+    throw new Error("Recent MFA verification is required for this sensitive action.");
+  }
+}
+
 export interface ApiKeyIdentity {
   keyId: string;
   organizationId: string;

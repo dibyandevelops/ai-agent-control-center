@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ConflictError, NotFoundError } from "@/lib/server/errors";
 import { appendAuditEvent } from "@/lib/server/audit";
-import { getOperatorSession } from "@/lib/server/auth";
+import { getOperatorSession, requireRecentMfa } from "@/lib/server/auth";
 import type { PolicyConditions } from "@/lib/server/contracts";
 import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
@@ -28,6 +28,7 @@ export async function POST(
         { status: 403 },
       );
     }
+    await requireRecentMfa(operator);
     const { requestId } = await context.params;
     const input = policyActivationDecisionSchema.parse(await request.json());
 
