@@ -29,7 +29,11 @@ export function totpCode(secret: string, at = Date.now()) {
 
 export function verifyTotp(secret: string, code: string, now = Date.now()) {
   const normalized = code.replace(/\s|-/g, "");
-  return /^\d{6}$/.test(normalized) && [-30_000, 0, 30_000].some((offset) => totpCode(secret, now + offset) === normalized);
+  // Phone clocks can drift slightly even when set to automatic time. Accept a
+  // three-step window on either side (±90 seconds) rather than rejecting a
+  // freshly scanned enrollment solely because of harmless clock skew.
+  const allowedOffsets = [-90_000, -60_000, -30_000, 0, 30_000, 60_000, 90_000];
+  return /^\d{6}$/.test(normalized) && allowedOffsets.some((offset) => totpCode(secret, now + offset) === normalized);
 }
 
 function key(encoded: string) { const decoded = Buffer.from(encoded, "base64"); if (decoded.length !== 32) throw new Error("MFA_ENCRYPTION_KEY must be a base64-encoded 32-byte key."); return decoded; }
