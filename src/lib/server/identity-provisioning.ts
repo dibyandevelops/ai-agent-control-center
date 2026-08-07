@@ -23,6 +23,7 @@ export interface IdentitySettings {
   scimTokenCreatedAt: string | null;
   lastScimSyncAt: string | null;
   sessionPolicy: { maxDurationMinutes: number; idleTimeoutMinutes: number };
+  mfaRequiredForSensitiveActions: boolean;
   saml: { configured: boolean; enabled: boolean; idpEntityId: string | null; entryPoint: string | null; emailAttribute: string; metadataUrl: string | null };
 }
 
@@ -38,6 +39,7 @@ interface IdentitySettingsRow {
   saml_email_attribute: string;
   session_max_duration_minutes: number;
   session_idle_timeout_minutes: number;
+  mfa_required_for_sensitive_actions: boolean;
 }
 
 function serializeSettings(row: IdentitySettingsRow | undefined, organizationId: string): IdentitySettings {
@@ -51,6 +53,7 @@ function serializeSettings(row: IdentitySettingsRow | undefined, organizationId:
       maxDurationMinutes: row?.session_max_duration_minutes ?? 480,
       idleTimeoutMinutes: row?.session_idle_timeout_minutes ?? 60,
     },
+    mfaRequiredForSensitiveActions: row?.mfa_required_for_sensitive_actions ?? false,
     saml: {
       configured: Boolean(row?.saml_idp_entity_id && row.saml_entry_point), enabled: row?.saml_enabled ?? false,
       idpEntityId: row?.saml_idp_entity_id ?? null, entryPoint: row?.saml_entry_point ?? null,
@@ -65,7 +68,8 @@ export async function getOrganizationIdentitySettings(organizationId: string) {
     `select allowed_email_domains, scim_token_hash, scim_token_hint,
             scim_token_created_at, last_scim_sync_at, saml_enabled,
             saml_idp_entity_id, saml_entry_point, saml_email_attribute,
-            session_max_duration_minutes, session_idle_timeout_minutes
+            session_max_duration_minutes, session_idle_timeout_minutes,
+            mfa_required_for_sensitive_actions
        from organization_identity_settings
       where organization_id = $1`,
     [organizationId],
@@ -152,6 +156,41 @@ export async function updateSessionPolicy(input: {
         idleTimeoutMinutes: input.idleTimeoutMinutes,
       },
     };
+  });
+}
+
+export async function updateMfaRequirement(input: {
+  organizationId: string;
+  operatorId: string;
+  operatorEmail: string;
+  required: boolean;
+}) {
+  return withTransaction(async (client) => {
+    if (input.required) {
+      const missing = await client.query<{ count: string }>(
+        `select count(*)::text as count from operators op
+          left join operator_mfa mfa on mfa.operator_id = op.id
+         where op.organization_id = $1 and op.status = 'active'
+           and op.role = 'admin' and mfa.operator_id is null`,
+        [input.organizationId],
+      );
+      if (Number(missing.rows[0]?.count ?? 0) > 0) {
+        throw new ConflictError("Every active administrator must enroll MFA before enforcement can be enabled.");
+      }
+    }
+    await client.query(
+      `insert into organization_identity_settings (organization_id, mfa_required_for_sensitive_actions)
+       values ($1, $2) on conflict (organization_id) do update set
+         mfa_required_for_sensitive_actions = excluded.mfa_required_for_sensitive_actions,
+         updated_at = now()`,
+      [input.organizationId, input.required],
+    );
+    await appendAuditEvent(client, {
+      organizationId: input.organizationId, requestId: null,
+      eventType: "identity.mfa_requirement_updated", actorType: "human", actorId: input.operatorEmail,
+      payload: { operatorId: input.operatorId, required: input.required },
+    });
+    return { mfaRequiredForSensitiveActions: input.required };
   });
 }
 
