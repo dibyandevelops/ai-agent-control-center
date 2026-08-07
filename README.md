@@ -91,7 +91,33 @@ SentinelOps sends a daily, tenant-scoped security digest through configured Slac
 destinations and Resend email. Set `RESEND_API_KEY`, `SECURITY_DIGEST_FROM`, and
 `SECURITY_DIGEST_TO` for email delivery. An administrator can use **Audit log →
 Test security digest** to verify configured destinations; when MFA enforcement
-is enabled, this test requires a recent MFA verification.
+is enabled, this test requires a recent MFA verification. The delivery test
+reports each channel independently, so a Slack success and email failure can be
+diagnosed without masking either result. For Resend 403 responses, verify that
+the API key and sender domain belong to the same Resend account.
+
+## Pilot onboarding checklist
+
+Use this short path to validate a new tenant before its first real automation:
+
+1. Sign in as an administrator and open **Overview → Register agent**. Enter a
+   real owner email; the agent is tenant-scoped, persists after refresh, and
+   creates an `agent.registered` audit event.
+2. Open **Credentials**, create an API key, and store it in the agent's secret
+   manager. SentinelOps never stores the plaintext value.
+3. In the one-time key dialog, run **Test connection**. This performs a real,
+   low-risk `system.health.read` policy evaluation and records key usage.
+4. Use the language-specific quickstart snippet to send the first governed
+   action. A production-impacting request should become pending, be approved by
+   a different administrator when policy requires it, and be visible in the
+   approval queue and audit log.
+5. Configure Slack/email security-digest delivery and use **Test security
+   digest** after MFA verification. Highlight links open the associated audit
+   evidence directly.
+
+The current Vercel Hobby deployment runs the daily digest at 08:00 UTC. Use a
+Vercel plan that supports hourly cron or an external scheduler before offering
+tenant-selected delivery times.
 
 Run the complete isolated approval journey before a pilot or release:
 
