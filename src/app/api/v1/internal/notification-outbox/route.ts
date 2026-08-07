@@ -14,6 +14,7 @@ import {
   releaseGovernanceNotificationSchema,
   securityDigestNotificationSchema,
 } from "@/lib/server/notification-outbox";
+import { sendSecurityDigestEmail } from "@/lib/server/security-digest-email";
 import {
   notificationFailureStatus,
   retryDelaySeconds,
@@ -35,7 +36,7 @@ export const maxDuration = 60;
 interface OutboxRow {
   id: string;
   organization_id: string;
-  channel: "slack";
+  channel: "slack" | "email";
   event_type: string;
   payload: unknown;
   attempt_count: number;
@@ -50,6 +51,12 @@ interface DeliveryResult {
 
 async function deliver(row: OutboxRow): Promise<DeliveryResult> {
   try {
+    if (row.channel === "email" && row.event_type === "security.daily_digest") {
+      const parsed = securityDigestNotificationSchema.safeParse(row.payload);
+      if (!parsed.success) return { row, delivered: false, reason: "invalid_payload" };
+      const result = await sendSecurityDigestEmail(parsed.data);
+      return { row, delivered: result.delivered, reason: result.reason };
+    }
     if (row.event_type === "action.approval_requested") {
       const parsed = actionApprovalNotificationSchema.safeParse(row.payload);
       if (!parsed.success) {

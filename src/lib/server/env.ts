@@ -14,6 +14,9 @@ const serverEnvSchema = z.object({
   SLACK_CLIENT_SECRET: z.string().min(20).optional(),
   SLACK_CREDENTIAL_ENCRYPTION_KEY: z.string().min(43).optional(),
   MFA_ENCRYPTION_KEY: z.string().min(43).optional(),
+  RESEND_API_KEY: z.string().min(12).optional(),
+  SECURITY_DIGEST_FROM: z.string().min(3).optional(),
+  SECURITY_DIGEST_TO: z.string().min(3).optional(),
   SENTINELOPS_CRON_SECRET: z.string().min(32).optional(),
   ACTION_APPROVAL_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
   POLICY_ACTIVATION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
@@ -54,6 +57,9 @@ export function getServerEnv(): ServerEnv {
     SLACK_CREDENTIAL_ENCRYPTION_KEY:
       process.env.SLACK_CREDENTIAL_ENCRYPTION_KEY || undefined,
     MFA_ENCRYPTION_KEY: process.env.MFA_ENCRYPTION_KEY || undefined,
+    RESEND_API_KEY: process.env.RESEND_API_KEY || undefined,
+    SECURITY_DIGEST_FROM: process.env.SECURITY_DIGEST_FROM || undefined,
+    SECURITY_DIGEST_TO: process.env.SECURITY_DIGEST_TO || undefined,
     SENTINELOPS_CRON_SECRET:
       process.env.CRON_SECRET ||
       process.env.SENTINELOPS_CRON_SECRET ||

@@ -3,7 +3,7 @@ import { withTransaction } from "@/lib/server/db";
 import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
 import { hasValidInternalBearer } from "@/lib/server/internal-auth";
-import { enqueueSecurityDigestNotification } from "@/lib/server/notification-outbox";
+import { enqueueSecurityDigestEmail, enqueueSecurityDigestNotification } from "@/lib/server/notification-outbox";
 
 export const maxDuration = 60;
 const security = /^(operator\.|identity\.|api_key\.|github_app\.|slack\.)/;
@@ -24,7 +24,9 @@ async function run(request: NextRequest) {
       for (const [organizationId, organizationEvents] of byOrganization) {
         const count = (value: string) => organizationEvents.filter((event) => event.event_type.includes(value)).length;
         const digest = await enqueueSecurityDigestNotification(client, { organizationId, payload: { date, totalEvents: organizationEvents.length, mfaEvents: count("mfa"), sessionEvents: count("session"), credentialEvents: organizationEvents.filter((event) => /api_key|github_app|slack/.test(event.event_type)).length, identityEvents: count("identity"), highlights: organizationEvents.slice(0, 5).map((event) => `${event.event_type} by ${event.actor_id}`) } });
+        const email = await enqueueSecurityDigestEmail(client, { organizationId, payload: { date, totalEvents: organizationEvents.length, mfaEvents: count("mfa"), sessionEvents: count("session"), credentialEvents: organizationEvents.filter((event) => /api_key|github_app|slack/.test(event.event_type)).length, identityEvents: count("identity"), highlights: organizationEvents.slice(0, 5).map((event) => `${event.event_type} by ${event.actor_id}`) } });
         if (digest.enqueued) enqueued += 1;
+        if (email.enqueued) enqueued += 1;
       }
       return { organizations: byOrganization.size, enqueued };
     });

@@ -114,6 +114,13 @@ export async function enqueueSecurityDigestNotification(client: PoolClient, inpu
   return notificationEnqueueResult(result);
 }
 
+export async function enqueueSecurityDigestEmail(client: PoolClient, input: { organizationId: string; payload: SecurityDigestNotificationPayload }) {
+  const payload = securityDigestNotificationSchema.parse(input.payload);
+  const result = await client.query<{ id: string }>(`insert into notification_outbox (organization_id, channel, event_type, dedupe_key, payload)
+    values ($1, 'email', 'security.daily_digest', $2, $3::jsonb) on conflict (channel, dedupe_key) do nothing returning id`, [input.organizationId, `security-digest-email:${input.organizationId}:${payload.date}`, JSON.stringify(payload)]);
+  return notificationEnqueueResult(result);
+}
+
 export type GitHubAppLifecycleAlertPayload = z.infer<
   typeof githubAppLifecycleAlertSchema
 >;
