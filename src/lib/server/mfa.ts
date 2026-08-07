@@ -37,3 +37,13 @@ export async function verifyMfa(operator: OperatorIdentity, code: string) {
   await withTransaction(async (client) => { if (usesRecovery) await client.query(`update operator_mfa set recovery_code_hashes=array_remove(recovery_code_hashes,$2),last_verified_at=now(),updated_at=now() where operator_id=$1`, [operator.id, recoveryHash]); else await client.query(`update operator_mfa set last_verified_at=now(),updated_at=now() where operator_id=$1`, [operator.id]); await appendAuditEvent(client, { organizationId: operator.organizationId, requestId: null, eventType: "operator.mfa_verified", actorType: "human", actorId: operator.email, payload: { method: usesRecovery ? "recovery_code" : "totp" } }); });
   await markCurrentOperatorSessionMfaVerified(); return { usedRecoveryCode: usesRecovery };
 }
+
+export async function regenerateMfaRecoveryCodes(operator: OperatorIdentity, code: string) {
+  await verifyMfa(operator, code);
+  const recoveryCodes = createRecoveryCodes();
+  await withTransaction(async (client) => {
+    await client.query(`update operator_mfa set recovery_code_hashes=$2::text[],updated_at=now() where operator_id=$1`, [operator.id, recoveryCodes.map(hashRecoveryCode)]);
+    await appendAuditEvent(client, { organizationId: operator.organizationId, requestId: null, eventType: "operator.mfa_recovery_codes_regenerated", actorType: "human", actorId: operator.email, payload: { recoveryCodes: recoveryCodes.length } });
+  });
+  return recoveryCodes;
+}
