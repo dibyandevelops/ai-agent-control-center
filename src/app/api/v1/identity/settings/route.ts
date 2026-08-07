@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getOperatorSession, requireRecentMfa } from "@/lib/server/auth";
+import { getOperatorSession } from "@/lib/server/auth";
 import { apiError } from "@/lib/server/http";
 import {
   getOrganizationIdentitySettings,
