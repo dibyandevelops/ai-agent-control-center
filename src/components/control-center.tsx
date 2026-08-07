@@ -958,6 +958,7 @@ function AuditView({
   const [verifying, setVerifying] = useState(false);
   const [testingDelivery, setTestingDelivery] = useState(false);
   const [deliveryMessage, setDeliveryMessage] = useState("");
+  const [digestMfaPrompt, setDigestMfaPrompt] = useState(false);
   const [integrityError, setIntegrityError] = useState("");
   const [integrity, setIntegrity] = useState<{
     verified: boolean;
@@ -1005,7 +1006,11 @@ function AuditView({
       const payload = (await response.json().catch(() => ({}))) as { error?: string; email?: { delivered: boolean; reason: string }; slack?: { delivered: boolean; reason: string } };
       if (!response.ok) throw new Error(payload.error || "Security digest test failed.");
       setDeliveryMessage(`Test sent — email: ${payload.email?.reason ?? "not configured"}; Slack: ${payload.slack?.reason ?? "not configured"}.`);
-    } catch (value) { setDeliveryMessage(value instanceof Error ? value.message : "Security digest test failed."); }
+    } catch (value) {
+      const message = value instanceof Error ? value.message : "Security digest test failed.";
+      if (message.includes("Recent MFA verification")) { setDigestMfaPrompt(true); return; }
+      setDeliveryMessage(message);
+    }
     finally { setTestingDelivery(false); }
   }
 
@@ -1062,6 +1067,7 @@ function AuditView({
         </section>
       ) : null}
       {deliveryMessage ? <section className="mb-5 rounded-xl border border-sentinel-line bg-sentinel-surface px-4 py-3 text-sm text-sentinel-muted">{deliveryMessage}</section> : null}
+      {digestMfaPrompt ? <MfaVerificationDialog actionLabel="send this security digest test" onClose={() => setDigestMfaPrompt(false)} onVerified={testSecurityDigestDelivery} /> : null}
       <section className="mb-5 grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4"><p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">Security events</p><p className="mt-2 text-2xl font-semibold text-sentinel-text">{securityEvents.length}</p><p className="mt-1 text-xs text-sentinel-muted">Last 100 audit records</p></div><div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4"><p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">MFA evidence</p><p className="mt-2 text-2xl font-semibold text-sentinel-lime">{mfaEvents.length}</p><p className="mt-1 text-xs text-sentinel-muted">Enrollments and verifications</p></div><div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4"><p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">Session events</p><p className="mt-2 text-2xl font-semibold text-sentinel-text">{sessionEvents.length}</p><p className="mt-1 text-xs text-sentinel-muted">Login, expiry, and session control</p></div></section>
       <section className="panel table-panel audit-table">
         <div className="section-heading table-heading">
