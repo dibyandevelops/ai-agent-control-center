@@ -954,6 +954,7 @@ function AuditView({
   onOpenDetails: (requestId: string) => void;
 }) {
   const [query, setQuery] = useState("");
+  const [scope, setScope] = useState<"all" | "security">("all");
   const [verifying, setVerifying] = useState(false);
   const [integrityError, setIntegrityError] = useState("");
   const [integrity, setIntegrity] = useState<{
@@ -963,9 +964,12 @@ function AuditView({
     firstInvalidEventId: string | null;
     checkedAt: string;
   } | null>(null);
-  const filtered = audit.filter((event) =>
+  const securityEvents = audit.filter((event) => /^(operator\.|identity\.|api_key\.|github_app\.|slack\.)/.test(event.action));
+  const filtered = (scope === "security" ? securityEvents : audit).filter((event) =>
     `${event.agent} ${event.action} ${event.actor}`.toLowerCase().includes(query.toLowerCase()),
   );
+  const mfaEvents = securityEvents.filter((event) => event.action.includes("mfa"));
+  const sessionEvents = securityEvents.filter((event) => event.action.includes("session"));
 
   async function verifyIntegrity() {
     setVerifying(true);
@@ -995,7 +999,7 @@ function AuditView({
   return (
     <main className="page">
       <div className="page-title-row">
-        <div><h2>Audit log</h2><p>An immutable record of agent actions, policy decisions, and human approvals.</p></div>
+        <div><h2>{scope === "security" ? "Security activity" : "Audit log"}</h2><p>{scope === "security" ? "Identity, MFA, session, and credential-security evidence across your organization." : "An immutable record of agent actions, policy decisions, and human approvals."}</p></div>
         <div className="flex items-center gap-3">
           <button
             className="primary-button"
@@ -1040,10 +1044,11 @@ function AuditView({
           {integrityError}
         </section>
       ) : null}
+      <section className="mb-5 grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4"><p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">Security events</p><p className="mt-2 text-2xl font-semibold text-sentinel-text">{securityEvents.length}</p><p className="mt-1 text-xs text-sentinel-muted">Last 100 audit records</p></div><div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4"><p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">MFA evidence</p><p className="mt-2 text-2xl font-semibold text-sentinel-lime">{mfaEvents.length}</p><p className="mt-1 text-xs text-sentinel-muted">Enrollments and verifications</p></div><div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4"><p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">Session events</p><p className="mt-2 text-2xl font-semibold text-sentinel-text">{sessionEvents.length}</p><p className="mt-1 text-xs text-sentinel-muted">Login, expiry, and session control</p></div></section>
       <section className="panel table-panel audit-table">
         <div className="section-heading table-heading">
           <label className="search-field wide-search"><Search /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search actions, agents, or actors…" /></label>
-          <div className="table-controls"><button className="secondary-button"><Clock3 /> Today <ChevronDown /></button><button className="secondary-button"><Filter /> All results</button></div>
+          <div className="table-controls"><button className="secondary-button"><Clock3 /> Today <ChevronDown /></button><button className="secondary-button" onClick={() => setScope((current) => current === "all" ? "security" : "all")}><Filter /> {scope === "security" ? "Security activity" : "All results"}</button></div>
         </div>
         <div className="table-scroll">
           <table>
