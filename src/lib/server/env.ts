@@ -38,10 +38,38 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
 let cachedEnv: ServerEnv | undefined;
 
+function sanitizeOptionalEnvironment(input: Record<string, string | undefined>) {
+  const values: Record<string, string | undefined> = Object.fromEntries(
+    Object.entries(input).map(([key, value]) => {
+      const normalized = value?.trim();
+      return [key, normalized && normalized !== "undefined" && normalized !== "null" ? normalized : undefined];
+    }),
+  );
+  const clearIf = (keys: string[], valid: (value: string) => boolean) => {
+    for (const key of keys) if (values[key] && !valid(values[key]!)) values[key] = undefined;
+  };
+  clearIf(["DATABASE_URL", "SENTINELOPS_PUBLIC_URL"], (value) => /^https?:\/\//.test(value) || value.startsWith("postgres"));
+  clearIf(["SENTINELOPS_ADMIN_TOKEN", "SENTINELOPS_CRON_SECRET", "GITHUB_WEBHOOK_SECRET"], (value) => value.length >= 32);
+  clearIf(["SLACK_CLIENT_ID"], (value) => value.length >= 8);
+  clearIf(["GITHUB_APP_CLIENT_ID"], (value) => value.length >= 10);
+  clearIf(["SLACK_CLIENT_SECRET", "GITHUB_APP_CLIENT_SECRET"], (value) => value.length >= 20);
+  clearIf(["SLACK_CREDENTIAL_ENCRYPTION_KEY", "MFA_ENCRYPTION_KEY"], (value) => value.length >= 43);
+  clearIf(["RESEND_API_KEY"], (value) => value.length >= 12);
+  clearIf(["SECURITY_DIGEST_FROM", "SECURITY_DIGEST_TO"], (value) => value.length >= 3);
+  clearIf(["GITHUB_APP_PRIVATE_KEY"], (value) => value.length >= 100);
+  clearIf(["GITHUB_APP_ID"], (value) => /^\d+$/.test(value));
+  clearIf(["GITHUB_APP_SLUG"], (value) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value));
+  clearIf(["ACTION_APPROVAL_TTL_MINUTES", "POLICY_ACTIVATION_TTL_HOURS", "POLICY_ACTIVATION_REMINDER_MINUTES", "RELEASE_EXECUTION_BATCH_SIZE", "RELEASE_EXECUTION_LEASE_MINUTES"], (value) => /^\d+$/.test(value));
+  clearIf(["RELEASE_EXECUTION_MODE"], (value) => ["disabled", "dry_run", "github_draft"].includes(value));
+  clearIf(["DB_SSL"], (value) => ["true", "false", "1", "0"].includes(value));
+  clearIf(["DB_SSL_REJECT_UNAUTHORIZED"], (value) => ["true", "false"].includes(value));
+  return values;
+}
+
 export function getServerEnv(): ServerEnv {
   if (cachedEnv) return cachedEnv;
 
-  const result = serverEnvSchema.safeParse({
+  const result = serverEnvSchema.safeParse(sanitizeOptionalEnvironment({
     DATABASE_URL: process.env.DATABASE_URL || undefined,
     SENTINELOPS_PUBLIC_URL: process.env.SENTINELOPS_PUBLIC_URL || undefined,
     VERCEL_PROJECT_PRODUCTION_URL:
@@ -83,7 +111,7 @@ export function getServerEnv(): ServerEnv {
       process.env.RELEASE_EXECUTION_BATCH_SIZE || undefined,
     RELEASE_EXECUTION_LEASE_MINUTES:
       process.env.RELEASE_EXECUTION_LEASE_MINUTES || undefined,
-  });
+  }));
 
   if (!result.success) {
     throw new Error(`Invalid server environment: ${result.error.message}`);
