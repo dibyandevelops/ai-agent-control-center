@@ -23,6 +23,7 @@ import {
   GitBranch,
   KeyRound,
   LayoutDashboard,
+  LogOut,
   LockKeyhole,
   LoaderCircle,
   Menu,
@@ -207,11 +208,13 @@ function TopBar({
   onMenu,
   operator,
   onChangePassword,
+  onLogout,
 }: {
   view: DashboardView;
   onMenu: () => void;
   operator: OperatorIdentity | null;
   onChangePassword: () => void;
+  onLogout: () => void;
 }) {
   const initials = operator?.displayName
     .split(" ")
@@ -257,6 +260,7 @@ function TopBar({
           </span>
           <KeyRound aria-hidden="true" />
         </button>
+        {operator ? <button className="secondary-button topbar-logout" onClick={onLogout}><LogOut /> Log out</button> : null}
       </div>
     </header>
   );
@@ -2344,6 +2348,14 @@ export function ControlCenter({
     }
   }
 
+  async function logout() {
+    try {
+      await fetch("/api/v1/session", { method: "DELETE" });
+    } finally {
+      window.location.assign("/");
+    }
+  }
+
   async function retryDeadNotifications() {
     try {
       const response = await fetch("/api/v1/notifications/retry-dead", {
@@ -2689,6 +2701,7 @@ export function ControlCenter({
             setPasswordChangeError("");
             setPasswordChangeOpen(true);
           }}
+          onLogout={() => void logout()}
         />
         <WorkspaceBanner
           mode={workspaceMode}
