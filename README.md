@@ -85,6 +85,14 @@ live** and choose **Sign in with your organization SSO**. SentinelOps validates
 the signed response, its audience, correlation ID, expiry, and the asserted
 email before creating its normal revocable, role-scoped session.
 
+## Security digest delivery
+
+SentinelOps sends a daily, tenant-scoped security digest through configured Slack
+destinations and Resend email. Set `RESEND_API_KEY`, `SECURITY_DIGEST_FROM`, and
+`SECURITY_DIGEST_TO` for email delivery. An administrator can use **Audit log →
+Test security digest** to verify configured destinations; when MFA enforcement
+is enabled, this test requires a recent MFA verification.
+
 Run the complete isolated approval journey before a pilot or release:
 
 ```bash
