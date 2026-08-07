@@ -1757,7 +1757,7 @@ function RegisterDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onRegister: (agent: Agent) => void;
+  onRegister: (agent: Agent) => void | Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [owner, setOwner] = useState("");
@@ -1768,7 +1768,7 @@ function RegisterDialog({
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!name.trim() || !owner.trim()) return;
-    onRegister({
+    void onRegister({
       id: `agent-${Date.now()}`,
       name: name.trim(),
       description: "Newly registered AI agent awaiting expanded configuration.",
@@ -1795,7 +1795,7 @@ function RegisterDialog({
         <form onSubmit={submit}>
           <label>Agent name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Invoice Processing Agent" autoFocus required /></label>
           <div className="form-grid">
-            <label>Owner<input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="Full name" required /></label>
+            <label>Owner email<input type="email" value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="owner@company.com" required /></label>
             <label>Team<select value={team} onChange={(e) => setTeam(e.target.value)}><option>Platform Engineering</option><option>Finance</option><option>Security</option><option>Legal</option><option>Customer Support</option></select></label>
           </div>
           <label>Model provider<select value={provider} onChange={(e) => setProvider(e.target.value)}><option>OpenAI</option><option>Anthropic</option><option>Google</option><option>Azure AI</option><option>Self-hosted</option></select></label>
@@ -2508,7 +2508,16 @@ export function ControlCenter({
     }
   }
 
-  function register(agent: Agent) {
+  async function register(agent: Agent) {
+    if (workspaceMode === "live") {
+      const response = await fetch("/api/v1/agents", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: agent.name, ownerEmail: agent.owner, team: agent.team, provider: agent.provider, environment: "development" }) });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) { setToast(payload.error || "Unable to register agent."); return; }
+      await refreshLiveWorkspace();
+      setRegisterOpen(false);
+      setToast(`${agent.name} is registered and ready for its first governed evaluation.`);
+      return;
+    }
     setAgentList((current) => [agent, ...current]);
     setAuditList((current) => [
       {
