@@ -18,9 +18,9 @@ first real vertical slice supports:
 
 ## Stack
 
-The project follows the same foundation as `mtb-trail-finder`: Next.js 16 App
-Router, React 19, TypeScript 5.9, Tailwind CSS 3, PostgreSQL, Zod, Vitest,
-ESLint, Lucide, and pnpm.
+The project uses a modern Next.js 16 App Router foundation: React 19,
+TypeScript 5.9, Tailwind CSS 3, PostgreSQL, Zod, Vitest, ESLint, Lucide, and
+pnpm.
 
 ## Start locally
 
