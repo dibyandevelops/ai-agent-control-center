@@ -119,6 +119,15 @@ The current Vercel Hobby deployment runs the daily digest at 08:00 UTC. Use a
 Vercel plan that supports hourly cron or an external scheduler before offering
 tenant-selected delivery times.
 
+## Audit evidence export
+
+Open **Audit log** and select **Export CSV** to download up to 5,000 immutable
+audit events for the active organization. When **Security activity** is selected,
+the export contains only identity, MFA, credential, GitHub App, and Slack events.
+Every row includes the event and previous event hashes, enabling a customer to
+retain evidence and independently verify the audit-chain linkage. CSV formula
+values are escaped before download.
+
 Run the complete isolated approval journey before a pilot or release:
 
 ```bash

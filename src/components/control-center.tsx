@@ -1062,7 +1062,13 @@ function AuditView({
             {testingDelivery ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />}
             {testingDelivery ? "Sending…" : "Test security digest"}
           </button>
-          <button className="secondary-button"><ArrowDownToLine /> Export CSV</button>
+          <a
+            className="secondary-button"
+            href={`/api/v1/audit/export?scope=${scope}`}
+            download
+          >
+            <ArrowDownToLine /> Export CSV
+          </a>
         </div>
       </div>
       {integrity ? (
