@@ -39,9 +39,9 @@ export function HeroSection() {
           evidence.
         </p>
         <div className="mt-[34px] flex items-center gap-4 max-[760px]:mt-[27px] max-[760px]:grid">
-          <a href="#contact" className="inline-flex min-h-[54px] items-center justify-center gap-[22px] whitespace-nowrap rounded-full border border-sentinel-lime bg-sentinel-lime px-[27px] text-sm font-bold text-[#091004] shadow-[0_12px_34px_rgba(183,243,74,0.09)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_38px_rgba(0,0,0,0.28)] max-[760px]:w-full max-[760px]:min-h-[52px] [&_svg]:h-[17px] [&_svg]:w-[17px]">
-            Book a demo <ArrowUpRight aria-hidden="true" />
-          </a>
+          <Link href="/get-started" className="inline-flex min-h-[54px] items-center justify-center gap-[22px] whitespace-nowrap rounded-full border border-sentinel-lime bg-sentinel-lime px-[27px] text-sm font-bold text-[#091004] shadow-[0_12px_34px_rgba(183,243,74,0.09)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_38px_rgba(0,0,0,0.28)] max-[760px]:w-full max-[760px]:min-h-[52px] [&_svg]:h-[17px] [&_svg]:w-[17px]">
+            Create workspace <ArrowUpRight aria-hidden="true" />
+          </Link>
           <Link href="/dashboard" className="inline-flex min-h-[54px] items-center justify-center gap-[22px] whitespace-nowrap rounded-full border border-sentinel-lime bg-sentinel-surface/80 px-[27px] text-sm font-bold transition hover:-translate-y-0.5 hover:bg-sentinel-lime/10 hover:shadow-[0_16px_38px_rgba(0,0,0,0.28)] max-[760px]:w-full max-[760px]:min-h-[52px] [&_svg]:h-[17px] [&_svg]:w-[17px]">
             Explore control center <ArrowUpRight aria-hidden="true" />
           </Link>

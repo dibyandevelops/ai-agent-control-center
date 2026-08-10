@@ -32,6 +32,7 @@ const serverEnvSchema = z.object({
     .default("dry_run"),
   RELEASE_EXECUTION_BATCH_SIZE: z.coerce.number().int().min(1).max(25).default(10),
   RELEASE_EXECUTION_LEASE_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
+  SELF_SERVICE_SIGNUP_ENABLED: z.enum(["true", "false"]).default("false"),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -61,6 +62,7 @@ function sanitizeOptionalEnvironment(input: Record<string, string | undefined>) 
   clearIf(["GITHUB_APP_SLUG"], (value) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value));
   clearIf(["ACTION_APPROVAL_TTL_MINUTES", "POLICY_ACTIVATION_TTL_HOURS", "POLICY_ACTIVATION_REMINDER_MINUTES", "RELEASE_EXECUTION_BATCH_SIZE", "RELEASE_EXECUTION_LEASE_MINUTES"], (value) => /^\d+$/.test(value));
   clearIf(["RELEASE_EXECUTION_MODE"], (value) => ["disabled", "dry_run", "github_draft"].includes(value));
+  clearIf(["SELF_SERVICE_SIGNUP_ENABLED"], (value) => ["true", "false"].includes(value));
   clearIf(["DB_SSL"], (value) => ["true", "false", "1", "0"].includes(value));
   clearIf(["DB_SSL_REJECT_UNAUTHORIZED"], (value) => ["true", "false"].includes(value));
   return values;
@@ -111,6 +113,8 @@ export function getServerEnv(): ServerEnv {
       process.env.RELEASE_EXECUTION_BATCH_SIZE || undefined,
     RELEASE_EXECUTION_LEASE_MINUTES:
       process.env.RELEASE_EXECUTION_LEASE_MINUTES || undefined,
+    SELF_SERVICE_SIGNUP_ENABLED:
+      process.env.SELF_SERVICE_SIGNUP_ENABLED || undefined,
   }));
 
   if (!result.success) {

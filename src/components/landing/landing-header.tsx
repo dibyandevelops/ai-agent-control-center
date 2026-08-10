@@ -42,9 +42,7 @@ export function LandingHeader() {
         <Link href="/dashboard" className="transition-colors hover:text-sentinel-lime">
           Sign in
         </Link>
-        <a href="#contact" className="inline-flex min-h-[42px] items-center justify-center rounded-full border border-sentinel-lime/70 bg-sentinel-lime/[0.03] px-[22px] font-semibold transition hover:-translate-y-px hover:bg-sentinel-lime hover:text-[#081004]">
-          Book a demo
-        </a>
+        <Link href="/get-started" className="inline-flex min-h-[42px] items-center justify-center rounded-full border border-sentinel-lime/70 bg-sentinel-lime/[0.03] px-[22px] font-semibold transition hover:-translate-y-px hover:bg-sentinel-lime hover:text-[#081004]">Create workspace</Link>
       </div>
       <button
         type="button"
@@ -73,9 +71,7 @@ export function LandingHeader() {
           <Link href="/dashboard" onClick={() => setMenuOpen(false)}>
             Open control center
           </Link>
-          <a href="#contact" onClick={() => setMenuOpen(false)}>
-            Book a demo
-          </a>
+          <Link href="/get-started" onClick={() => setMenuOpen(false)}>Create workspace</Link>
         </nav>
       </div>
     </header>
