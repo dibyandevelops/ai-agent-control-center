@@ -4,6 +4,7 @@ import { loginOperator } from "@/lib/server/auth";
 import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
 import { createSelfServiceOrganization } from "@/lib/server/onboarding";
+import { consumeOnboardingRateLimit } from "@/lib/server/onboarding-rate-limit";
 
 const schema = z.object({
   organizationName: z.string().trim().min(2).max(100),
@@ -18,6 +19,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Self-service onboarding is not enabled for this environment." }, { status: 403 });
     }
     const input = schema.parse(await request.json());
+    if (!(await consumeOnboardingRateLimit(request, input.email))) {
+      return NextResponse.json(
+        { error: "Too many workspace-creation attempts. Please wait 15 minutes and try again." },
+        { status: 429, headers: { "retry-after": "900" } },
+      );
+    }
     const created = await createSelfServiceOrganization(input);
     const operator = await loginOperator(input.email, input.password);
     if (!operator) throw new Error("Workspace created, but the first administrator could not be signed in.");

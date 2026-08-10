@@ -122,11 +122,13 @@ tenant-selected delivery times.
 ## Self-service organization onboarding
 
 Set `SELF_SERVICE_SIGNUP_ENABLED=true` only after adding production abuse controls
-(rate limiting, bot protection, and verified-domain or invitation checks). When
+(email/domain verification or invitation checks, then bot protection). When
 enabled, **Create workspace** lets a founder create a tenant, its first local
 administrator, a domain allow-list based on that administrator's work email,
 and the default safety policies. It then creates a normal revocable session and
 records organization, provisioning, and login events in that tenant's audit chain.
+Onboarding is limited to five attempts per email and source IP address in each
+15-minute window; only SHA-256 hashes of those rate-limit keys are stored.
 
 ## Audit evidence export
 
