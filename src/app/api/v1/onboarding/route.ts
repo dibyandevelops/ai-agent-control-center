@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { loginOperator } from "@/lib/server/auth";
 import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
 import { createSelfServiceOrganization } from "@/lib/server/onboarding";
+import { onboardingEmailConfigured, sendOnboardingVerificationEmail } from "@/lib/server/onboarding-email";
 import { consumeOnboardingRateLimit } from "@/lib/server/onboarding-rate-limit";
 
 const schema = z.object({
@@ -18,6 +18,9 @@ export async function POST(request: NextRequest) {
     if (getServerEnv().SELF_SERVICE_SIGNUP_ENABLED !== "true") {
       return NextResponse.json({ error: "Self-service onboarding is not enabled for this environment." }, { status: 403 });
     }
+    if (!onboardingEmailConfigured()) {
+      return NextResponse.json({ error: "Workspace onboarding email is not configured for this environment." }, { status: 503 });
+    }
     const input = schema.parse(await request.json());
     if (!(await consumeOnboardingRateLimit(request, input.email))) {
       return NextResponse.json(
@@ -26,9 +29,16 @@ export async function POST(request: NextRequest) {
       );
     }
     const created = await createSelfServiceOrganization(input);
-    const operator = await loginOperator(input.email, input.password);
-    if (!operator) throw new Error("Workspace created, but the first administrator could not be signed in.");
-    return NextResponse.json({ organization: { id: created.organizationId, name: created.organizationName }, operator }, { status: 201 });
+    const delivery = await sendOnboardingVerificationEmail({
+      email: input.email,
+      displayName: input.displayName,
+      organizationName: created.organizationName,
+      token: created.verificationToken,
+    });
+    if (!delivery.delivered) {
+      return NextResponse.json({ error: "Workspace created, but the verification email could not be delivered. Contact support to resend it." }, { status: 503 });
+    }
+    return NextResponse.json({ organization: { id: created.organizationId, name: created.organizationName }, verification: "sent" }, { status: 202 });
   } catch (error) {
     return apiError(error);
   }

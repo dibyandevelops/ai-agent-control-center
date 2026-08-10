@@ -125,8 +125,10 @@ Set `SELF_SERVICE_SIGNUP_ENABLED=true` only after adding production abuse contro
 (email/domain verification or invitation checks, then bot protection). When
 enabled, **Create workspace** lets a founder create a tenant, its first local
 administrator, a domain allow-list based on that administrator's work email,
-and the default safety policies. It then creates a normal revocable session and
-records organization, provisioning, and login events in that tenant's audit chain.
+and the default safety policies. The administrator remains inactive until they
+verify a one-time Resend link that expires after 24 hours. Set
+`ONBOARDING_EMAIL_FROM` to a verified sender, or it falls back to
+`SECURITY_DIGEST_FROM`.
 Onboarding is limited to five attempts per email and source IP address in each
 15-minute window; only SHA-256 hashes of those rate-limit keys are stored.
 

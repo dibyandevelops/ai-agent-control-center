@@ -17,6 +17,7 @@ const serverEnvSchema = z.object({
   RESEND_API_KEY: z.string().min(12).optional(),
   SECURITY_DIGEST_FROM: z.string().min(3).optional(),
   SECURITY_DIGEST_TO: z.string().min(3).optional(),
+  ONBOARDING_EMAIL_FROM: z.string().min(3).optional(),
   SENTINELOPS_CRON_SECRET: z.string().min(32).optional(),
   ACTION_APPROVAL_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
   POLICY_ACTIVATION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
@@ -56,7 +57,7 @@ function sanitizeOptionalEnvironment(input: Record<string, string | undefined>) 
   clearIf(["SLACK_CLIENT_SECRET", "GITHUB_APP_CLIENT_SECRET"], (value) => value.length >= 20);
   clearIf(["SLACK_CREDENTIAL_ENCRYPTION_KEY", "MFA_ENCRYPTION_KEY"], (value) => value.length >= 43);
   clearIf(["RESEND_API_KEY"], (value) => value.length >= 12);
-  clearIf(["SECURITY_DIGEST_FROM", "SECURITY_DIGEST_TO"], (value) => value.length >= 3);
+  clearIf(["SECURITY_DIGEST_FROM", "SECURITY_DIGEST_TO", "ONBOARDING_EMAIL_FROM"], (value) => value.length >= 3);
   clearIf(["GITHUB_APP_PRIVATE_KEY"], (value) => value.length >= 100);
   clearIf(["GITHUB_APP_ID"], (value) => /^\d+$/.test(value));
   clearIf(["GITHUB_APP_SLUG"], (value) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value));
@@ -90,6 +91,7 @@ export function getServerEnv(): ServerEnv {
     RESEND_API_KEY: process.env.RESEND_API_KEY || undefined,
     SECURITY_DIGEST_FROM: process.env.SECURITY_DIGEST_FROM || undefined,
     SECURITY_DIGEST_TO: process.env.SECURITY_DIGEST_TO || undefined,
+    ONBOARDING_EMAIL_FROM: process.env.ONBOARDING_EMAIL_FROM || undefined,
     SENTINELOPS_CRON_SECRET:
       process.env.CRON_SECRET ||
       process.env.SENTINELOPS_CRON_SECRET ||

@@ -4,6 +4,7 @@ import { appendAuditEvent } from "./audit";
 import { withTransaction } from "./db";
 import { ConflictError } from "./errors";
 import { hashPassword } from "./password";
+import { createOnboardingVerificationToken } from "./onboarding-email";
 
 const defaultPolicies = [
   {
@@ -58,8 +59,9 @@ export async function createSelfServiceOrganization(input: {
   const domain = email.split("@")[1];
   const passwordHash = await hashPassword(input.password);
   const baseSlug = organizationSlug(input.organizationName.trim());
+  const verification = createOnboardingVerificationToken();
 
-  return withTransaction(async (client) => {
+  const created = await withTransaction(async (client) => {
     const existingOperator = await client.query<{ id: string }>(
       "select id from operators where email = $1 limit 1",
       [email],
@@ -86,14 +88,20 @@ export async function createSelfServiceOrganization(input: {
       const operator = await client.query<{ id: string }>(
         `insert into operators (
            organization_id, email, display_name, role, password_hash,
-           password_change_required, password_changed_at
-         ) values ($1, $2, $3, 'admin', $4, false, now()) returning id`,
+           password_change_required, password_changed_at, status
+         ) values ($1, $2, $3, 'admin', $4, false, now(), 'pending_verification') returning id`,
         [organizationId, email, input.displayName.trim(), passwordHash],
       );
       created = { organizationId, operatorId: operator.rows[0].id, organizationName: organization.rows[0].name };
       break;
     }
     if (!created) throw new ConflictError("Workspace name is unavailable. Please choose a different name.");
+
+    await client.query(
+      `insert into onboarding_email_verifications (operator_id, token_hash, expires_at)
+       values ($1, $2, now() + interval '24 hours')`,
+      [created.operatorId, verification.hash],
+    );
 
     for (const policy of defaultPolicies) {
       const policyResult = await client.query<{ id: string }>(
@@ -125,8 +133,9 @@ export async function createSelfServiceOrganization(input: {
       eventType: "operator.provisioned",
       actorType: "human",
       actorId: email,
-      payload: { operatorId: created.operatorId, role: "admin", source: "self_service" },
+      payload: { operatorId: created.operatorId, role: "admin", source: "self_service", status: "pending_verification" },
     });
     return created;
   });
+  return { ...created, verificationToken: verification.token };
 }
