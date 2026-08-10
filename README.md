@@ -132,6 +132,22 @@ verify a one-time Resend link that expires after 24 hours. Set
 Onboarding is limited to five attempts per email and source IP address in each
 15-minute window; only SHA-256 hashes of those rate-limit keys are stored.
 
+### Optional Cloudflare Turnstile gate
+
+After creating a Turnstile widget for the public SentinelOps hostname, set these
+values in the matching Vercel environment:
+
+```bash
+TURNSTILE_ENABLED=true
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=your-site-key
+TURNSTILE_SECRET_KEY=your-secret-key
+```
+
+Keep `TURNSTILE_ENABLED=false` until both keys are present. When enabled, the
+signup endpoint fails closed if the widget token is absent, invalid, expired, or
+cannot be verified. The secret key is used only by the server and must never be
+exposed in browser code.
+
 ## Audit evidence export
 
 Open **Audit log** and select **Export CSV** to download up to 5,000 immutable

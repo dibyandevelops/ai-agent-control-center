@@ -5,12 +5,14 @@ import { apiError } from "@/lib/server/http";
 import { createSelfServiceOrganization } from "@/lib/server/onboarding";
 import { onboardingEmailConfigured, sendOnboardingVerificationEmail } from "@/lib/server/onboarding-email";
 import { consumeOnboardingRateLimit } from "@/lib/server/onboarding-rate-limit";
+import { verifyTurnstile } from "@/lib/server/turnstile";
 
 const schema = z.object({
   organizationName: z.string().trim().min(2).max(100),
   displayName: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(254),
   password: z.string().min(12).max(256),
+  turnstileToken: z.string().trim().min(1).max(2048).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -22,6 +24,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Workspace onboarding email is not configured for this environment." }, { status: 503 });
     }
     const input = schema.parse(await request.json());
+    const humanVerification = await verifyTurnstile(request, input.turnstileToken);
+    if (humanVerification.enabled && !humanVerification.configured) {
+      return NextResponse.json({ error: "Human verification is not configured for this environment." }, { status: 503 });
+    }
+    if (humanVerification.enabled && !humanVerification.valid) {
+      return NextResponse.json({ error: "Human verification failed. Please try again." }, { status: 403 });
+    }
     if (!(await consumeOnboardingRateLimit(request, input.email))) {
       return NextResponse.json(
         { error: "Too many workspace-creation attempts. Please wait 15 minutes and try again." },

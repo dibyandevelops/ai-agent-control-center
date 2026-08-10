@@ -34,6 +34,8 @@ const serverEnvSchema = z.object({
   RELEASE_EXECUTION_BATCH_SIZE: z.coerce.number().int().min(1).max(25).default(10),
   RELEASE_EXECUTION_LEASE_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
   SELF_SERVICE_SIGNUP_ENABLED: z.enum(["true", "false"]).default("false"),
+  TURNSTILE_ENABLED: z.enum(["true", "false"]).default("false"),
+  TURNSTILE_SECRET_KEY: z.string().min(20).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -64,6 +66,8 @@ function sanitizeOptionalEnvironment(input: Record<string, string | undefined>) 
   clearIf(["ACTION_APPROVAL_TTL_MINUTES", "POLICY_ACTIVATION_TTL_HOURS", "POLICY_ACTIVATION_REMINDER_MINUTES", "RELEASE_EXECUTION_BATCH_SIZE", "RELEASE_EXECUTION_LEASE_MINUTES"], (value) => /^\d+$/.test(value));
   clearIf(["RELEASE_EXECUTION_MODE"], (value) => ["disabled", "dry_run", "github_draft"].includes(value));
   clearIf(["SELF_SERVICE_SIGNUP_ENABLED"], (value) => ["true", "false"].includes(value));
+  clearIf(["TURNSTILE_ENABLED"], (value) => ["true", "false"].includes(value));
+  clearIf(["TURNSTILE_SECRET_KEY"], (value) => value.length >= 20);
   clearIf(["DB_SSL"], (value) => ["true", "false", "1", "0"].includes(value));
   clearIf(["DB_SSL_REJECT_UNAUTHORIZED"], (value) => ["true", "false"].includes(value));
   return values;
@@ -117,6 +121,8 @@ export function getServerEnv(): ServerEnv {
       process.env.RELEASE_EXECUTION_LEASE_MINUTES || undefined,
     SELF_SERVICE_SIGNUP_ENABLED:
       process.env.SELF_SERVICE_SIGNUP_ENABLED || undefined,
+    TURNSTILE_ENABLED: process.env.TURNSTILE_ENABLED || undefined,
+    TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY || undefined,
   }));
 
   if (!result.success) {
