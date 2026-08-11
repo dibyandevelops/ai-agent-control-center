@@ -2,6 +2,7 @@
 
 import { GitBranch, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { useState } from "react";
+import { MfaVerificationDialog } from "@/components/mfa-verification-dialog";
 import type { Integration } from "@/lib/types";
 
 export function GitHubAppConnection({
@@ -16,6 +17,7 @@ export function GitHubAppConnection({
   onNotify: (message: string) => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
+  const [mfaPromptOpen, setMfaPromptOpen] = useState(false);
   const connections = integration.githubConnections ?? [];
 
   async function request(path: string) {
@@ -48,7 +50,12 @@ export function GitHubAppConnection({
       }
       window.location.assign(payload.installUrl);
     } catch (error) {
-      onNotify(error instanceof Error ? error.message : "GitHub installation could not be started.");
+      const message = error instanceof Error ? error.message : "GitHub installation could not be started.";
+      if (message.includes("Recent MFA verification")) {
+        setMfaPromptOpen(true);
+      } else {
+        onNotify(message);
+      }
       setBusy(null);
     }
   }
@@ -119,6 +126,13 @@ export function GitHubAppConnection({
             Install or connect GitHub App
           </button>
         </div>
+      ) : null}
+      {mfaPromptOpen ? (
+        <MfaVerificationDialog
+          actionLabel="connect this GitHub App"
+          onClose={() => setMfaPromptOpen(false)}
+          onVerified={startInstallation}
+        />
       ) : null}
     </section>
   );

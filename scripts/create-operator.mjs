@@ -74,6 +74,8 @@ try {
           password_hash = excluded.password_hash,
           password_change_required = false,
           password_changed_at = now(),
+          failed_login_count = 0,
+          locked_until = null,
           status = 'active',
           updated_at = now()
       returning id, email, display_name, role
@@ -82,8 +84,9 @@ try {
   );
   const operator = result.rows[0];
   if (!operator) throw new Error(`Organization ${organizationSlug} was not found.`);
+  await pool.query("delete from operator_sessions where operator_id = $1", [operator.id]);
   console.log(`Operator ready: ${operator.display_name} <${operator.email}> (${operator.role})`);
-  console.log("Password was hashed with scrypt and was not printed.");
+  console.log("Password was hashed with scrypt, previous sessions were revoked, and it was not printed.");
 } finally {
   await pool.end();
 }
