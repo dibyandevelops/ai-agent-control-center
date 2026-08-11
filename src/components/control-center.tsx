@@ -616,9 +616,21 @@ function ApprovalCard({
   canDecide,
 }: {
   approval: Approval;
-  onDecision: (approval: Approval, decision: "approved" | "denied") => void;
+  onDecision: (approval: Approval, decision: "approved" | "denied") => Promise<void>;
   canDecide: boolean;
 }) {
+  const [pendingDecision, setPendingDecision] = useState<"approved" | "denied" | null>(null);
+
+  async function submitDecision(decision: "approved" | "denied") {
+    if (pendingDecision) return;
+    setPendingDecision(decision);
+    try {
+      await onDecision(approval, decision);
+    } finally {
+      setPendingDecision(null);
+    }
+  }
+
   return (
     <article className="approval-card min-w-0 overflow-hidden">
       <div className="approval-meta">
@@ -634,11 +646,13 @@ function ApprovalCard({
         <div><dt>Context</dt><dd className="min-w-0 break-words [overflow-wrap:anywhere]">{approval.context}</dd></div>
       </dl>
       <div className="approval-actions">
-        <button className="primary-button" disabled={!canDecide} onClick={() => onDecision(approval, "approved")}>
-          <Check /> Approve
+        <button className="primary-button" disabled={!canDecide || Boolean(pendingDecision)} onClick={() => void submitDecision("approved")}>
+          {pendingDecision === "approved" ? <LoaderCircle className="animate-spin" /> : <Check />}
+          {pendingDecision === "approved" ? "Approving…" : "Approve"}
         </button>
-        <button className="secondary-button" disabled={!canDecide} onClick={() => onDecision(approval, "denied")}>
-          <XCircle /> Deny
+        <button className="secondary-button" disabled={!canDecide || Boolean(pendingDecision)} onClick={() => void submitDecision("denied")}>
+          {pendingDecision === "denied" ? <LoaderCircle className="animate-spin" /> : <XCircle />}
+          {pendingDecision === "denied" ? "Denying…" : "Deny"}
         </button>
       </div>
     </article>
@@ -652,7 +666,7 @@ function ApprovalRail({
   canDecide,
 }: {
   approvals: Approval[];
-  onDecision: (approval: Approval, decision: "approved" | "denied") => void;
+  onDecision: (approval: Approval, decision: "approved" | "denied") => Promise<void>;
   onViewAll: () => void;
   canDecide: boolean;
 }) {
@@ -693,7 +707,7 @@ function Overview({
   operator: OperatorIdentity | null;
   live: boolean;
   onRegister: () => void;
-  onDecision: (approval: Approval, decision: "approved" | "denied") => void;
+  onDecision: (approval: Approval, decision: "approved" | "denied") => Promise<void>;
   onViewApprovals: () => void;
   onOpenCredentials: () => void;
   canDecide: boolean;
@@ -800,7 +814,7 @@ function ApprovalsView({
   approvals: Approval[];
   releaseGovernance: ReleaseGovernanceQueueItem[];
   operatorId: string | null;
-  onDecision: (approval: Approval, decision: "approved" | "denied") => void;
+  onDecision: (approval: Approval, decision: "approved" | "denied") => Promise<void>;
   onReleaseDecision: (
     governanceId: string,
     decision: "approved" | "rejected",
