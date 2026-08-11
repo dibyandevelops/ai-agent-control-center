@@ -16,16 +16,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: staging
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: sentinelops_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sentinelops_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
-      DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-      DB_SSL: "true"
-      DB_SSL_REJECT_UNAUTHORIZED: "true"
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sentinelops_ci
+      DB_SSL: "false"
+      DB_SSL_REJECT_UNAUTHORIZED: "false"
       DB_POOL_MAX: "5"
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_TELEMETRY_DISABLED: "1"
-      STAGING_BASE_URL: https://sentinelops-staging.vercel.app
+      STAGING_BASE_URL: https://ai-agent-control-center-alpha.vercel.app
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
