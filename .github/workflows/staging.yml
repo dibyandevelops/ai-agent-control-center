@@ -2,6 +2,10 @@ name: Deploy staging
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: [Quality gate]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -12,6 +16,9 @@ concurrency:
 
 jobs:
   deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     name: Verify and deploy staging
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -40,9 +47,12 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_TELEMETRY_DISABLED: "1"
       STAGING_BASE_URL: https://ai-agent-control-center-alpha.vercel.app
+      DEPLOYED_COMMIT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+        with:
+          ref: ${{ env.DEPLOYED_COMMIT }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6.0.10
@@ -59,6 +69,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run isolated enterprise journey
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm test:e2e
 
       - name: Pull staging project configuration
@@ -107,5 +118,5 @@ jobs:
           echo "## SentinelOps staging" >> "$GITHUB_STEP_SUMMARY"
           echo "- URL: $STAGING_BASE_URL" >> "$GITHUB_STEP_SUMMARY"
           echo "- Deployment artifact: ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Commit: ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: $DEPLOYED_COMMIT" >> "$GITHUB_STEP_SUMMARY"
           echo "- Health check: passed" >> "$GITHUB_STEP_SUMMARY"
