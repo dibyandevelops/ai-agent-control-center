@@ -471,6 +471,20 @@ async function exerciseJourney(baseUrl) {
     ],
   );
 
+  if (expectDryRun) {
+    const integrity = await jsonRequest(`${baseUrl}/api/v1/audit/integrity`, {
+      headers: { cookie },
+    });
+    assert.equal(integrity.response.status, 200);
+    assert.equal(integrity.payload.verified, true);
+    return {
+      requestId,
+      auditEvents: integrity.payload.eventsChecked,
+      notificationJobs: queued.rows[0].count,
+      dryRunVerified: true,
+    };
+  }
+
   if (!remoteBaseUrl) {
     await pool.query(
       `
@@ -1204,6 +1218,13 @@ try {
     console.log(`Audit events verified: ${result.auditEvents}`);
     console.log(`Deduplicated notification jobs: ${result.notificationJobs}`);
     console.log("Cross-tenant GitHub App execution: blocked");
+  } else if (result.dryRunVerified) {
+    console.log(
+      `Remote dry-run approval journey passed against ${new URL(baseUrl).host}.`,
+    );
+    console.log(`Request: ${result.requestId}`);
+    console.log(`Audit events verified: ${result.auditEvents}`);
+    console.log(`Deduplicated notification jobs: ${result.notificationJobs}`);
   } else {
   console.log(
     remoteBaseUrl
