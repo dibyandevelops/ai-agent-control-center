@@ -3,13 +3,23 @@
 import Link from "next/link";
 import Script from "next/script";
 import { ArrowRight, Building2, LoaderCircle, ShieldCheck } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useSyncExternalStore } from "react";
+import { shouldBypassTurnstile } from "@/lib/turnstile-host";
+
+const subscribeToClient = () => () => undefined;
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 export function WorkspaceOnboarding() {
   const [form, setForm] = useState({ organizationName: "", displayName: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const isClient = useSyncExternalStore(
+    subscribeToClient,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSubmitting(true); setError("");
@@ -24,6 +34,9 @@ export function WorkspaceOnboarding() {
     finally { setSubmitting(false); }
   }
 
-  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const turnstileSiteKey =
+    isClient && !shouldBypassTurnstile(window.location.hostname, process.env.NODE_ENV)
+      ? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+      : undefined;
   return <main className="min-h-screen bg-sentinel-canvas px-4 py-14 font-sentinel text-sentinel-text sm:px-6"><div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center"><section><Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-sentinel-lime"><ShieldCheck className="h-5 w-5" /> SentinelOps</Link><p className="mt-12 text-sm font-semibold uppercase tracking-[0.18em] text-sentinel-lime">Start your workspace</p><h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">Put your first agent under control.</h1><p className="mt-5 max-w-md text-base leading-7 text-sentinel-muted">Create an organization, secure its first administrator, and begin with the release-agent safety path. Your workspace starts isolated from every other customer.</p><div className="mt-8 space-y-3 text-sm text-sentinel-muted"><p className="flex gap-3"><Building2 className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-lime" /> Organization-scoped records, credentials, and audit chain</p><p className="flex gap-3"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-lime" /> Production release policy enabled from day one</p></div></section><section className="rounded-3xl border border-sentinel-line bg-sentinel-surface p-6 shadow-app-2 sm:p-8">{verificationSent ? <div className="py-8 text-center"><ShieldCheck className="mx-auto h-10 w-10 text-sentinel-lime" /><h2 className="mt-5 text-2xl font-bold">Check your work email</h2><p className="mt-3 text-sm leading-6 text-sentinel-muted">We sent a one-time verification link to {form.email}. Open it within 24 hours to activate your workspace, then sign in.</p></div> : <><h2 className="text-2xl font-bold">Create your organization</h2><p className="mt-2 text-sm text-sentinel-muted">Use your work email. It becomes the first administrator account.</p><form className="mt-7 space-y-4" onSubmit={submit}><label className="block text-sm font-medium">Organization name<input required value={form.organizationName} onChange={(event) => setForm((current) => ({ ...current, organizationName: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sentinel-text outline-none focus:border-sentinel-lime" placeholder="AtlasPay" /></label><label className="block text-sm font-medium">Your name<input required value={form.displayName} onChange={(event) => setForm((current) => ({ ...current, displayName: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sentinel-text outline-none focus:border-sentinel-lime" placeholder="Maya Patel" /></label><label className="block text-sm font-medium">Work email<input required type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sentinel-text outline-none focus:border-sentinel-lime" placeholder="maya@atlaspay.com" /></label><label className="block text-sm font-medium">Password<input required type="password" minLength={12} value={form.password} onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))} className="mt-2 h-11 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sentinel-text outline-none focus:border-sentinel-lime" placeholder="At least 12 characters" /></label>{turnstileSiteKey ? <div className="rounded-lg border border-sentinel-line bg-sentinel-canvas p-3"><Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" /><div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="dark" data-action="workspace_onboarding" /><p className="mt-2 text-xs text-sentinel-muted">Human verification protects workspace creation.</p></div> : null}{error ? <p className="rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p> : null}<button className="primary-button mt-2 w-full justify-center" disabled={submitting}>{submitting ? <LoaderCircle className="animate-spin" /> : <ArrowRight />} {submitting ? "Creating secure workspace…" : "Create workspace"}</button></form><p className="mt-5 text-center text-sm text-sentinel-muted">Already have an account? <Link className="font-semibold text-sentinel-lime" href="/dashboard">Sign in</Link></p></>}</section></div></main>;
 }

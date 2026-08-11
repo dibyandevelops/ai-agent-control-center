@@ -147,6 +147,8 @@ Keep `TURNSTILE_ENABLED=false` until both keys are present. When enabled, the
 signup endpoint fails closed if the widget token is absent, invalid, expired, or
 cannot be verified. The secret key is used only by the server and must never be
 exposed in browser code.
+Local development on `localhost`, `*.localhost`, `127.0.0.1`, or `::1`
+automatically bypasses Turnstile; staging and production continue to enforce it.
 
 ## Audit evidence export
 

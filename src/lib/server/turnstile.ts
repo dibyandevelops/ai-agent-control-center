@@ -1,6 +1,7 @@
 import "server-only";
 
 import { NextRequest } from "next/server";
+import { shouldBypassTurnstile } from "@/lib/turnstile-host";
 import { getServerEnv } from "./env";
 
 type TurnstileResult =
@@ -15,6 +16,10 @@ export async function verifyTurnstile(
   request: NextRequest,
   token: string | undefined,
 ): Promise<TurnstileResult> {
+  if (shouldBypassTurnstile(request.nextUrl.hostname, process.env.NODE_ENV)) {
+    return { enabled: false, valid: true };
+  }
+
   const env = getServerEnv();
   if (env.TURNSTILE_ENABLED !== "true") return { enabled: false, valid: true };
   if (!env.TURNSTILE_SECRET_KEY) return { enabled: true, valid: false, configured: false };
