@@ -125,8 +125,10 @@ async function setupTenant() {
 
     await client.query(
       `
-        insert into api_keys (organization_id, name, key_prefix, key_hash)
-        values ($1, 'E2E Agent', $2, $3)
+        insert into api_keys (
+          organization_id, name, key_prefix, key_hash, expires_at
+        )
+        values ($1, 'E2E Agent', $2, $3, now() + interval '90 days')
       `,
       [
         organizationId,
@@ -263,6 +265,42 @@ async function jsonRequest(url, options = {}) {
   const response = await fetch(url, options);
   const payload = await response.json().catch(() => ({}));
   return { response, payload };
+}
+
+async function verifyExpiredAgentCredential(baseUrl) {
+  await pool.query(
+    `update api_keys
+        set expires_at = now() - interval '1 second'
+      where organization_id = $1
+        and key_hash = $2`,
+    [
+      organizationId,
+      createHash("sha256").update(agentApiKey).digest("hex"),
+    ],
+  );
+  const rejected = await jsonRequest(`${baseUrl}/api/v1/actions/evaluate`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${agentApiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      idempotencyKey: `expired-credential-${runId}`,
+      agent: {
+        externalId: `expired-agent-${runId}`,
+        name: "Expired Credential Agent",
+        ownerEmail: "platform@sentinelops.test",
+        team: "Platform Engineering",
+        provider: "SentinelOps E2E",
+      },
+      action: "system.health.read",
+      resource: "sentinelops://expired-credential-check",
+      environment: "development",
+      context: { credentialExpirationTest: true },
+    }),
+  });
+  assert.equal(rejected.response.status, 401);
+  assert.equal(rejected.payload.error, "Invalid agent API key.");
 }
 
 async function exerciseJourney(baseUrl) {
@@ -440,6 +478,7 @@ async function exerciseJourney(baseUrl) {
         });
         assert.equal(integrity.response.status, 200);
         assert.equal(integrity.payload.verified, true);
+        await verifyExpiredAgentCredential(baseUrl);
         return {
           requestId,
           auditEvents: integrity.payload.eventsChecked,
@@ -477,6 +516,7 @@ async function exerciseJourney(baseUrl) {
     });
     assert.equal(integrity.response.status, 200);
     assert.equal(integrity.payload.verified, true);
+    await verifyExpiredAgentCredential(baseUrl);
     return {
       requestId,
       auditEvents: integrity.payload.eventsChecked,
@@ -1153,6 +1193,7 @@ async function exerciseJourney(baseUrl) {
   assert.equal(integrity.response.status, 200);
   assert.equal(integrity.payload.verified, true);
   assert.equal(integrity.payload.organizationsChecked, 1);
+  await verifyExpiredAgentCredential(baseUrl);
 
   return {
     requestId,

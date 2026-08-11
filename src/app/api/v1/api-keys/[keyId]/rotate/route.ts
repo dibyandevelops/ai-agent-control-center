@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import {
+  defaultAgentApiKeyExpirationDays,
   generateAgentApiKey,
+  getAgentApiKeyExpiresAt,
   getAgentApiKeyPrefix,
   hashAgentApiKey,
+  isAgentApiKeyExpirationDays,
 } from "@/lib/server/agent-api-key";
 import { appendAuditEvent } from "@/lib/server/audit";
 import { getOperatorSession, requireRecentMfa } from "@/lib/server/auth";
@@ -10,8 +14,16 @@ import { withTransaction } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
 
+const rotateApiKeySchema = z.object({
+  expiresInDays: z
+    .number()
+    .int()
+    .refine(isAgentApiKeyExpirationDays, "Unsupported credential lifetime.")
+    .default(defaultAgentApiKeyExpirationDays),
+});
+
 export async function POST(
-  _request: Request,
+  request: NextRequest,
   context: { params: Promise<{ keyId: string }> },
 ) {
   try {
@@ -30,7 +42,11 @@ export async function POST(
     }
     await requireRecentMfa(operator);
     const { keyId } = await context.params;
+    const input = rotateApiKeySchema.parse(
+      await request.json().catch(() => ({})),
+    );
     const secret = generateAgentApiKey();
+    const expiresAt = getAgentApiKeyExpiresAt(input.expiresInDays);
     const rotated = await withTransaction(async (client) => {
       const currentResult = await client.query<{
         id: string;
@@ -59,19 +75,23 @@ export async function POST(
         name: string;
         key_prefix: string;
         last_used_at: Date | null;
+        expires_at: Date;
         revoked_at: Date | null;
         created_at: Date;
       }>(
         `
-          insert into api_keys (organization_id, name, key_prefix, key_hash)
-          values ($1, $2, $3, $4)
-          returning id, name, key_prefix, last_used_at, revoked_at, created_at
+          insert into api_keys (
+            organization_id, name, key_prefix, key_hash, expires_at
+          )
+          values ($1, $2, $3, $4, $5)
+          returning id, name, key_prefix, last_used_at, expires_at, revoked_at, created_at
         `,
         [
           operator.organizationId,
           current.name,
           getAgentApiKeyPrefix(secret),
           hashAgentApiKey(secret),
+          expiresAt,
         ],
       );
       const created = createdResult.rows[0];
@@ -86,6 +106,8 @@ export async function POST(
           apiKeyId: created.id,
           name: created.name,
           keyPrefix: created.key_prefix,
+          expiresAt: created.expires_at.toISOString(),
+          expiresInDays: input.expiresInDays,
         },
       });
       return created;
@@ -104,6 +126,7 @@ export async function POST(
           keyPrefix: rotated.key_prefix,
           status: "active",
           lastUsedAt: null,
+          expiresAt: rotated.expires_at.toISOString(),
           revokedAt: null,
           createdAt: rotated.created_at.toISOString(),
         },

@@ -29,8 +29,9 @@ export interface AgentApiKey {
   id: string;
   name: string;
   keyPrefix: string;
-  status: "active" | "revoked";
+  status: "active" | "expired" | "revoked";
   lastUsedAt: string | null;
+  expiresAt: string | null;
   revokedAt: string | null;
   createdAt: string;
 }

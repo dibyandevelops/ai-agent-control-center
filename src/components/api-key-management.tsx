@@ -21,6 +21,26 @@ import { AgentQuickstart } from "@/components/agent-quickstart";
 const fieldClass =
   "mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 text-sm text-sentinel-text outline-none transition placeholder:text-sentinel-dim focus:border-sentinel-lime/70 focus:ring-2 focus:ring-sentinel-lime/10";
 
+const expirationOptions = [30, 60, 90, 180, 365] as const;
+
+function credentialStatusLabel(status: AgentApiKey["status"]) {
+  if (status === "expired") return "Expired";
+  if (status === "revoked") return "Revoked";
+  return "Active";
+}
+
+function credentialStatusTone(status: AgentApiKey["status"]) {
+  if (status === "active") return "text-sentinel-lime";
+  if (status === "expired") return "text-sentinel-amber";
+  return "text-sentinel-muted";
+}
+
+function credentialStatusDot(status: AgentApiKey["status"]) {
+  if (status === "active") return "bg-sentinel-lime";
+  if (status === "expired") return "bg-sentinel-amber";
+  return "bg-sentinel-dim";
+}
+
 function formatDate(value: string | null) {
   if (!value) return "Never";
   return new Intl.DateTimeFormat("en-US", {
@@ -102,13 +122,19 @@ export function ApiKeyManagement({
     };
   }, []);
 
-  async function completeAction() {
+  async function completeAction(expiresInDays?: number) {
     if (!actionTarget) return;
     const { apiKey, action } = actionTarget;
     setError("");
     const response = await fetch(
       `/api/v1/api-keys/${apiKey.id}${action === "rotate" ? "/rotate" : ""}`,
-      { method: action === "rotate" ? "POST" : "DELETE" },
+      action === "rotate"
+        ? {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ expiresInDays }),
+          }
+        : { method: "DELETE" },
     );
     const payload = (await response.json()) as {
       apiKey?: AgentApiKey;
@@ -155,6 +181,7 @@ export function ApiKeyManagement({
   }
 
   const activeCount = apiKeys.filter((apiKey) => apiKey.status === "active").length;
+  const expiredCount = apiKeys.filter((apiKey) => apiKey.status === "expired").length;
 
   return (
     <main className="page">
@@ -177,7 +204,7 @@ export function ApiKeyManagement({
             <strong className="block text-sm font-semibold text-sentinel-text">
               {loading
                 ? "Loading credentials"
-                : `${activeCount} active ${activeCount === 1 ? "credential" : "credentials"}`}
+                : `${activeCount} active ${activeCount === 1 ? "credential" : "credentials"}${expiredCount ? ` · ${expiredCount} expired` : ""}`}
             </strong>
             <span className="mt-0.5 block text-xs text-sentinel-muted">
               Every key is scoped to {organizationName}.
@@ -203,7 +230,7 @@ export function ApiKeyManagement({
         <div className="flex items-center justify-between border-b border-sentinel-line px-5 py-4">
           <div>
             <h3 className="text-sm font-semibold text-sentinel-text">API keys</h3>
-            <p className="mt-1 text-xs text-sentinel-muted">Rotate keys regularly and revoke any credential no longer in use.</p>
+            <p className="mt-1 text-xs text-sentinel-muted">Keys expire automatically. Rotate them before the deadline and revoke credentials no longer in use.</p>
           </div>
           <button
             className="grid h-9 w-9 place-items-center rounded-lg border border-sentinel-line text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text"
@@ -229,12 +256,13 @@ export function ApiKeyManagement({
         ) : (
           <>
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[760px] border-collapse text-left">
+              <table className="w-full min-w-[900px] border-collapse text-left">
                 <thead className="bg-sentinel-raised/60 text-[10px] uppercase tracking-[0.12em] text-sentinel-dim">
                   <tr>
                     <th className="px-5 py-3 font-medium">Credential</th>
                     <th className="px-4 py-3 font-medium">Status</th>
                     <th className="px-4 py-3 font-medium">Last used</th>
+                    <th className="px-4 py-3 font-medium">Expires</th>
                     <th className="px-4 py-3 font-medium">Created</th>
                     <th className="px-5 py-3 text-right font-medium">Controls</th>
                   </tr>
@@ -247,18 +275,19 @@ export function ApiKeyManagement({
                         <code className="mt-1.5 block font-mono text-[11px] text-sentinel-muted">{apiKey.keyPrefix}••••••••</code>
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`inline-flex items-center gap-2 text-xs font-medium ${apiKey.status === "active" ? "text-sentinel-lime" : "text-sentinel-muted"}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${apiKey.status === "active" ? "bg-sentinel-lime" : "bg-sentinel-dim"}`} />
-                          {apiKey.status === "active" ? "Active" : "Revoked"}
+                        <span className={`inline-flex items-center gap-2 text-xs font-medium ${credentialStatusTone(apiKey.status)}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${credentialStatusDot(apiKey.status)}`} />
+                          {credentialStatusLabel(apiKey.status)}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-xs text-sentinel-muted"><span className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /> {formatDate(apiKey.lastUsedAt)}</span></td>
+                      <td className={`px-4 py-4 text-xs ${apiKey.status === "expired" ? "font-medium text-sentinel-amber" : "text-sentinel-muted"}`}>{apiKey.expiresAt ? formatDate(apiKey.expiresAt) : "Legacy key"}</td>
                       <td className="px-4 py-4 text-xs text-sentinel-muted">{formatDate(apiKey.createdAt)}</td>
                       <td className="px-5 py-4 text-right">
-                        {apiKey.status === "active" ? (
+                        {apiKey.status !== "revoked" ? (
                           <div className="flex items-center justify-end gap-2">
                             <button className="rounded-lg border border-sentinel-line px-3 py-2 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text" onClick={() => setActionTarget({ apiKey, action: "rotate" })}>Rotate</button>
-                            <button className="rounded-lg border border-sentinel-red/30 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-sentinel-red/10" onClick={() => setActionTarget({ apiKey, action: "revoke" })}>Revoke</button>
+                            {apiKey.status === "active" ? <button className="rounded-lg border border-sentinel-red/30 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-sentinel-red/10" onClick={() => setActionTarget({ apiKey, action: "revoke" })}>Revoke</button> : null}
                           </div>
                         ) : (
                           <span className="text-xs text-sentinel-dim">Revoked {formatDate(apiKey.revokedAt)}</span>
@@ -277,18 +306,19 @@ export function ApiKeyManagement({
                       <strong className="block truncate text-sm text-sentinel-text">{apiKey.name}</strong>
                       <code className="mt-1.5 block font-mono text-[11px] text-sentinel-muted">{apiKey.keyPrefix}••••••••</code>
                     </div>
-                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${apiKey.status === "active" ? "text-sentinel-lime" : "text-sentinel-muted"}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${apiKey.status === "active" ? "bg-sentinel-lime" : "bg-sentinel-dim"}`} /> {apiKey.status === "active" ? "Active" : "Revoked"}
+                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${credentialStatusTone(apiKey.status)}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${credentialStatusDot(apiKey.status)}`} /> {credentialStatusLabel(apiKey.status)}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 text-xs text-sentinel-muted">
+                  <div className="grid grid-cols-3 gap-3 text-xs text-sentinel-muted">
                     <div><span className="mb-1 block text-[10px] uppercase tracking-wider text-sentinel-dim">Last used</span>{formatDate(apiKey.lastUsedAt)}</div>
+                    <div><span className="mb-1 block text-[10px] uppercase tracking-wider text-sentinel-dim">Expires</span>{apiKey.expiresAt ? formatDate(apiKey.expiresAt) : "Legacy"}</div>
                     <div><span className="mb-1 block text-[10px] uppercase tracking-wider text-sentinel-dim">Created</span>{formatDate(apiKey.createdAt)}</div>
                   </div>
-                  {apiKey.status === "active" ? (
-                    <div className="grid grid-cols-2 gap-2">
+                  {apiKey.status !== "revoked" ? (
+                    <div className={`grid gap-2 ${apiKey.status === "active" ? "grid-cols-2" : "grid-cols-1"}`}>
                       <button className="rounded-lg border border-sentinel-line px-3 py-2.5 text-xs font-semibold text-sentinel-muted" onClick={() => setActionTarget({ apiKey, action: "rotate" })}>Rotate</button>
-                      <button className="rounded-lg border border-sentinel-red/30 px-3 py-2.5 text-xs font-semibold text-red-300" onClick={() => setActionTarget({ apiKey, action: "revoke" })}>Revoke</button>
+                      {apiKey.status === "active" ? <button className="rounded-lg border border-sentinel-red/30 px-3 py-2.5 text-xs font-semibold text-red-300" onClick={() => setActionTarget({ apiKey, action: "revoke" })}>Revoke</button> : null}
                     </div>
                   ) : null}
                 </article>
@@ -349,6 +379,7 @@ function CreateApiKeyDialog({
   onCreated: (apiKey: AgentApiKey, secret: string) => void;
 }) {
   const [name, setName] = useState("");
+  const [expiresInDays, setExpiresInDays] = useState("90");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -360,7 +391,7 @@ function CreateApiKeyDialog({
       const response = await fetch("/api/v1/api-keys", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, expiresInDays: Number(expiresInDays) }),
       });
       const payload = (await response.json()) as {
         apiKey?: AgentApiKey;
@@ -385,6 +416,13 @@ function CreateApiKeyDialog({
           Credential name
           <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} placeholder="Production release agent" autoFocus required minLength={2} maxLength={120} />
         </label>
+        <label className="block text-xs font-medium text-sentinel-muted">
+          Credential lifetime
+          <select className={fieldClass} value={expiresInDays} onChange={(event) => setExpiresInDays(event.target.value)}>
+            {expirationOptions.map((days) => <option key={days} value={days}>{days} days{days === 90 ? " · recommended" : ""}</option>)}
+          </select>
+          <span className="mt-2 block text-[11px] leading-5 text-sentinel-dim">The agent stops authenticating automatically at this deadline unless the key is rotated first.</span>
+        </label>
         <div className="flex items-start gap-2.5 rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 px-3.5 py-3 text-xs leading-5 text-amber-100">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-amber" />
           The complete key is shown once. Store it in your secret manager, never in source code.
@@ -406,17 +444,18 @@ function ConfirmApiKeyActionDialog({
 }: {
   target: { apiKey: AgentApiKey; action: "rotate" | "revoke" };
   onClose: () => void;
-  onConfirm: () => Promise<void>;
+  onConfirm: (expiresInDays?: number) => Promise<void>;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [expiresInDays, setExpiresInDays] = useState("90");
   const rotating = target.action === "rotate";
 
   async function confirm() {
     setLoading(true);
     setError("");
     try {
-      await onConfirm();
+      await onConfirm(rotating ? Number(expiresInDays) : undefined);
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "Credential update failed.");
     } finally {
@@ -432,6 +471,7 @@ function ConfirmApiKeyActionDialog({
             ? "A new key will be generated and the current credential will stop working immediately. Update the agent before its next request."
             : "This credential will stop authenticating immediately. This action cannot be undone."}
         </p>
+        {rotating ? <label className="block text-xs font-medium text-sentinel-muted">New credential lifetime<select className={fieldClass} value={expiresInDays} onChange={(event) => setExpiresInDays(event.target.value)}>{expirationOptions.map((days) => <option key={days} value={days}>{days} days{days === 90 ? " · recommended" : ""}</option>)}</select></label> : null}
         <div className="flex items-start gap-2.5 rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 px-3.5 py-3 text-xs leading-5 text-amber-100">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-amber" />
           Confirm the workload owner is ready for this interruption.

@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  defaultAgentApiKeyExpirationDays,
   generateAgentApiKey,
+  getAgentApiKeyExpiresAt,
   getAgentApiKeyPrefix,
+  getAgentApiKeyStatus,
   hashAgentApiKey,
+  isAgentApiKeyExpirationDays,
 } from "./agent-api-key";
 
 describe("agent API keys", () => {
@@ -30,5 +34,32 @@ describe("agent API keys", () => {
     expect(prefix).toBe(key.slice(0, 16));
     expect(prefix.length).toBeLessThan(key.length);
   });
-});
 
+  it("supports bounded enterprise credential lifetimes", () => {
+    expect(defaultAgentApiKeyExpirationDays).toBe(90);
+    expect(isAgentApiKeyExpirationDays(30)).toBe(true);
+    expect(isAgentApiKeyExpirationDays(365)).toBe(true);
+    expect(isAgentApiKeyExpirationDays(0)).toBe(false);
+    expect(isAgentApiKeyExpirationDays(366)).toBe(false);
+    expect(
+      getAgentApiKeyExpiresAt(90, new Date("2026-08-11T00:00:00.000Z")),
+    ).toEqual(new Date("2026-11-09T00:00:00.000Z"));
+  });
+
+  it("distinguishes active, expired, and explicitly revoked keys", () => {
+    const now = Date.parse("2026-08-11T00:00:00.000Z");
+    expect(
+      getAgentApiKeyStatus(null, new Date("2026-08-12T00:00:00.000Z"), now),
+    ).toBe("active");
+    expect(
+      getAgentApiKeyStatus(null, new Date("2026-08-10T00:00:00.000Z"), now),
+    ).toBe("expired");
+    expect(
+      getAgentApiKeyStatus(
+        new Date("2026-08-09T00:00:00.000Z"),
+        new Date("2026-08-12T00:00:00.000Z"),
+        now,
+      ),
+    ).toBe("revoked");
+  });
+});

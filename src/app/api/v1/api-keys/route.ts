@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
+  defaultAgentApiKeyExpirationDays,
   generateAgentApiKey,
+  getAgentApiKeyExpiresAt,
   getAgentApiKeyPrefix,
+  getAgentApiKeyStatus,
   hashAgentApiKey,
+  isAgentApiKeyExpirationDays,
 } from "@/lib/server/agent-api-key";
 import { appendAuditEvent } from "@/lib/server/audit";
 import { getOperatorSession, requireRecentMfa } from "@/lib/server/auth";
@@ -13,6 +17,11 @@ import { operatorCan } from "@/lib/server/operator-roles";
 
 const createApiKeySchema = z.object({
   name: z.string().trim().min(2).max(120),
+  expiresInDays: z
+    .number()
+    .int()
+    .refine(isAgentApiKeyExpirationDays, "Unsupported credential lifetime.")
+    .default(defaultAgentApiKeyExpirationDays),
 });
 
 interface ApiKeyRow {
@@ -20,6 +29,7 @@ interface ApiKeyRow {
   name: string;
   key_prefix: string;
   last_used_at: Date | null;
+  expires_at: Date | null;
   revoked_at: Date | null;
   created_at: Date;
 }
@@ -29,8 +39,9 @@ function serializeApiKey(row: ApiKeyRow) {
     id: row.id,
     name: row.name,
     keyPrefix: row.key_prefix,
-    status: row.revoked_at ? ("revoked" as const) : ("active" as const),
+    status: getAgentApiKeyStatus(row.revoked_at, row.expires_at),
     lastUsedAt: row.last_used_at?.toISOString() ?? null,
+    expiresAt: row.expires_at?.toISOString() ?? null,
     revokedAt: row.revoked_at?.toISOString() ?? null,
     createdAt: row.created_at.toISOString(),
   };
@@ -66,7 +77,7 @@ export async function GET() {
     const keys = await withTransaction(async (client) => {
       const result = await client.query<ApiKeyRow>(
         `
-          select id, name, key_prefix, last_used_at, revoked_at, created_at
+          select id, name, key_prefix, last_used_at, expires_at, revoked_at, created_at
           from api_keys
           where organization_id = $1
           order by revoked_at nulls first, created_at desc
@@ -91,18 +102,22 @@ export async function POST(request: NextRequest) {
     await requireRecentMfa(authorization.operator);
     const input = createApiKeySchema.parse(await request.json());
     const apiKey = generateAgentApiKey();
+    const expiresAt = getAgentApiKeyExpiresAt(input.expiresInDays);
     const created = await withTransaction(async (client) => {
       const result = await client.query<ApiKeyRow>(
         `
-          insert into api_keys (organization_id, name, key_prefix, key_hash)
-          values ($1, $2, $3, $4)
-          returning id, name, key_prefix, last_used_at, revoked_at, created_at
+          insert into api_keys (
+            organization_id, name, key_prefix, key_hash, expires_at
+          )
+          values ($1, $2, $3, $4, $5)
+          returning id, name, key_prefix, last_used_at, expires_at, revoked_at, created_at
         `,
         [
           authorization.operator.organizationId,
           input.name,
           getAgentApiKeyPrefix(apiKey),
           hashAgentApiKey(apiKey),
+          expiresAt,
         ],
       );
       const row = result.rows[0];
@@ -112,7 +127,13 @@ export async function POST(request: NextRequest) {
         eventType: "api_key.created",
         actorType: "human",
         actorId: authorization.operator.email,
-        payload: { apiKeyId: row.id, name: row.name, keyPrefix: row.key_prefix },
+        payload: {
+          apiKeyId: row.id,
+          name: row.name,
+          keyPrefix: row.key_prefix,
+          expiresAt: row.expires_at?.toISOString() ?? null,
+          expiresInDays: input.expiresInDays,
+        },
       });
       return serializeApiKey(row);
     });

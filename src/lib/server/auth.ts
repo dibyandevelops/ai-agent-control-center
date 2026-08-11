@@ -557,6 +557,7 @@ export async function authenticateApiKey(
       join organizations o on o.id = ak.organization_id
       where ak.key_hash = $1
         and ak.revoked_at is null
+        and ak.expires_at > now()
       limit 1
     `,
     [keyHash],

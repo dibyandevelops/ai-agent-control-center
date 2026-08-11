@@ -640,7 +640,10 @@ used in the recording.
 
 - Agent API keys use 256 bits of server-generated randomness and are stored as
   SHA-256 hashes, never plaintext. Lists expose only a short non-sensitive
-  prefix; create and rotate responses are explicitly non-cacheable.
+  prefix; create and rotate responses are explicitly non-cacheable. New and
+  rotated credentials have an administrator-selected 30-to-365-day lifetime,
+  default to 90 days, and are rejected by server-side authentication after the
+  deadline.
 - Operator passwords are stored as salted scrypt hashes.
 - Successful login creates an opaque, revocable, eight-hour HttpOnly,
   same-site session; only its SHA-256 hash is stored.
@@ -686,6 +689,6 @@ used in the recording.
   dispatcher is separately disabled unless a strong
   `SENTINELOPS_CRON_SECRET` is configured.
 
-This MVP is not yet a complete enterprise security product. SSO, SCIM,
-fine-grained operator roles, expiring credentials, webhook signing, audit
-export, retention controls, and formal compliance work remain later milestones.
+This MVP is not yet a complete enterprise security product. Fine-grained
+operator roles, outbound webhook signing, retention controls, and formal
+compliance work remain later milestones.

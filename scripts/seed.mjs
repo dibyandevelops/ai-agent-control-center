@@ -154,9 +154,9 @@ async function seed() {
     await client.query(
       `
         insert into api_keys (
-          organization_id, name, key_prefix, key_hash
+          organization_id, name, key_prefix, key_hash, expires_at
         )
-        values ($1, 'Local agent SDK', $2, $3)
+        values ($1, 'Local agent SDK', $2, $3, now() + interval '90 days')
       `,
       [organizationId, apiKey.slice(0, 16), keyHash],
     );

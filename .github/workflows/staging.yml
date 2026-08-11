@@ -72,6 +72,13 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: pnpm test:e2e
 
+      - name: Apply staging database migrations
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          DB_SSL: "true"
+          DB_SSL_REJECT_UNAUTHORIZED: "true"
+        run: pnpm db:migrate
+
       - name: Pull staging project configuration
         run: >-
           pnpm dlx vercel@58.5.1 pull
