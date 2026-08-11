@@ -95,6 +95,9 @@ jobs:
 
       - name: Run live staging approval journey
         env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          DB_SSL: "true"
+          DB_SSL_REJECT_UNAUTHORIZED: "true"
           SENTINELOPS_E2E_BASE_URL: ${{ env.STAGING_BASE_URL }}
           SENTINELOPS_E2E_EXPECT_TENANT_ISOLATION: "true"
         run: pnpm test:e2e:staging
