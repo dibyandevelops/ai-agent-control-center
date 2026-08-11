@@ -1,0 +1,14 @@
+# Local environment files must never be included in Vercel deployment uploads.
+.env
+.env.*
+!.env.example
+
+# Local credentials and generated private keys.
+*.pem
+*.key
+
+# Local tooling state and test artifacts.
+.codex
+coverage
+playwright-report
+test-results
