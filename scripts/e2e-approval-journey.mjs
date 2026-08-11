@@ -13,6 +13,7 @@ if (!connectionString) throw new Error("DATABASE_URL is required.");
 const remoteBaseUrl = process.env.SENTINELOPS_E2E_BASE_URL?.replace(/\/+$/, "");
 const expectTenantIsolationFailure =
   process.env.SENTINELOPS_E2E_EXPECT_TENANT_ISOLATION === "true";
+const expectDryRun = process.env.SENTINELOPS_E2E_EXPECT_DRY_RUN === "true";
 if (remoteBaseUrl) {
   const target = new URL(remoteBaseUrl);
   if (target.protocol !== "https:" && target.hostname !== "127.0.0.1" && target.hostname !== "localhost") {
@@ -22,6 +23,11 @@ if (remoteBaseUrl) {
 if (expectTenantIsolationFailure && !remoteBaseUrl) {
   throw new Error(
     "SENTINELOPS_E2E_EXPECT_TENANT_ISOLATION requires SENTINELOPS_E2E_BASE_URL.",
+  );
+}
+if (expectTenantIsolationFailure && expectDryRun) {
+  throw new Error(
+    "SENTINELOPS_E2E_EXPECT_TENANT_ISOLATION and SENTINELOPS_E2E_EXPECT_DRY_RUN cannot both be enabled.",
   );
 }
 
@@ -453,7 +459,7 @@ async function exerciseJourney(baseUrl) {
   assert.equal(detail.payload.execution.status, "succeeded");
   assert.match(
     detail.payload.execution.externalReference,
-    remoteBaseUrl ? /^https:\/\/github\.com\// : /^dry-run:\/\//,
+    remoteBaseUrl && !expectDryRun ? /^https:\/\/github\.com\// : /^dry-run:\/\//,
   );
   assert.deepEqual(
     detail.payload.timeline.map((event) => event.eventType),

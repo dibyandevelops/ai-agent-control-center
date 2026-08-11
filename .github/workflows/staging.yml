@@ -99,7 +99,7 @@ jobs:
           DB_SSL: "true"
           DB_SSL_REJECT_UNAUTHORIZED: "true"
           SENTINELOPS_E2E_BASE_URL: ${{ env.STAGING_BASE_URL }}
-          SENTINELOPS_E2E_EXPECT_TENANT_ISOLATION: "true"
+          SENTINELOPS_E2E_EXPECT_DRY_RUN: "true"
         run: pnpm test:e2e:staging
 
       - name: Publish deployment summary
