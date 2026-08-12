@@ -699,6 +699,8 @@ function Overview({
   onDecision,
   onViewApprovals,
   onOpenCredentials,
+  onOpenIntegrations,
+  onOpenPolicies,
   canDecide,
 }: {
   agents: Agent[];
@@ -710,6 +712,8 @@ function Overview({
   onDecision: (approval: Approval, decision: "approved" | "denied") => Promise<void>;
   onViewApprovals: () => void;
   onOpenCredentials: () => void;
+  onOpenIntegrations: () => void;
+  onOpenPolicies: () => void;
   canDecide: boolean;
 }) {
   const totalSpend = agents.reduce((sum, agent) => sum + agent.cost, 0);
@@ -733,7 +737,7 @@ function Overview({
           <Bot /> Register agent
         </button>
       </div>
-      {live ? <PilotReadiness agents={agents} policyDecisions={policySummary.total} onRegister={onRegister} onOpenCredentials={onOpenCredentials} /> : null}
+      {live ? <PilotReadiness agents={agents} audit={audit} policyDecisions={policySummary.total} onRegister={onRegister} onOpenCredentials={onOpenCredentials} onOpenIntegrations={onOpenIntegrations} onOpenPolicies={onOpenPolicies} /> : null}
       <section className="metrics-band">
         <Metric icon={Bot} label="Registered agents" value={String(agents.length)} detail={`${healthyAgents} healthy`} />
         <Metric icon={ShieldCheck} label="Policy compliance" value={compliance} detail={policySummary.total ? `${policySummary.total} decisions in the current audit window` : "No policy decisions yet"} />
@@ -756,24 +760,35 @@ function Overview({
 
 function PilotReadiness({
   agents,
+  audit,
   policyDecisions,
   onRegister,
   onOpenCredentials,
+  onOpenIntegrations,
+  onOpenPolicies,
 }: {
   agents: Agent[];
+  audit: AuditEvent[];
   policyDecisions: number;
   onRegister: () => void;
   onOpenCredentials: () => void;
+  onOpenIntegrations: () => void;
+  onOpenPolicies: () => void;
 }) {
   const agentRegistered = agents.length > 0;
   const agentExercised = agents.some((agent) => agent.actions > 0);
+  const mfaProtected = audit.some((event) => /mfa\.(enrolled|verified)/.test(event.action));
+  const githubConnected = audit.some((event) => event.action === "github.app_installation_synced");
   const steps = [
+    { complete: mfaProtected, title: "Secure your workspace", detail: "Use MFA and keep the first administrator account protected.", action: onOpenCredentials, actionLabel: "Open credentials" },
+    { complete: githubConnected, title: "Connect GitHub", detail: "Install the GitHub App for only the repositories this organization governs.", action: onOpenIntegrations, actionLabel: "Open integrations" },
     { complete: agentRegistered, title: "Register an owned agent", detail: "Assign an accountable owner and keep permissions locked by default.", action: onRegister, actionLabel: "Register agent" },
-    { complete: agentExercised, title: "Exercise a credential", detail: "Create an API key and run the low-risk connection check.", action: onOpenCredentials, actionLabel: "Open credentials" },
-    { complete: policyDecisions > 0, title: "Record a governed decision", detail: "Send the first real evaluation and review its audit evidence.", action: onOpenCredentials, actionLabel: "View quickstart" },
+    { complete: agentExercised, title: "Create and exercise a credential", detail: "Run the low-risk connection check before a consequential action.", action: onOpenCredentials, actionLabel: "Open credentials" },
+    { complete: policyDecisions > 0, title: "Verify a policy decision", detail: "Send the first governed evaluation and inspect its audit evidence.", action: onOpenPolicies, actionLabel: "Review policies" },
+    { complete: policyDecisions > 0, title: "Review the first action", detail: "Confirm the recorded decision and tamper-evident evidence in the audit log.", action: onOpenCredentials, actionLabel: "View quickstart" },
   ];
   const completeCount = steps.filter((step) => step.complete).length;
-  return <section className="mb-5 rounded-app border border-sentinel-lime/25 bg-sentinel-lime/5 p-4 shadow-app-1"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold text-sentinel-text">Pilot readiness</p><p className="mt-1 text-xs text-sentinel-muted">Complete these checks before connecting a production-impacting agent.</p></div><span className="rounded-full border border-sentinel-lime/30 px-2.5 py-1 text-[10px] font-semibold text-sentinel-lime">{completeCount}/3 complete</span></div><div className="mt-4 grid gap-3 lg:grid-cols-3">{steps.map((step, index) => <div key={step.title} className="rounded-xl border border-sentinel-line bg-sentinel-surface/70 p-3"><div className="flex items-start gap-2"><span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${step.complete ? "border-sentinel-lime/40 bg-sentinel-lime/10 text-sentinel-lime" : "border-sentinel-line text-sentinel-muted"}`}>{step.complete ? <Check className="h-3.5 w-3.5" /> : <span className="text-[10px]">{index + 1}</span>}</span><div className="min-w-0"><p className="text-xs font-semibold text-sentinel-text">{step.title}</p><p className="mt-1 text-[11px] leading-5 text-sentinel-muted">{step.detail}</p></div></div>{step.complete ? <p className="mt-3 text-[11px] font-medium text-sentinel-lime">Complete</p> : <button className="mt-3 text-xs font-semibold text-sentinel-lime" onClick={step.action}>{step.actionLabel}</button>}</div>)}</div></section>;
+  return <section className="mb-5 rounded-app border border-sentinel-lime/25 bg-sentinel-lime/5 p-4 shadow-app-1"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold text-sentinel-text">Workspace launch checklist</p><p className="mt-1 text-xs text-sentinel-muted">Complete this path before connecting a production-impacting agent.</p></div><span className="rounded-full border border-sentinel-lime/30 px-2.5 py-1 text-[10px] font-semibold text-sentinel-lime">{completeCount}/6 complete</span></div><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{steps.map((step, index) => <div key={step.title} className="rounded-xl border border-sentinel-line bg-sentinel-surface/70 p-3"><div className="flex items-start gap-2"><span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${step.complete ? "border-sentinel-lime/40 bg-sentinel-lime/10 text-sentinel-lime" : "border-sentinel-line text-sentinel-muted"}`}>{step.complete ? <Check className="h-3.5 w-3.5" /> : <span className="text-[10px]">{index + 1}</span>}</span><div className="min-w-0"><p className="text-xs font-semibold text-sentinel-text">{step.title}</p><p className="mt-1 text-[11px] leading-5 text-sentinel-muted">{step.detail}</p></div></div>{step.complete ? <p className="mt-3 text-[11px] font-medium text-sentinel-lime">Complete</p> : <button className="mt-3 text-xs font-semibold text-sentinel-lime" onClick={step.action}>{step.actionLabel}</button>}</div>)}</div></section>;
 }
 
 function AgentsView({
@@ -2718,6 +2733,8 @@ export function ControlCenter({
             onDecision={decide}
             onViewApprovals={() => setView("approvals")}
             onOpenCredentials={() => setView("credentials")}
+            onOpenIntegrations={() => setView("integrations")}
+            onOpenPolicies={() => setView("policies")}
             canDecide={canApprove}
           />
         )}

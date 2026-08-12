@@ -37,6 +37,10 @@ export function LandingFooter() {
             <strong>Company</strong>
             <a href="mailto:sales@sentinelops.ai">Contact</a>
             <Link href="/dashboard">Control center</Link>
+            <Link href="/pricing">Pricing</Link>
+            <Link href="/security">Security</Link>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
           </div>
         </div>
         <span className="col-span-full self-end border-t border-sentinel-line pt-5 text-[10px] text-sentinel-dim max-[760px]:col-auto">© 2026 SentinelOps</span>

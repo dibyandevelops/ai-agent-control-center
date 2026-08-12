@@ -17,6 +17,7 @@ import {
   type GitHubInstallationWebhook,
 } from "./github-app-lifecycle";
 import { enqueueGitHubAppLifecycleAlert } from "./notification-outbox";
+import { getOrganizationPlan } from "./plan-limits";
 
 export interface GitHubConnectionSummary {
   id: string;
@@ -162,6 +163,12 @@ async function syncRepositories(
     repositories: Awaited<ReturnType<typeof listGitHubInstallationRepositories>>;
   },
 ) {
+  const plan = await getOrganizationPlan(client, input.organizationId);
+  if (plan.repositories !== null && input.repositories.length > plan.repositories) {
+    throw new Error(
+      `${plan.name} plan limit reached: ${plan.repositories} connected repositories. Select fewer repositories in GitHub or contact SentinelOps.`,
+    );
+  }
   await client.query(
     `update github_app_repositories set enabled = false, updated_at = now()
       where installation_id = $1 and organization_id = $2`,

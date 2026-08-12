@@ -54,6 +54,11 @@ export async function GET(request: NextRequest) {
         from audit_events ae
         left join action_requests ar on ar.id = ae.request_id
         where ae.organization_id = $1
+          and ae.created_at >= now() - (
+            select audit_retention_days * interval '1 day'
+            from organizations
+            where id = $1
+          )
           and ($2::boolean = false or ae.event_type ~ $3)
         order by ae.created_at desc, ae.id desc
         limit 5000

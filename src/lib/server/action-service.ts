@@ -20,6 +20,7 @@ import {
 import { AuthenticationError, ConflictError, NotFoundError } from "./errors";
 import { getServerEnv } from "./env";
 import { enqueueActionApprovalNotification } from "./notification-outbox";
+import { assertOrganizationLimit } from "./plan-limits";
 
 interface ActionRequestRow {
   id: string;
@@ -136,6 +137,17 @@ export async function evaluateAction(
       };
     }
 
+    const knownAgent = await client.query<{ id: string }>(
+      `select id from agents where organization_id = $1 and external_id = $2 limit 1`,
+      [identity.organizationId, input.agent.externalId],
+    );
+    if (!knownAgent.rows[0]) {
+      await assertOrganizationLimit(client, {
+        organizationId: identity.organizationId,
+        resource: "agents",
+      });
+    }
+
     const agentResult = await client.query<{ id: string }>(
       `
         insert into agents (
@@ -179,6 +191,12 @@ export async function evaluateAction(
         : decision.effect === "allow"
           ? "allowed"
           : "blocked";
+    if (status === "pending") {
+      await assertOrganizationLimit(client, {
+        organizationId: identity.organizationId,
+        resource: "pending_approvals",
+      });
+    }
     const expiresAt =
       status === "pending"
         ? new Date(
