@@ -7,8 +7,11 @@ import {
   KeyRound,
   LoaderCircle,
   Mail,
+  RefreshCw,
+  Send,
   ShieldAlert,
   ShieldCheck,
+  Trash2,
   UserPlus,
   UsersRound,
   X,
@@ -20,6 +23,15 @@ import type {
   OperatorRole,
 } from "@/lib/types";
 import { IdentityProvisioning } from "@/components/identity-provisioning";
+
+interface InvitationItem {
+  id: string;
+  email: string;
+  role: OperatorRole;
+  status: "pending" | "accepted" | "revoked" | "expired";
+  expiresAt: string;
+  createdAt: string;
+}
 
 const roles: Array<{ value: OperatorRole; label: string; description: string }> = [
   { value: "admin", label: "Admin", description: "Full platform administration" },
@@ -59,40 +71,45 @@ export function OperatorManagement({
   onNotify: (message: string) => void;
 }) {
   const [operators, setOperators] = useState<OperatorAccount[]>([]);
+  const [invitations, setInvitations] = useState<InvitationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<OperatorAccount | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadOperators() {
+    async function loadData() {
       try {
-        const response = await fetch("/api/v1/operators", { cache: "no-store" });
-        const payload = (await response.json()) as {
-          operators?: OperatorAccount[];
-          error?: string;
-        };
-        if (!response.ok || !payload.operators) {
-          throw new Error(payload.error || "Unable to load operator accounts.");
+        const [opsRes, invRes] = await Promise.all([
+          fetch("/api/v1/operators", { cache: "no-store" }),
+          fetch("/api/v1/invitations", { cache: "no-store" }),
+        ]);
+        const opsPayload = (await opsRes.json()) as { operators?: OperatorAccount[]; error?: string };
+        const invPayload = (await invRes.json()) as { invitations?: InvitationItem[]; error?: string };
+
+        if (!opsRes.ok || !opsPayload.operators) {
+          throw new Error(opsPayload.error || "Unable to load operator accounts.");
         }
-        if (!cancelled) setOperators(payload.operators);
+        if (!cancelled) {
+          setOperators(opsPayload.operators);
+          if (invRes.ok && invPayload.invitations) {
+            setInvitations(invPayload.invitations);
+          }
+        }
       } catch (loadError) {
         if (!cancelled) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Unable to load operator accounts.",
-          );
+          setError(loadError instanceof Error ? loadError.message : "Unable to load operator accounts.");
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
-    void loadOperators();
+    void loadData();
     return () => {
       cancelled = true;
     };
@@ -112,9 +129,7 @@ export function OperatorManagement({
         headers: { "content-type": "application/json" },
         body: JSON.stringify(update),
       });
-      const payload = (await response.json()) as OperatorAccount & {
-        error?: string;
-      };
+      const payload = (await response.json()) as OperatorAccount & { error?: string };
       if (!response.ok) {
         throw new Error(payload.error || "Operator update failed.");
       }
@@ -123,11 +138,43 @@ export function OperatorManagement({
       );
       onNotify(`${payload.displayName}'s account was updated.`);
     } catch (updateError) {
-      setError(
-        updateError instanceof Error
-          ? updateError.message
-          : "Operator update failed.",
+      setError(updateError instanceof Error ? updateError.message : "Operator update failed.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function resendInvite(invitationId: string) {
+    setBusyId(invitationId);
+    setError("");
+    try {
+      const response = await fetch(`/api/v1/invitations/${invitationId}/resend`, { method: "POST" });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Failed to resend invitation.");
+      setInvitations((current) =>
+        current.map((inv) => (inv.id === invitationId ? { ...inv, status: "pending" } : inv)),
       );
+      onNotify("Invitation email resent.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to resend invitation.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function revokeInvite(invitationId: string) {
+    setBusyId(invitationId);
+    setError("");
+    try {
+      const response = await fetch(`/api/v1/invitations/${invitationId}/revoke`, { method: "POST" });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Failed to revoke invitation.");
+      setInvitations((current) =>
+        current.map((inv) => (inv.id === invitationId ? { ...inv, status: "revoked" } : inv)),
+      );
+      onNotify("Invitation revoked.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to revoke invitation.");
     } finally {
       setBusyId(null);
     }
@@ -162,12 +209,20 @@ export function OperatorManagement({
           <h2>Team access</h2>
           <p>Control who can review agents, approve actions, and administer policies.</p>
         </div>
-        <button
-          className="primary-button primary-large"
-          onClick={() => setCreateOpen(true)}
-        >
-          <UserPlus /> Add operator
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="secondary-button"
+            onClick={() => setInviteOpen(true)}
+          >
+            <Send className="h-4 w-4" /> Send invite
+          </button>
+          <button
+            className="primary-button primary-large"
+            onClick={() => setCreateOpen(true)}
+          >
+            <UserPlus /> Add operator
+          </button>
+        </div>
       </div>
 
       <section className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-app border border-sentinel-line bg-sentinel-surface px-5 py-4 shadow-app-1">
@@ -186,20 +241,105 @@ export function OperatorManagement({
         </div>
         <div className="flex items-center gap-2 text-xs text-sentinel-muted">
           <ShieldCheck className="h-4 w-4 text-sentinel-lime" />
-          Role checks are enforced on every protected API request
+          Role checks and least-privilege permissions are enforced on every API route
         </div>
       </section>
 
       <IdentityProvisioning onNotify={onNotify} />
 
       {error ? (
-        <div className="mb-5 flex items-start gap-3 rounded-app border border-sentinel-red/30 bg-sentinel-red/10 px-4 py-3 text-sm text-red-200">
+        <div className="my-5 flex items-start gap-3 rounded-app border border-sentinel-red/30 bg-sentinel-red/10 px-4 py-3 text-sm text-red-200">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-app border border-sentinel-line bg-sentinel-surface shadow-app-1">
+      {/* Invitations Section */}
+      <section className="mt-6 overflow-hidden rounded-app border border-sentinel-line bg-sentinel-surface shadow-app-1">
+        <div className="flex items-center justify-between border-b border-sentinel-line px-5 py-4">
+          <div>
+            <h3 className="text-sm font-semibold text-sentinel-text">Pending & team invitations</h3>
+            <p className="mt-1 text-xs text-sentinel-muted">Invite team members via email with role assignment.</p>
+          </div>
+          <span className="font-mono text-[11px] text-sentinel-dim">
+            {invitations.length} {invitations.length === 1 ? "invitation" : "invitations"}
+          </span>
+        </div>
+
+        {invitations.length === 0 ? (
+          <div className="p-6 text-center text-xs text-sentinel-muted">
+            No active or pending team invitations. Use &quot;Send invite&quot; to invite a member.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] border-collapse text-left">
+              <thead className="bg-sentinel-raised/60 text-[10px] uppercase tracking-[0.12em] text-sentinel-dim">
+                <tr>
+                  <th className="px-5 py-3 font-medium">Invited Email</th>
+                  <th className="px-4 py-3 font-medium">Role</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Expires</th>
+                  <th className="px-5 py-3 text-right font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-sentinel-line text-xs">
+                {invitations.map((inv) => {
+                  const isBusy = busyId === inv.id;
+                  return (
+                    <tr key={inv.id} className="transition hover:bg-white/[0.025]">
+                      <td className="px-5 py-3.5 font-medium text-sentinel-text">{inv.email}</td>
+                      <td className="px-4 py-3.5 text-sentinel-muted">{roleLabel(inv.role)}</td>
+                      <td className="px-4 py-3.5">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                            inv.status === "accepted"
+                              ? "bg-sentinel-lime/10 text-sentinel-lime"
+                              : inv.status === "pending"
+                              ? "bg-sky-500/10 text-sky-400"
+                              : inv.status === "expired"
+                              ? "bg-sentinel-amber/10 text-sentinel-amber"
+                              : "bg-sentinel-dim/20 text-sentinel-dim"
+                          }`}
+                        >
+                          {inv.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-sentinel-muted">{formatDate(inv.expiresAt)}</td>
+                      <td className="px-5 py-3.5 text-right">
+                        {inv.status === "pending" || inv.status === "expired" ? (
+                          <div className="flex justify-end gap-2">
+                            <button
+                              className="secondary-button text-xs"
+                              disabled={isBusy}
+                              onClick={() => void resendInvite(inv.id)}
+                              title="Resend invitation email"
+                            >
+                              <RefreshCw className={`h-3.5 w-3.5 ${isBusy ? "animate-spin" : ""}`} /> Resend
+                            </button>
+                            <button
+                              className="secondary-button text-xs text-sentinel-red"
+                              disabled={isBusy}
+                              onClick={() => void revokeInvite(inv.id)}
+                              title="Revoke invitation"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" /> Revoke
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-sentinel-dim">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* Operator Accounts Section */}
+      <section className="mt-6 overflow-hidden rounded-app border border-sentinel-line bg-sentinel-surface shadow-app-1">
         <div className="flex items-center justify-between border-b border-sentinel-line px-5 py-4">
           <div>
             <h3 className="text-sm font-semibold text-sentinel-text">Operator accounts</h3>
@@ -225,8 +365,7 @@ export function OperatorManagement({
             </div>
           </div>
         ) : (
-          <>
-          <div className="hidden overflow-x-auto md:block">
+          <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] border-collapse text-left">
               <thead className="bg-sentinel-raised/60 text-[10px] uppercase tracking-[0.12em] text-sentinel-dim">
                 <tr>
@@ -258,13 +397,10 @@ export function OperatorManagement({
                             <div className="flex items-center gap-2">
                               <strong className="text-sm font-medium text-sentinel-text">{operator.displayName}</strong>
                               {isCurrent ? (
-                                <span className="rounded-md bg-sentinel-lime/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-sentinel-lime">You</span>
-                              ) : null}
-                              {operator.mustChangePassword ? (
-                                <span className="rounded-md bg-sentinel-amber/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-sentinel-amber">Password update required</span>
+                                <span className="rounded-full border border-sentinel-lime/30 bg-sentinel-lime/10 px-2 py-0.5 text-[10px] font-medium text-sentinel-lime">You</span>
                               ) : null}
                             </div>
-                            <span className="mt-1 flex items-center gap-1.5 text-xs text-sentinel-muted">
+                            <span className="flex items-center gap-1.5 text-xs text-sentinel-muted">
                               <Mail className="h-3 w-3" /> {operator.email}
                             </span>
                           </div>
@@ -272,69 +408,61 @@ export function OperatorManagement({
                       </td>
                       <td className="px-4 py-4">
                         {isCurrent ? (
-                          <span className="text-sm capitalize text-sentinel-text">{roleLabel(operator.role)}</span>
+                          <span className="inline-flex rounded-md border border-sentinel-line bg-sentinel-canvas px-2.5 py-1 text-xs font-medium text-sentinel-text">
+                            {roleLabel(operator.role)}
+                          </span>
                         ) : (
                           <select
-                            className="h-9 rounded-lg border border-sentinel-line bg-sentinel-canvas px-2.5 text-xs text-sentinel-text outline-none focus:border-sentinel-lime/60"
+                            className="rounded-lg border border-sentinel-line bg-sentinel-canvas px-2.5 py-1 text-xs text-sentinel-text outline-none focus:border-sentinel-lime"
                             value={operator.role}
                             disabled={isBusy}
-                            aria-label={`Role for ${operator.displayName}`}
-                            onChange={(event) =>
-                              void updateOperator(operator, {
-                                role: event.target.value as OperatorRole,
-                              })
-                            }
+                            onChange={(e) => void updateOperator(operator, { role: e.target.value as OperatorRole })}
                           >
-                            {roles.map((role) => (
-                              <option key={role.value} value={role.value}>{role.label}</option>
+                            {roles.map((r) => (
+                              <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
                           </select>
                         )}
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`inline-flex items-center gap-2 text-xs font-medium ${isLocked ? "text-sentinel-amber" : operator.status === "active" ? "text-sentinel-lime" : "text-sentinel-muted"}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${isLocked ? "bg-sentinel-amber" : operator.status === "active" ? "bg-sentinel-lime" : "bg-sentinel-dim"}`} />
-                          {isLocked ? "Temporarily locked" : operator.status === "active" ? "Active" : "Disabled"}
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            operator.status === "active" && !isLocked
+                              ? "bg-sentinel-lime/10 text-sentinel-lime"
+                              : isLocked
+                              ? "bg-sentinel-amber/10 text-sentinel-amber"
+                              : "bg-sentinel-red/10 text-sentinel-red"
+                          }`}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                          {isLocked ? "Locked" : operator.status === "active" ? "Active" : "Disabled"}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-xs text-sentinel-muted">
-                        <span className="flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /> {formatDate(operator.lastLoginAt)}</span>
+                        <span className="flex items-center gap-1.5">
+                          <Clock3 className="h-3 w-3 text-sentinel-dim" /> {formatDate(operator.lastLoginAt)}
+                        </span>
                       </td>
                       <td className="px-5 py-4 text-right">
-                        {isCurrent ? (
-                          <span className="text-xs text-sentinel-dim">Protected current session</span>
-                        ) : (
-                          <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            className="secondary-button text-xs"
+                            disabled={isBusy || isCurrent}
+                            onClick={() => setResetTarget(operator)}
+                            title="Reset password"
+                          >
+                            <KeyRound className="h-3.5 w-3.5" /> Reset
+                          </button>
+                          {!isCurrent ? (
                             <button
-                              className="rounded-lg border border-sentinel-line px-3 py-2 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text"
+                              className="secondary-button text-xs"
                               disabled={isBusy}
-                              onClick={() => setResetTarget(operator)}
+                              onClick={() => void updateOperator(operator, { status: operator.status === "active" ? "disabled" : "active" })}
                             >
-                              Reset password
+                              {operator.status === "active" ? "Disable" : "Enable"}
                             </button>
-                            {isLocked ? (
-                              <button
-                                className="min-w-24 rounded-lg border border-sentinel-amber/30 px-3 py-2 text-xs font-semibold text-sentinel-amber transition hover:bg-sentinel-amber/10 disabled:cursor-wait"
-                                disabled={isBusy}
-                                onClick={() => void updateOperator(operator, { unlock: true })}
-                              >
-                                {isBusy ? "Unlocking…" : "Unlock"}
-                              </button>
-                            ) : (
-                              <button
-                                className={`min-w-24 rounded-lg border px-3 py-2 text-xs font-semibold transition disabled:cursor-wait ${operator.status === "active" ? "border-sentinel-red/30 text-red-300 hover:bg-sentinel-red/10" : "border-sentinel-lime/30 text-sentinel-lime hover:bg-sentinel-lime/10"}`}
-                                disabled={isBusy}
-                                onClick={() =>
-                                  void updateOperator(operator, {
-                                    status: operator.status === "active" ? "disabled" : "active",
-                                  })
-                                }
-                              >
-                                {isBusy ? "Updating…" : operator.status === "active" ? "Disable" : "Reactivate"}
-                              </button>
-                            )}
-                          </div>
-                        )}
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -342,123 +470,33 @@ export function OperatorManagement({
               </tbody>
             </table>
           </div>
-          <div className="divide-y divide-sentinel-line md:hidden">
-            {operators.map((operator) => {
-              const isCurrent = operator.id === currentOperator.id;
-              const isBusy = busyId === operator.id;
-              const isLocked = isAccountLocked(operator);
-              return (
-                <article key={operator.id} className="space-y-4 px-5 py-5">
-                  <div className="flex items-start gap-3">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-sentinel-line-strong bg-sentinel-raised text-xs font-semibold text-sentinel-text">
-                      {operator.displayName
-                        .split(" ")
-                        .map((part) => part[0])
-                        .join("")
-                        .slice(0, 2)
-                        .toUpperCase()}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <strong className="truncate text-sm font-medium text-sentinel-text">{operator.displayName}</strong>
-                        {isCurrent ? (
-                          <span className="rounded-md bg-sentinel-lime/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-sentinel-lime">You</span>
-                        ) : null}
-                        {operator.mustChangePassword ? (
-                          <span className="rounded-md bg-sentinel-amber/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-sentinel-amber">Password update required</span>
-                        ) : null}
-                      </div>
-                      <span className="mt-1 flex items-center gap-1.5 truncate text-xs text-sentinel-muted">
-                        <Mail className="h-3 w-3 shrink-0" /> {operator.email}
-                      </span>
-                    </div>
-                    <span className={`mt-1 inline-flex items-center gap-1.5 text-[11px] font-medium ${isLocked ? "text-sentinel-amber" : operator.status === "active" ? "text-sentinel-lime" : "text-sentinel-muted"}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${isLocked ? "bg-sentinel-amber" : operator.status === "active" ? "bg-sentinel-lime" : "bg-sentinel-dim"}`} />
-                      {isLocked ? "Locked" : operator.status === "active" ? "Active" : "Disabled"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <span className="block text-[10px] uppercase tracking-[0.12em] text-sentinel-dim">Role</span>
-                      {isCurrent ? (
-                        <span className="mt-2 block text-sm text-sentinel-text">{roleLabel(operator.role)}</span>
-                      ) : (
-                        <select
-                          className="mt-1.5 h-9 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-2.5 text-xs text-sentinel-text outline-none focus:border-sentinel-lime/60"
-                          value={operator.role}
-                          disabled={isBusy}
-                          aria-label={`Mobile role for ${operator.displayName}`}
-                          onChange={(event) =>
-                            void updateOperator(operator, {
-                              role: event.target.value as OperatorRole,
-                            })
-                          }
-                        >
-                          {roles.map((role) => (
-                            <option key={role.value} value={role.value}>{role.label}</option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                    <div>
-                      <span className="block text-[10px] uppercase tracking-[0.12em] text-sentinel-dim">Last sign-in</span>
-                      <span className="mt-2 flex items-center gap-1.5 text-xs text-sentinel-muted"><Clock3 className="h-3.5 w-3.5 shrink-0" /> {formatDate(operator.lastLoginAt)}</span>
-                    </div>
-                  </div>
-                  {isCurrent ? (
-                    <div className="rounded-lg border border-sentinel-line bg-sentinel-raised/50 px-3 py-2 text-center text-xs text-sentinel-dim">Protected current session</div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        className="rounded-lg border border-sentinel-line px-3 py-2.5 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text"
-                        disabled={isBusy}
-                        onClick={() => setResetTarget(operator)}
-                      >
-                        Reset password
-                      </button>
-                      {isLocked ? (
-                        <button
-                          className="rounded-lg border border-sentinel-amber/30 px-3 py-2.5 text-xs font-semibold text-sentinel-amber transition hover:bg-sentinel-amber/10 disabled:cursor-wait"
-                          disabled={isBusy}
-                          onClick={() => void updateOperator(operator, { unlock: true })}
-                        >
-                          {isBusy ? "Unlocking…" : "Unlock account"}
-                        </button>
-                      ) : (
-                        <button
-                          className={`rounded-lg border px-3 py-2.5 text-xs font-semibold transition disabled:cursor-wait ${operator.status === "active" ? "border-sentinel-red/30 text-red-300 hover:bg-sentinel-red/10" : "border-sentinel-lime/30 text-sentinel-lime hover:bg-sentinel-lime/10"}`}
-                          disabled={isBusy}
-                          onClick={() =>
-                            void updateOperator(operator, {
-                              status: operator.status === "active" ? "disabled" : "active",
-                            })
-                          }
-                        >
-                          {isBusy ? "Updating…" : operator.status === "active" ? "Disable account" : "Reactivate account"}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-          </>
         )}
       </section>
 
       {createOpen ? (
         <CreateOperatorDialog
           onClose={() => setCreateOpen(false)}
-          onCreated={(operator) => {
-            setOperators((current) => [...current, operator]);
+          onCreated={(newOp) => {
+            setOperators((cur) => [...cur, newOp]);
             setCreateOpen(false);
-            onNotify(`${operator.displayName} was added as ${roleLabel(operator.role)}.`);
+            onNotify(`Operator ${newOp.displayName} created.`);
           }}
         />
       ) : null}
+
+      {inviteOpen ? (
+        <InviteOperatorDialog
+          onClose={() => setInviteOpen(false)}
+          onInvited={(newInv) => {
+            setInvitations((cur) => [newInv, ...cur]);
+            setInviteOpen(false);
+            onNotify(`Invitation sent to ${newInv.email}.`);
+          }}
+        />
+      ) : null}
+
       {resetTarget ? (
-        <PasswordResetDialog
+        <ResetPasswordDialog
           operator={resetTarget}
           onClose={() => setResetTarget(null)}
           onReset={() => resetOperatorPassword(resetTarget)}
@@ -468,97 +506,78 @@ export function OperatorManagement({
   );
 }
 
-function PasswordResetDialog({
-  operator,
+function InviteOperatorDialog({
   onClose,
-  onReset,
+  onInvited,
 }: {
-  operator: OperatorAccount;
   onClose: () => void;
-  onReset: () => Promise<string>;
+  onInvited: (invitation: InvitationItem) => void;
 }) {
-  const [temporaryPassword, setTemporaryPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<OperatorRole>("approver");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  async function reset() {
-    setLoading(true);
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
     setError("");
     try {
-      setTemporaryPassword(await onReset());
-    } catch (resetError) {
-      setError(
-        resetError instanceof Error ? resetError.message : "Password reset failed.",
-      );
+      const response = await fetch("/api/v1/invitations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, role }),
+      });
+      const payload = (await response.json()) as { invitation?: InvitationItem; error?: string };
+      if (!response.ok || !payload.invitation) {
+        throw new Error(payload.error || "Failed to send invitation.");
+      }
+      onInvited(payload.invitation);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send invitation.");
     } finally {
-      setLoading(false);
-    }
-  }
-
-  async function copyPassword() {
-    try {
-      await navigator.clipboard.writeText(temporaryPassword);
-      setCopied(true);
-    } catch {
-      setError("Copy failed. Select the temporary password manually.");
+      setSubmitting(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4 backdrop-blur-sm" role="presentation">
-      <div className="w-full max-w-md overflow-hidden rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2" role="dialog" aria-modal="true" aria-labelledby="password-reset-title">
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-md overflow-hidden rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2" role="dialog" aria-modal="true" aria-labelledby="invite-operator-title">
         <div className="flex items-start justify-between border-b border-sentinel-line px-6 py-5">
-          <div className="flex gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 text-sentinel-amber"><KeyRound className="h-5 w-5" /></span>
-            <div>
-              <h2 id="password-reset-title" className="text-lg font-semibold tracking-tight text-sentinel-text">Reset operator password</h2>
-              <p className="mt-1 text-xs leading-5 text-sentinel-muted">{operator.displayName} · {operator.email}</p>
+          <div>
+            <h2 id="invite-operator-title" className="text-lg font-semibold tracking-tight text-sentinel-text">Invite team member</h2>
+            <p className="mt-1 text-xs leading-5 text-sentinel-muted">An email invitation will be sent with role assignment.</p>
+          </div>
+          <button className="grid h-9 w-9 place-items-center rounded-lg border border-sentinel-line text-sentinel-muted transition hover:text-sentinel-text" onClick={onClose} aria-label="Close dialog">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form onSubmit={submit} className="space-y-5 px-6 py-5">
+          <label className="block text-xs font-medium text-sentinel-muted">
+            Work email
+            <input className={fieldClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="colleague@company.com" autoFocus required />
+          </label>
+          <label className="block text-xs font-medium text-sentinel-muted">
+            Role
+            <select className={fieldClass} value={role} onChange={(e) => setRole(e.target.value as OperatorRole)}>
+              {roles.map((item) => (
+                <option key={item.value} value={item.value}>{item.label} — {item.description}</option>
+              ))}
+            </select>
+          </label>
+          {error ? (
+            <div className="flex items-start gap-2 rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-200">
+              <ShieldAlert className="h-4 w-4 shrink-0" /> {error}
             </div>
-          </div>
-          <button className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-sentinel-line text-sentinel-muted transition hover:text-sentinel-text" onClick={onClose} aria-label="Close password reset dialog"><X className="h-4 w-4" /></button>
-        </div>
-        <div className="space-y-5 px-6 py-5">
-          {temporaryPassword ? (
-            <>
-              <div className="flex items-start gap-2.5 rounded-xl border border-sentinel-lime/25 bg-sentinel-lime/10 px-3.5 py-3 text-xs leading-5 text-sentinel-text">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-lime" />
-                Reset complete. Every previous session is revoked and this credential must be replaced at the next login.
-              </div>
-              <div>
-                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sentinel-dim">Temporary password · shown once</span>
-                <div className="mt-2 flex items-center gap-2 rounded-xl border border-sentinel-line-strong bg-sentinel-canvas p-2">
-                  <code className="min-w-0 flex-1 overflow-x-auto px-2 font-mono text-xs text-sentinel-text">{temporaryPassword}</code>
-                  <button className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-sentinel-line text-sentinel-muted transition hover:text-sentinel-text" onClick={() => void copyPassword()} aria-label={copied ? "Temporary password copied" : "Copy temporary password"}>
-                    {copied ? <Check className="h-4 w-4 text-sentinel-lime" /> : <Copy className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="text-sm leading-6 text-sentinel-muted">SentinelOps will generate a high-entropy temporary password. Resetting immediately signs this operator out everywhere and clears any login lock.</p>
-              <div className="flex items-start gap-2.5 rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 px-3.5 py-3 text-xs leading-5 text-amber-100">
-                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-amber" />
-                Verify the operator&apos;s identity before sharing the credential through a secure channel.
-              </div>
-            </>
-          )}
-          {error ? <div className="rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-200">{error}</div> : null}
+          ) : null}
           <div className="flex justify-end gap-3 border-t border-sentinel-line pt-5">
-            {temporaryPassword ? (
-              <button className="primary-button" onClick={onClose}>Done</button>
-            ) : (
-              <>
-                <button className="secondary-button" onClick={onClose}>Cancel</button>
-                <button className="primary-button" onClick={() => void reset()} disabled={loading}>
-                  {loading ? <LoaderCircle className="animate-spin" /> : <KeyRound />}
-                  {loading ? "Resetting…" : "Generate temporary password"}
-                </button>
-              </>
-            )}
+            <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
+            <button type="submit" className="primary-button" disabled={submitting}>
+              {submitting ? <LoaderCircle className="animate-spin" /> : <Send className="h-4 w-4" />}
+              {submitting ? "Sending…" : "Send invitation"}
+            </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
@@ -652,6 +671,102 @@ function CreateOperatorDialog({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function ResetPasswordDialog({
+  operator,
+  onClose,
+  onReset,
+}: {
+  operator: OperatorAccount;
+  onClose: () => void;
+  onReset: () => Promise<string>;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
+
+  async function reset() {
+    setLoading(true);
+    setError("");
+    try {
+      const password = await onReset();
+      setTemporaryPassword(password);
+    } catch (resetError) {
+      setError(resetError instanceof Error ? resetError.message : "Password reset failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function copyPassword() {
+    if (!temporaryPassword) return;
+    try {
+      await navigator.clipboard.writeText(temporaryPassword);
+      setCopied(true);
+    } catch {
+      setError("Copy failed. Select the temporary password manually.");
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4 backdrop-blur-sm" role="presentation">
+      <div className="w-full max-w-md overflow-hidden rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2" role="dialog" aria-modal="true" aria-labelledby="password-reset-title">
+        <div className="flex items-start justify-between border-b border-sentinel-line px-6 py-5">
+          <div className="flex gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 text-sentinel-amber"><KeyRound className="h-5 w-5" /></span>
+            <div>
+              <h2 id="password-reset-title" className="text-lg font-semibold tracking-tight text-sentinel-text">Reset operator password</h2>
+              <p className="mt-1 text-xs leading-5 text-sentinel-muted">{operator.displayName} · {operator.email}</p>
+            </div>
+          </div>
+          <button className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-sentinel-line text-sentinel-muted transition hover:text-sentinel-text" onClick={onClose} aria-label="Close password reset dialog"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="space-y-5 px-6 py-5">
+          {temporaryPassword ? (
+            <>
+              <div className="flex items-start gap-2.5 rounded-xl border border-sentinel-lime/25 bg-sentinel-lime/10 px-3.5 py-3 text-xs leading-5 text-sentinel-text">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-lime" />
+                Reset complete. Every previous session is revoked and this credential must be replaced at the next login.
+              </div>
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-sentinel-dim">Temporary password · shown once</span>
+                <div className="mt-2 flex items-center gap-2 rounded-xl border border-sentinel-line-strong bg-sentinel-canvas p-2">
+                  <code className="min-w-0 flex-1 overflow-x-auto px-2 font-mono text-xs text-sentinel-text">{temporaryPassword}</code>
+                  <button className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-sentinel-line text-sentinel-muted transition hover:text-sentinel-text" onClick={() => void copyPassword()} aria-label={copied ? "Temporary password copied" : "Copy temporary password"}>
+                    {copied ? <Check className="h-4 w-4 text-sentinel-lime" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm leading-6 text-sentinel-muted">SentinelOps will generate a high-entropy temporary password. Resetting immediately signs this operator out everywhere and clears any login lock.</p>
+              <div className="flex items-start gap-2.5 rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 px-3.5 py-3 text-xs leading-5 text-amber-100">
+                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-amber" />
+                Verify the operator&apos;s identity before sharing the credential through a secure channel.
+              </div>
+            </>
+          )}
+          {error ? <div className="rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-200">{error}</div> : null}
+          <div className="flex justify-end gap-3 border-t border-sentinel-line pt-5">
+            {temporaryPassword ? (
+              <button className="primary-button" onClick={onClose}>Done</button>
+            ) : (
+              <>
+                <button className="secondary-button" onClick={onClose}>Cancel</button>
+                <button className="primary-button" onClick={() => void reset()} disabled={loading}>
+                  {loading ? <LoaderCircle className="animate-spin" /> : <KeyRound />}
+                  {loading ? "Resetting…" : "Generate temporary password"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
