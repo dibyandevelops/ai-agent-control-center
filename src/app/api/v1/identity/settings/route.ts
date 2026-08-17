@@ -8,6 +8,7 @@ import {
   updateSessionPolicy,
   updateMfaRequirement,
   updateSecurityDigestPreferences,
+  updateSamlEnforcement,
 } from "@/lib/server/identity-provisioning";
 import { operatorCan } from "@/lib/server/operator-roles";
 
@@ -18,11 +19,12 @@ const updateSchema = z.object({
     idleTimeoutMinutes: z.number().int().min(5).max(480),
   }).optional(),
   mfaRequiredForSensitiveActions: z.boolean().optional(),
+  samlEnforced: z.boolean().optional(),
   // Vercel Hobby only invokes cron jobs once per day. Keep the saved preference
   // aligned with the configured 08:00 UTC schedule until the deployment moves
   // to a plan that supports hourly invocations.
   securityDigest: z.object({ channels: z.array(z.enum(["slack", "email"])).min(1).max(2), hourUtc: z.literal(8) }).optional(),
-}).refine((value) => value.allowedEmailDomains || value.sessionPolicy || value.mfaRequiredForSensitiveActions !== undefined || value.securityDigest, {
+}).refine((value) => value.allowedEmailDomains || value.sessionPolicy || value.mfaRequiredForSensitiveActions !== undefined || value.samlEnforced !== undefined || value.securityDigest, {
   message: "At least one identity setting is required.",
 }).refine((value) => !value.sessionPolicy || value.sessionPolicy.idleTimeoutMinutes <= value.sessionPolicy.maxDurationMinutes, {
   message: "Idle timeout cannot exceed the maximum session duration.",
@@ -32,7 +34,7 @@ const updateSchema = z.object({
 async function requireAdmin() {
   const operator = await getOperatorSession();
   if (!operator) return { operator: null, response: NextResponse.json({ error: "Operator authentication required." }, { status: 401 }) };
-  if (!operatorCan(operator.role, "manage_operators")) {
+  if (!operatorCan(operator.role, "manage_identity")) {
     return { operator: null, response: NextResponse.json({ error: "Admin role required." }, { status: 403 }) };
   }
   return { operator, response: null };
@@ -63,6 +65,9 @@ export async function PATCH(request: NextRequest) {
     }
     if (input.mfaRequiredForSensitiveActions !== undefined) {
       return NextResponse.json(await updateMfaRequirement({ ...context, required: input.mfaRequiredForSensitiveActions }));
+    }
+    if (input.samlEnforced !== undefined) {
+      return NextResponse.json(await updateSamlEnforcement({ ...context, enforced: input.samlEnforced }));
     }
     if (input.securityDigest) return NextResponse.json(await updateSecurityDigestPreferences({ ...context, ...input.securityDigest }));
     return NextResponse.json(await updateSessionPolicy({ ...context, ...input.sessionPolicy! }));

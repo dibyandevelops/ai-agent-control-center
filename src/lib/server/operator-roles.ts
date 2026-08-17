@@ -7,7 +7,10 @@ export type OperatorCapability =
   | "manage_api_keys"
   | "manage_integrations"
   | "retry_execution"
-  | "govern_releases";
+  | "govern_releases"
+  | "manage_identity"
+  | "export_audit"
+  | "invite_members";
 
 const capabilities: Record<OperatorRole, ReadonlySet<OperatorCapability>> = {
   admin: new Set([
@@ -19,14 +22,17 @@ const capabilities: Record<OperatorRole, ReadonlySet<OperatorCapability>> = {
     "manage_integrations",
     "retry_execution",
     "govern_releases",
+    "manage_identity",
+    "export_audit",
+    "invite_members",
   ]),
   approver: new Set(["read", "approve"]),
-  auditor: new Set(["read"]),
+  auditor: new Set(["read", "export_audit"]),
 };
 
 export function operatorCan(
   role: OperatorRole,
   capability: OperatorCapability,
 ) {
-  return capabilities[role].has(capability);
+  return capabilities[role]?.has(capability) ?? false;
 }

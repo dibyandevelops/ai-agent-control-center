@@ -1937,10 +1937,33 @@ function LiveConnectionDialog({
 }) {
   const [email, setEmail] = useState("admin@sentinelops.local");
   const [password, setPassword] = useState("");
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotError, setForgotError] = useState("");
   if (!open) return null;
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (forgotMode) {
+      setForgotBusy(true);
+      setForgotError("");
+      try {
+        const response = await fetch("/api/v1/session/forgot-password", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const payload = (await response.json()) as { error?: string };
+        if (!response.ok) throw new Error(payload.error || "Failed to send reset link.");
+        setForgotSent(true);
+      } catch (err) {
+        setForgotError(err instanceof Error ? err.message : "Failed to send reset link.");
+      } finally {
+        setForgotBusy(false);
+      }
+      return;
+    }
     await onConnect(email, password);
   }
 
@@ -1957,10 +1980,11 @@ function LiveConnectionDialog({
           <div className="dialog-title">
             <BrandMark small />
             <div>
-              <h2 id="connect-live-title">Sign in to SentinelOps</h2>
+              <h2 id="connect-live-title">{forgotMode ? "Reset your password" : "Sign in to SentinelOps"}</h2>
               <p>
-                Use your organization operator account. The browser receives an
-                opaque, revocable HttpOnly session.
+                {forgotMode
+                  ? "Enter your operator email to receive a secure recovery link."
+                  : "Use your organization operator account. The browser receives an opaque, revocable HttpOnly session."}
               </p>
             </div>
           </div>
@@ -1985,27 +2009,51 @@ function LiveConnectionDialog({
               required
             />
           </label>
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="At least 12 characters"
-              autoComplete="current-password"
-              minLength={12}
-              required
-            />
-          </label>
-          {error ? (
+          {!forgotMode ? (
+            <label>
+              <div className="flex items-center justify-between">
+                <span>Password</span>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-sentinel-lime hover:underline"
+                  onClick={() => {
+                    setForgotMode(true);
+                    setForgotSent(false);
+                    setForgotError("");
+                  }}
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="At least 12 characters"
+                autoComplete="current-password"
+                minLength={12}
+                required
+              />
+            </label>
+          ) : null}
+          {forgotSent ? (
+            <div className="security-note">
+              <ShieldCheck />
+              <div>
+                <strong>Recovery link sent</strong>
+                <span>If an active operator account exists for {email}, a recovery link has been delivered.</span>
+              </div>
+            </div>
+          ) : null}
+          {forgotError || error ? (
             <div className="security-note !border-sentinel-red/40 !bg-sentinel-red/10">
               <ShieldAlert />
               <div>
-                <strong>Connection failed</strong>
-                <span>{error}</span>
+                <strong>{forgotMode ? "Request failed" : "Connection failed"}</strong>
+                <span>{forgotError || error}</span>
               </div>
             </div>
-          ) : (
+          ) : !forgotMode ? (
             <div className="security-note">
               <ShieldCheck />
               <div>
@@ -2015,31 +2063,41 @@ function LiveConnectionDialog({
                 </span>
               </div>
             </div>
-          )}
+          ) : null}
           <div className="dialog-actions">
             <button
               type="button"
               className="secondary-button"
-              onClick={onClose}
+              onClick={() => {
+                if (forgotMode) {
+                  setForgotMode(false);
+                  setForgotSent(false);
+                  setForgotError("");
+                } else {
+                  onClose();
+                }
+              }}
             >
-              Cancel
+              {forgotMode ? "Back to sign in" : "Cancel"}
             </button>
             <button
               className="primary-button"
               type="submit"
-              disabled={loading}
+              disabled={loading || forgotBusy}
             >
-              <PlugZap /> {loading ? "Signing in…" : "Sign in"}
+              <PlugZap /> {forgotMode ? (forgotBusy ? "Sending link…" : "Send reset link") : loading ? "Signing in…" : "Sign in"}
             </button>
           </div>
-          <button
-            type="button"
-            className="mt-3 w-full text-center text-sm font-semibold text-sentinel-lime transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => void onSso(email)}
-            disabled={loading || !email}
-          >
-            Sign in with your organization SSO
-          </button>
+          {!forgotMode ? (
+            <button
+              type="button"
+              className="mt-3 w-full text-center text-sm font-semibold text-sentinel-lime transition hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => void onSso(email)}
+              disabled={loading || !email}
+            >
+              Sign in with your organization SSO
+            </button>
+          ) : null}
         </form>
       </div>
     </div>
@@ -2097,7 +2155,17 @@ export function ControlCenter({
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const [pendingMfaAction, setPendingMfaAction] = useState<null | { label: string; retry: () => Promise<void> }>(null);
+  const [resetToken, setResetToken] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("resetToken");
+      if (token) setResetToken(token);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const applyLivePayload = useCallback(
     (payload: LiveControlCenterPayload) => {
@@ -2834,6 +2902,119 @@ export function ControlCenter({
       />
       {toast && <Toast message={toast} onClose={() => setToast("")} />}
       {pendingMfaAction ? <MfaVerificationDialog actionLabel={pendingMfaAction.label} onClose={() => setPendingMfaAction(null)} onVerified={pendingMfaAction.retry} /> : null}
+      {resetToken ? (
+        <ResetPasswordFromTokenDialog
+          token={resetToken}
+          onClose={() => setResetToken(null)}
+          onSuccess={() => {
+            setResetToken(null);
+            setToast("Password updated successfully. You can now sign in.");
+            setConnectOpen(true);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ResetPasswordFromTokenDialog({
+  token,
+  onClose,
+  onSuccess,
+}: {
+  token: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/v1/session/reset-password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token, newPassword: password }),
+      });
+      const payload = (await response.json()) as { success?: boolean; error?: string };
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Password reset failed.");
+      }
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Password reset failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="dialog-backdrop" role="presentation">
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="reset-token-title">
+        <div className="dialog-header">
+          <div className="dialog-title">
+            <BrandMark small />
+            <div>
+              <h2 id="reset-token-title">Set new password</h2>
+              <p>Enter your new password to regain access to SentinelOps.</p>
+            </div>
+          </div>
+          <button className="icon-button" onClick={onClose} aria-label="Close dialog">
+            <X />
+          </button>
+        </div>
+        <form onSubmit={submit}>
+          <label>
+            New password
+            <input
+              type="password"
+              minLength={12}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 12 characters"
+              autoFocus
+              required
+            />
+          </label>
+          <label>
+            Confirm new password
+            <input
+              type="password"
+              minLength={12}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repeat new password"
+              required
+            />
+          </label>
+          {error ? (
+            <div className="security-note !border-sentinel-red/40 !bg-sentinel-red/10">
+              <ShieldAlert />
+              <div>
+                <strong>Error</strong>
+                <span>{error}</span>
+              </div>
+            </div>
+          ) : null}
+          <div className="dialog-actions">
+            <button type="button" className="secondary-button" onClick={onClose}>
+              Cancel
+            </button>
+            <button className="primary-button" type="submit" disabled={loading}>
+              <KeyRound /> {loading ? "Updating password…" : "Update password"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
 } from "./identity-core";
 import { hashPassword } from "./password";
 import type { OperatorRole } from "./operator-roles";
+import { updateSamlEnforcement } from "./saml-sso";
 
 export interface IdentitySettings {
   allowedEmailDomains: string[];
@@ -25,7 +26,16 @@ export interface IdentitySettings {
   sessionPolicy: { maxDurationMinutes: number; idleTimeoutMinutes: number };
   mfaRequiredForSensitiveActions: boolean;
   securityDigest: { channels: Array<"slack" | "email">; hourUtc: number };
-  saml: { configured: boolean; enabled: boolean; idpEntityId: string | null; entryPoint: string | null; emailAttribute: string; metadataUrl: string | null };
+  saml: {
+    configured: boolean;
+    enabled: boolean;
+    enforced: boolean;
+    idpEntityId: string | null;
+    entryPoint: string | null;
+    emailAttribute: string;
+    certExpiresAt: string | null;
+    metadataUrl: string | null;
+  };
 }
 
 interface IdentitySettingsRow {
@@ -35,9 +45,12 @@ interface IdentitySettingsRow {
   scim_token_created_at: Date | null;
   last_scim_sync_at: Date | null;
   saml_enabled: boolean;
+  saml_enforced: boolean;
   saml_idp_entity_id: string | null;
   saml_entry_point: string | null;
+  saml_idp_certificate: string | null;
   saml_email_attribute: string;
+  saml_cert_expires_at: Date | null;
   session_max_duration_minutes: number;
   session_idle_timeout_minutes: number;
   mfa_required_for_sensitive_actions: boolean;
@@ -59,9 +72,13 @@ function serializeSettings(row: IdentitySettingsRow | undefined, organizationId:
     mfaRequiredForSensitiveActions: row?.mfa_required_for_sensitive_actions ?? false,
     securityDigest: { channels: row?.security_digest_channels ?? ["slack", "email"], hourUtc: row?.security_digest_hour_utc ?? 8 },
     saml: {
-      configured: Boolean(row?.saml_idp_entity_id && row.saml_entry_point), enabled: row?.saml_enabled ?? false,
-      idpEntityId: row?.saml_idp_entity_id ?? null, entryPoint: row?.saml_entry_point ?? null,
+      configured: Boolean(row?.saml_idp_entity_id && row.saml_entry_point && row.saml_idp_certificate),
+      enabled: row?.saml_enabled ?? false,
+      enforced: row?.saml_enforced ?? false,
+      idpEntityId: row?.saml_idp_entity_id ?? null,
+      entryPoint: row?.saml_entry_point ?? null,
       emailAttribute: row?.saml_email_attribute ?? "email",
+      certExpiresAt: row?.saml_cert_expires_at?.toISOString() ?? null,
       metadataUrl: row?.saml_idp_entity_id ? `${getSentinelOpsPublicUrl()}/api/v1/sso/saml/metadata/${organizationId}` : null,
     },
   };
@@ -71,10 +88,11 @@ export async function getOrganizationIdentitySettings(organizationId: string) {
   const result = await getPool().query<IdentitySettingsRow>(
     `select allowed_email_domains, scim_token_hash, scim_token_hint,
             scim_token_created_at, last_scim_sync_at, saml_enabled,
-            saml_idp_entity_id, saml_entry_point, saml_email_attribute,
+            saml_enforced, saml_idp_entity_id, saml_entry_point, saml_idp_certificate,
+            saml_email_attribute, saml_cert_expires_at,
             session_max_duration_minutes, session_idle_timeout_minutes,
-            mfa_required_for_sensitive_actions
-            ,security_digest_channels, security_digest_hour_utc
+            mfa_required_for_sensitive_actions,
+            security_digest_channels, security_digest_hour_utc
        from organization_identity_settings
       where organization_id = $1`,
     [organizationId],
@@ -199,16 +217,34 @@ export async function updateMfaRequirement(input: {
   });
 }
 
-export async function updateSecurityDigestPreferences(input: { organizationId: string; operatorId: string; operatorEmail: string; channels: Array<"slack" | "email">; hourUtc: number }) {
+export async function updateSecurityDigestPreferences(input: {
+  organizationId: string;
+  operatorId: string;
+  operatorEmail: string;
+  channels: Array<"slack" | "email">;
+  hourUtc: number;
+}) {
   if (input.channels.length === 0) throw new ConflictError("Choose at least one security digest channel.");
   if (input.hourUtc !== 8) throw new ConflictError("Security digests are scheduled for 08:00 UTC on the current hosting plan.");
   return withTransaction(async (client) => {
-    await client.query(`insert into organization_identity_settings (organization_id, security_digest_channels, security_digest_hour_utc) values ($1,$2::text[],$3)
-      on conflict (organization_id) do update set security_digest_channels=excluded.security_digest_channels,security_digest_hour_utc=excluded.security_digest_hour_utc,updated_at=now()`, [input.organizationId, input.channels, input.hourUtc]);
-    await appendAuditEvent(client, { organizationId: input.organizationId, requestId: null, eventType: "identity.security_digest_preferences_updated", actorType: "human", actorId: input.operatorEmail, payload: { operatorId: input.operatorId, channels: input.channels, hourUtc: input.hourUtc } });
+    await client.query(
+      `insert into organization_identity_settings (organization_id, security_digest_channels, security_digest_hour_utc) values ($1,$2::text[],$3)
+       on conflict (organization_id) do update set security_digest_channels=excluded.security_digest_channels,security_digest_hour_utc=excluded.security_digest_hour_utc,updated_at=now()`,
+      [input.organizationId, input.channels, input.hourUtc],
+    );
+    await appendAuditEvent(client, {
+      organizationId: input.organizationId,
+      requestId: null,
+      eventType: "identity.security_digest_preferences_updated",
+      actorType: "human",
+      actorId: input.operatorEmail,
+      payload: { operatorId: input.operatorId, channels: input.channels, hourUtc: input.hourUtc },
+    });
     return { securityDigest: { channels: input.channels, hourUtc: input.hourUtc } };
   });
 }
+
+export { updateSamlEnforcement };
 
 export async function rotateOrganizationScimToken(input: {
   organizationId: string;

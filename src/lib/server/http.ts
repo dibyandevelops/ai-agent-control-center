@@ -2,9 +2,16 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { AuthenticationError, ConflictError, NotFoundError } from "./errors";
+import {
+  AuthenticationError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "./errors";
+import { logError } from "./monitoring";
 
-export function apiError(error: unknown) {
+export function apiError(error: unknown, route?: string) {
   if (error instanceof ZodError) {
     return NextResponse.json(
       {
@@ -17,8 +24,14 @@ export function apiError(error: unknown) {
       { status: 400 },
     );
   }
+  if (error instanceof ValidationError) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
   if (error instanceof AuthenticationError) {
     return NextResponse.json({ error: error.message }, { status: 401 });
+  }
+  if (error instanceof ForbiddenError) {
+    return NextResponse.json({ error: error.message }, { status: 403 });
   }
   if (error instanceof NotFoundError) {
     return NextResponse.json({ error: error.message }, { status: 404 });
@@ -29,7 +42,7 @@ export function apiError(error: unknown) {
 
   const message =
     error instanceof Error ? error.message : "Unexpected server error.";
-  console.error("SentinelOps API error", error);
+  logError(error, "SentinelOps API unhandled exception", { route });
   const configurationError = message.includes("DATABASE_URL");
   return NextResponse.json(
     {

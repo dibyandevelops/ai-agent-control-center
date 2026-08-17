@@ -245,6 +245,7 @@ export async function loginOperator(email: string, password: string) {
     status: "active" | "disabled";
     locked_until: Date | null;
     allowed_email_domains: string[] | null;
+    saml_enforced: boolean | null;
   }>(
     `
       select
@@ -258,7 +259,8 @@ export async function loginOperator(email: string, password: string) {
         op.password_change_required,
         op.status,
         op.locked_until,
-        identity_settings.allowed_email_domains
+        identity_settings.allowed_email_domains,
+        identity_settings.saml_enforced
       from operators op
       join organizations org on org.id = op.organization_id
       left join organization_identity_settings identity_settings
@@ -272,6 +274,9 @@ export async function loginOperator(email: string, password: string) {
   if (!row) {
     await hashPassword(password);
     return null;
+  }
+  if (row.saml_enforced) {
+    throw new AuthenticationError("Your organization enforces SAML SSO. Please sign in with your organization identity provider.");
   }
   const valid = await verifyPassword(password, row.password_hash);
   if (row.status !== "active") return null;
