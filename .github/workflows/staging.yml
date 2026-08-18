@@ -77,7 +77,7 @@ jobs:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           DB_SSL: "true"
           DB_SSL_REJECT_UNAUTHORIZED: "true"
-        run: pnpm db:migrate
+        run: pnpm db:migrate && pnpm db:seed
 
       - name: Deploy staging artifact to Vercel
         id: deploy
