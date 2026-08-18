@@ -395,7 +395,7 @@ async function exerciseJourney(baseUrl) {
     action: "deploy.release",
     resource: `${releaseRepository}@${releaseTag}`,
     environment: "production",
-    context: { changeTicket: "E2E-1001" },
+    context: { changeTicket: "E2E-1001", ...(expectDryRun ? { dryRun: true } : {}) },
   };
 
   const evaluated = await jsonRequest(`${baseUrl}/api/v1/actions/evaluate`, {

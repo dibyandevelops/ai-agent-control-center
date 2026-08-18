@@ -183,7 +183,8 @@ async function executeClaimedRelease(
   const env = getServerEnv();
   try {
     const isGithubConfigured = Boolean(env.GITHUB_APP_PRIVATE_KEY && env.GITHUB_APP_ID);
-    const mode = (env.RELEASE_EXECUTION_MODE === "github_draft" && isGithubConfigured)
+    const isDryRunRequested = release.context?.dryRun === true || release.context?.dryRun === "true";
+    const mode = (env.RELEASE_EXECUTION_MODE === "github_draft" && isGithubConfigured && !isDryRunRequested)
       ? "github_draft"
       : "dry_run";
     const plan = resolveReleaseExecutionPlan({
