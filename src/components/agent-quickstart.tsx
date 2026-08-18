@@ -50,7 +50,7 @@ export function AgentQuickstart({ onCreateKey }: { onCreateKey: () => void }) {
           <ol className="mt-5 space-y-1">
             {[
               { icon: KeyRound, title: "Create a credential", detail: "Copy it to your secret manager." },
-              { icon: Code2, title: "Add the evaluation call", detail: "No SDK or Python project is required." },
+              { icon: Code2, title: "Add the evaluation call", detail: "Use our cURL, Node, or Python SDK code block." },
               { icon: ShieldCheck, title: "Honor the decision", detail: "Execute only after allowed or approved." },
             ].map((step, index) => {
               const Icon = step.icon;
