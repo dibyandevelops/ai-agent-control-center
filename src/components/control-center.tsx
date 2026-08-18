@@ -1652,6 +1652,7 @@ function IntegrationLogo({ integration }: { integration: Integration }) {
   if (integration.name === "Slack") return <Zap />;
   if (integration.name === "AWS") return <Boxes />;
   if (integration.name === "Microsoft 365") return <FileKey2 />;
+  if (integration.name === "Python SDK") return <Bot />;
   return <PlugZap />;
 }
 
@@ -1673,6 +1674,7 @@ function IntegrationsView({
   onViewEvidence,
   onRefresh,
   onNotify,
+  onOpenCredentials,
 }: {
   items: Integration[];
   live: boolean;
@@ -1684,6 +1686,7 @@ function IntegrationsView({
   onViewEvidence: (requestId: string) => void;
   onRefresh: () => Promise<void>;
   onNotify: (message: string) => void;
+  onOpenCredentials?: () => void;
 }) {
   const [demoItems, setDemoItems] = useState(integrations);
   const [retrying, setRetrying] = useState(false);
@@ -1749,7 +1752,14 @@ function IntegrationsView({
             </div>
             <div className="integration-footer">
               <span>{integration.events}</span>
-              {live ? (
+              {integration.id === "int-python-sdk" ? (
+                <button
+                  className="secondary-button"
+                  onClick={onOpenCredentials}
+                >
+                  Configure
+                </button>
+              ) : live ? (
                 (integration.deadLetters ?? 0) > 0 ? (
                   <button
                     className="primary-button"
@@ -2854,6 +2864,7 @@ export function ControlCenter({
             onViewEvidence={setSelectedRequestId}
             onRefresh={refreshLiveWorkspace}
             onNotify={setToast}
+            onOpenCredentials={() => setView("credentials")}
           />
         )}
         {view === "credentials" && operatorIdentity?.role === "admin" && (

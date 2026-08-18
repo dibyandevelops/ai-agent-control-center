@@ -302,6 +302,17 @@ export const integrations: Integration[] = [
     category: "Infrastructure",
     events: "Not connected",
   },
+  {
+    id: "int-python-sdk",
+    name: "Python SDK",
+    description: "Connect Python-based autonomous AI agents with native decorator guards.",
+    connected: true,
+    category: "Agent SDK",
+    events: "Active client",
+    status: "configured",
+    mode: "Evaluation & Guarding",
+    url: "/docs/PYTHON_INTEGRATION.md",
+  },
 ];
 
 export const chartData = [

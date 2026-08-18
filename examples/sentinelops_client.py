@@ -87,7 +87,7 @@ class SentinelOpsClient:
         """
         Poll SentinelOps until a pending action request receives a final decision.
         """
-        url = f"{self.base_url}/api/v1/actions/{request_id}/details"
+        url = f"{self.base_url}/api/v1/actions/{request_id}"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
         }
@@ -98,10 +98,9 @@ class SentinelOpsClient:
             try:
                 with urllib.request.urlopen(req) as response:
                     data = json.loads(response.read().decode("utf-8"))
-                    # The details endpoint returns evaluation details, decision status etc.
-                    status = data.get("payload", {}).get("decision", {}).get("status")
+                    status = data.get("status")
                     if status in ("approved", "denied"):
-                        return data.get("payload", {})
+                        return data
             except Exception as e:
                 # Log error or continue polling
                 pass
@@ -127,7 +126,7 @@ class SentinelOpsClient:
                 elif status == "pending":
                     print(f"Action '{action}' is pending approval (Request: {decision.get('requestId')}). Waiting...")
                     details = self.wait_for_decision(decision.get("requestId"))
-                    if details.get("decision", {}).get("status") == "approved":
+                    if details.get("status") == "approved":
                         return func(*args, **kwargs)
                     else:
                         raise SentinelOpsError(f"Action '{action}' was denied by operator.")
