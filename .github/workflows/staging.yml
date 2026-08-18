@@ -79,40 +79,16 @@ jobs:
           DB_SSL_REJECT_UNAUTHORIZED: "true"
         run: pnpm db:migrate
 
-      - name: Prepare Vercel project linkage
-        shell: bash
-        run: |
-          rm -rf .vercel
-          mkdir -p .vercel
-          cat <<EOF > .vercel/project.json
-          {
-            "orgId": "${VERCEL_ORG_ID}",
-            "projectId": "${VERCEL_PROJECT_ID}"
-          }
-          EOF
-
-      - name: Pull staging project configuration
-        run: >-
-          pnpm dlx vercel@58.5.1 pull
-          --yes
-          --environment=production
-          --token="$VERCEL_TOKEN"
-
-      - name: Build staging artifact
-        run: >-
-          pnpm dlx vercel@58.5.1 build
-          --prod
-          --token="$VERCEL_TOKEN"
-
-      - name: Deploy tested artifact
+      - name: Deploy staging artifact to Vercel
         id: deploy
         shell: bash
         run: |
           set -euo pipefail
+          rm -rf .vercel
           git_metadata_dir="$RUNNER_TEMP/sentinelops-git-metadata"
-          mv .git "$git_metadata_dir"
-          trap 'mv "$git_metadata_dir" .git' EXIT
-          deployment_url="$(pnpm dlx vercel@58.5.1 deploy --prebuilt --prod --token="$VERCEL_TOKEN" | tail -n 1)"
+          mv .git "$git_metadata_dir" 2>/dev/null || true
+          trap 'mv "$git_metadata_dir" .git 2>/dev/null || true' EXIT
+          deployment_url="$(pnpm dlx vercel@58.5.1 deploy --prod --yes --token="$VERCEL_TOKEN" | tail -n 1)"
           echo "url=${deployment_url}" >> "$GITHUB_OUTPUT"
 
       - name: Verify deployed health
