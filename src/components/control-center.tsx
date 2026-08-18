@@ -56,6 +56,7 @@ import {
   type ActivityPoint,
 } from "@/lib/dashboard-metrics";
 import { MfaVerificationDialog } from "@/components/mfa-verification-dialog";
+import { PythonSDKConnection } from "@/components/python-sdk-connection";
 import type {
   ActionDetail,
   Agent,
@@ -1674,7 +1675,6 @@ function IntegrationsView({
   onViewEvidence,
   onRefresh,
   onNotify,
-  onOpenCredentials,
 }: {
   items: Integration[];
   live: boolean;
@@ -1686,9 +1686,9 @@ function IntegrationsView({
   onViewEvidence: (requestId: string) => void;
   onRefresh: () => Promise<void>;
   onNotify: (message: string) => void;
-  onOpenCredentials?: () => void;
 }) {
   const [demoItems, setDemoItems] = useState(integrations);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const visibleItems = live ? items : demoItems;
   const driftIncidents = visibleItems.find((item) => item.name === "GitHub")
@@ -1755,9 +1755,9 @@ function IntegrationsView({
               {integration.id === "int-python-sdk" ? (
                 <button
                   className="secondary-button"
-                  onClick={onOpenCredentials}
+                  onClick={() => setExpandedId(expandedId === integration.id ? null : integration.id)}
                 >
-                  Configure
+                  {expandedId === integration.id ? "Hide Guide" : "Configure"}
                 </button>
               ) : live ? (
                 (integration.deadLetters ?? 0) > 0 ? (
@@ -1810,6 +1810,9 @@ function IntegrationsView({
                 onChanged={onRefresh}
                 onNotify={onNotify}
               />
+            ) : null}
+            {expandedId === integration.id && integration.id === "int-python-sdk" ? (
+              <PythonSDKConnection />
             ) : null}
           </article>
         ))}
@@ -2864,7 +2867,6 @@ export function ControlCenter({
             onViewEvidence={setSelectedRequestId}
             onRefresh={refreshLiveWorkspace}
             onNotify={setToast}
-            onOpenCredentials={() => setView("credentials")}
           />
         )}
         {view === "credentials" && operatorIdentity?.role === "admin" && (
