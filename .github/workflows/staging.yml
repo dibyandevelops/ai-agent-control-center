@@ -79,8 +79,17 @@ jobs:
           DB_SSL_REJECT_UNAUTHORIZED: "true"
         run: pnpm db:migrate
 
-      - name: Clean stale Vercel project state
-        run: rm -rf .vercel
+      - name: Prepare Vercel project linkage
+        shell: bash
+        run: |
+          rm -rf .vercel
+          mkdir -p .vercel
+          cat <<EOF > .vercel/project.json
+          {
+            "orgId": "${VERCEL_ORG_ID}",
+            "projectId": "${VERCEL_PROJECT_ID}"
+          }
+          EOF
 
       - name: Pull staging project configuration
         run: >-
