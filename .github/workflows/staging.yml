@@ -79,6 +79,9 @@ jobs:
           DB_SSL_REJECT_UNAUTHORIZED: "true"
         run: pnpm db:migrate
 
+      - name: Clean stale Vercel project state
+        run: rm -rf .vercel
+
       - name: Pull staging project configuration
         run: >-
           pnpm dlx vercel@58.5.1 pull
