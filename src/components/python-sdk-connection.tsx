@@ -138,23 +138,23 @@ export function PythonSDKConnection() {
   }
 
   return (
-    <div className="mt-4 border-t border-sentinel-border pt-4">
+    <div className="col-span-full mt-4 border-t border-sentinel-border pt-4" style={{ gridColumn: "1 / -1" }}>
       <div className="flex items-center gap-2 text-xs font-semibold text-white">
         <Terminal className="h-4 w-4 text-sentinel-lime" />
         <span>Python SDK Quickstart & Connection Guide</span>
       </div>
       
-      <p className="mt-2 text-[11px] leading-5 text-sentinel-muted">
+      <p className="mt-2 text-[11px] leading-5 text-sentinel-muted font-normal">
         SentinelOps includes a Python helper client designed to secure autonomous AI agents. Copy the helper class and select your integration pattern below.
       </p>
 
       {/* Tab Menu */}
-      <div className="mt-3 flex items-center justify-between border-b border-sentinel-border bg-sentinel-canvas/30 px-3 py-1">
+      <div className="mt-4 flex items-center justify-between border-b border-sentinel-border bg-sentinel-canvas/20 px-1 py-1 rounded">
         <div className="flex items-center gap-1">
           {[
-            { id: "client", label: "1. SentinelOpsClient Helper" },
-            { id: "decorator", label: "2. Function Decorator Guard" },
-            { id: "manual", label: "3. Autonomous Agent Loop" },
+            { id: "client", label: "1. Client Class" },
+            { id: "decorator", label: "2. Decorator" },
+            { id: "manual", label: "3. Manual Loop" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -162,9 +162,9 @@ export function PythonSDKConnection() {
                 setActiveTab(tab.id as "client" | "decorator" | "manual");
                 setCopied(false);
               }}
-              className={`px-3 py-2 text-[10px] font-semibold transition ${
+              className={`rounded px-2.5 py-1.5 text-[10px] font-semibold transition ${
                 activeTab === tab.id
-                  ? "border-b-2 border-sentinel-lime text-white"
+                  ? "bg-sentinel-raised text-white shadow-sm"
                   : "text-sentinel-muted hover:text-sentinel-text"
               }`}
             >
@@ -183,14 +183,14 @@ export function PythonSDKConnection() {
       </div>
 
       {/* Code Area */}
-      <div className="relative mt-2 rounded bg-sentinel-canvas/70 p-3 font-mono text-[10px] leading-5 text-sentinel-text">
-        <pre className="max-h-[250px] overflow-auto">
+      <div className="relative mt-2 rounded bg-sentinel-canvas/50 border border-sentinel-border/50 p-3 font-mono text-[10px] leading-5 text-sentinel-text">
+        <pre className="max-h-[250px] overflow-x-auto whitespace-pre font-mono text-[10px] leading-5 text-sentinel-text">
           <code>{activeSnippet}</code>
         </pre>
       </div>
 
       {/* Helper Alert */}
-      <div className="mt-3 flex items-start gap-2.5 rounded border border-sentinel-lime/20 bg-sentinel-lime/5 p-2.5 text-[11px] leading-4 text-sentinel-muted">
+      <div className="mt-3 flex items-start gap-2.5 rounded border border-sentinel-lime/20 bg-sentinel-lime/5 p-2.5 text-[10px] leading-4 text-sentinel-muted">
         <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sentinel-lime" />
         <div>
           <span>Ensure you have generated an API key on the Credentials page and configured it locally:</span>
