@@ -19,6 +19,8 @@
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mjs",
     "db:seed": "node --env-file-if-exists=.env.local scripts/seed.mjs",
     "operator:create": "node --env-file-if-exists=.env.local scripts/create-operator.mjs",
+    "demo": "node --env-file-if-exists=.env.local scripts/demo-runner.mjs",
+    "demo:reset": "node --env-file-if-exists=.env.local scripts/seed.mjs",
     "demo:release": "node --env-file-if-exists=.env.local examples/dry-run-release-agent.mjs"
   },
   "dependencies": {
