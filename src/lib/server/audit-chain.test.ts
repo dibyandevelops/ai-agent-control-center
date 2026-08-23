@@ -52,4 +52,26 @@ describe("audit chain verification", () => {
       firstInvalidEventId: "2",
     });
   });
+
+  it("verifies a pruned chain anchored by a historical checkpoint", () => {
+    const historicalTerminalHash = "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90";
+    const firstLiveEvent = createEvent("101", historicalTerminalHash, { status: "resumed" });
+    const secondLiveEvent = createEvent("102", firstLiveEvent.eventHash, { status: "completed" });
+
+    // Without checkpoint, firstLiveEvent has an unexpected non-null previousHash
+    expect(verifyAuditChain([firstLiveEvent, secondLiveEvent])).toEqual({
+      verified: false,
+      firstInvalidEventId: "101",
+    });
+
+    // With matching checkpoint anchor, verification passes
+    expect(
+      verifyAuditChain([firstLiveEvent, secondLiveEvent], {
+        checkpoints: [{ terminalHash: historicalTerminalHash }],
+      }),
+    ).toEqual({
+      verified: true,
+      firstInvalidEventId: null,
+    });
+  });
 });

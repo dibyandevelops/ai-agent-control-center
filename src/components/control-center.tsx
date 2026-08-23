@@ -1027,6 +1027,7 @@ function AuditView({
   const [integrity, setIntegrity] = useState<{
     verified: boolean;
     eventsChecked: number;
+    checkpointsCount?: number;
     organizationsChecked: number;
     firstInvalidEventId: string | null;
     checkedAt: string;
@@ -1125,6 +1126,7 @@ function AuditView({
             </strong>
             <p className="mt-1 text-xs text-sentinel-muted">
               Checked {integrity.eventsChecked.toLocaleString()} events across {integrity.organizationsChecked.toLocaleString()} organization{integrity.organizationsChecked === 1 ? "" : "s"} at {new Date(integrity.checkedAt).toLocaleString()}.
+              {integrity.checkpointsCount ? ` Anchored by ${integrity.checkpointsCount} historical archival checkpoint${integrity.checkpointsCount === 1 ? "" : "s"}.` : ""}
               {integrity.firstInvalidEventId
                 ? ` First invalid event: ${integrity.firstInvalidEventId}.`
                 : " Every event hash and previous-hash link is intact."}

@@ -47,8 +47,26 @@ export function calculateAuditEventHash(
     .digest("hex");
 }
 
-export function verifyAuditChain(events: AuditChainEvent[]) {
-  let expectedPreviousHash: string | null = null;
+export function verifyAuditChain(
+  events: AuditChainEvent[],
+  options?: {
+    initialPreviousHash?: string | null;
+    checkpoints?: Array<{ terminalHash: string }>;
+  },
+) {
+  if (events.length === 0) {
+    return { verified: true, firstInvalidEventId: null };
+  }
+
+  let expectedPreviousHash: string | null = options?.initialPreviousHash ?? null;
+  if (events[0].previousHash !== null && expectedPreviousHash === null && options?.checkpoints) {
+    const matchingCheckpoint = options.checkpoints.find(
+      (checkpoint) => checkpoint.terminalHash === events[0].previousHash,
+    );
+    if (matchingCheckpoint) {
+      expectedPreviousHash = matchingCheckpoint.terminalHash;
+    }
+  }
 
   for (const event of events) {
     if (event.previousHash !== expectedPreviousHash) {

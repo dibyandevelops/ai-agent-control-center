@@ -14,31 +14,44 @@ export async function GET() {
       );
     }
 
-    const result = await getPool().query<{
-      id: string;
-      organization_id: string;
-      request_id: string | null;
-      event_type: string;
-      actor_type: "agent" | "policy" | "human" | "system";
-      actor_id: string;
-      payload: Record<string, unknown>;
-      previous_hash: string | null;
-      event_hash: string;
-    }>(`
-      select
-        id::text,
-        organization_id,
-        request_id,
-        event_type,
-        actor_type,
-        actor_id,
-        payload,
-        previous_hash,
-        event_hash
-      from audit_events ae
-      where ae.organization_id = $1
-      order by ae.organization_id, ae.id asc
-    `, [operator.organizationId]);
+    const pool = getPool();
+    const [result, checkpointsResult] = await Promise.all([
+      pool.query<{
+        id: string;
+        organization_id: string;
+        request_id: string | null;
+        event_type: string;
+        actor_type: "agent" | "policy" | "human" | "system";
+        actor_id: string;
+        payload: Record<string, unknown>;
+        previous_hash: string | null;
+        event_hash: string;
+      }>(`
+        select
+          id::text,
+          organization_id,
+          request_id,
+          event_type,
+          actor_type,
+          actor_id,
+          payload,
+          previous_hash,
+          event_hash
+        from audit_events ae
+        where ae.organization_id = $1
+        order by ae.organization_id, ae.id asc
+      `, [operator.organizationId]),
+      pool.query<{ terminal_hash: string }>(`
+        select terminal_hash
+        from audit_retention_checkpoints
+        where organization_id = $1
+        order by end_time asc
+      `, [operator.organizationId]),
+    ]);
+
+    const checkpoints = checkpointsResult.rows.map((row) => ({
+      terminalHash: row.terminal_hash,
+    }));
 
     const chains = new Map<string, AuditChainEvent[]>();
     for (const row of result.rows) {
@@ -57,11 +70,12 @@ export async function GET() {
     }
 
     for (const events of chains.values()) {
-      const verification = verifyAuditChain(events);
+      const verification = verifyAuditChain(events, { checkpoints });
       if (!verification.verified) {
         return NextResponse.json({
           verified: false,
           eventsChecked: result.rowCount ?? result.rows.length,
+          checkpointsCount: checkpoints.length,
           organizationsChecked: chains.size,
           firstInvalidEventId: verification.firstInvalidEventId,
           checkedAt: new Date().toISOString(),
