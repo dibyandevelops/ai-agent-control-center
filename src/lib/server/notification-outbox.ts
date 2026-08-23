@@ -2,6 +2,7 @@ import "server-only";
 
 import type { PoolClient } from "pg";
 import { z } from "zod";
+import { enqueueHttpsWebhookFanout } from "./https-webhooks";
 import { scheduleNotificationOutboxDispatch } from "./notification-dispatch";
 
 export type PolicyNotificationKind =
@@ -112,24 +113,55 @@ export async function enqueueSecurityDigestNotification(client: PoolClient, inpu
      on conflict (channel, dedupe_key) do nothing returning id`,
     [input.organizationId, `security-digest:${input.organizationId}:${payload.date}`, JSON.stringify(payload)],
   );
-  return notificationEnqueueResult(result);
+  return finalizeNotificationEnqueue(client, result, {
+    organizationId: input.organizationId,
+    channel: "slack",
+    eventType: "security.daily_digest",
+    dedupeKey: `security-digest:${input.organizationId}:${payload.date}`,
+    payload,
+  });
 }
 
 export async function enqueueSecurityDigestEmail(client: PoolClient, input: { organizationId: string; payload: SecurityDigestNotificationPayload }) {
   const payload = securityDigestNotificationSchema.parse(input.payload);
   const result = await client.query<{ id: string }>(`insert into notification_outbox (organization_id, channel, event_type, dedupe_key, payload)
     values ($1, 'email', 'security.daily_digest', $2, $3::jsonb) on conflict (channel, dedupe_key) do nothing returning id`, [input.organizationId, `security-digest-email:${input.organizationId}:${payload.date}`, JSON.stringify(payload)]);
-  return notificationEnqueueResult(result);
+  return finalizeNotificationEnqueue(client, result, {
+    organizationId: input.organizationId,
+    channel: "email",
+    eventType: "security.daily_digest",
+    dedupeKey: `security-digest-email:${input.organizationId}:${payload.date}`,
+    payload,
+  });
 }
 
 export type GitHubAppLifecycleAlertPayload = z.infer<
   typeof githubAppLifecycleAlertSchema
 >;
 
-function notificationEnqueueResult(result: { rows: { id: string }[] }) {
+async function finalizeNotificationEnqueue(
+  client: PoolClient,
+  result: { rows: { id: string }[] },
+  input: {
+    organizationId: string;
+    channel: string;
+    eventType: string;
+    dedupeKey: string;
+    payload: unknown;
+  },
+) {
+  const httpsInserted =
+    input.channel === "slack"
+      ? await enqueueHttpsWebhookFanout(client, {
+          organizationId: input.organizationId,
+          eventType: input.eventType,
+          dedupeKey: input.dedupeKey,
+          payload: input.payload,
+        })
+      : false;
   const id = result.rows[0]?.id ?? null;
-  if (id) scheduleNotificationOutboxDispatch();
-  return { enqueued: Boolean(id), id };
+  if (id || httpsInserted) scheduleNotificationOutboxDispatch();
+  return { enqueued: Boolean(id) || httpsInserted, id };
 }
 
 export async function enqueueGitHubAppLifecycleAlert(
@@ -155,7 +187,13 @@ export async function enqueueGitHubAppLifecycleAlert(
       JSON.stringify(payload),
     ],
   );
-  return notificationEnqueueResult(result);
+  return finalizeNotificationEnqueue(client, result, {
+    organizationId: input.organizationId,
+    channel: "slack",
+    eventType: "github.app_lifecycle_alert",
+    dedupeKey: `github-app-lifecycle:${payload.deliveryId}`,
+    payload,
+  });
 }
 
 export async function enqueueGitHubDriftNotification(
@@ -180,7 +218,13 @@ export async function enqueueGitHubDriftNotification(
       JSON.stringify(input.payload),
     ],
   );
-  return notificationEnqueueResult(result);
+  return finalizeNotificationEnqueue(client, result, {
+    organizationId: input.organizationId,
+    channel: "slack",
+    eventType: "github.release_drift_detected",
+    dedupeKey: `github-drift:${input.payload.incidentId}`,
+    payload: input.payload,
+  });
 }
 
 export async function enqueueReleaseGovernanceNotification(
@@ -205,7 +249,13 @@ export async function enqueueReleaseGovernanceNotification(
       JSON.stringify(input.payload),
     ],
   );
-  return notificationEnqueueResult(result);
+  return finalizeNotificationEnqueue(client, result, {
+    organizationId: input.organizationId,
+    channel: "slack",
+    eventType: "release.draft_governance_requested",
+    dedupeKey: `release-governance:${input.payload.governanceId}:requested`,
+    payload: input.payload,
+  });
 }
 
 export async function enqueueReleaseExecutionFailureNotification(
@@ -234,7 +284,13 @@ export async function enqueueReleaseExecutionFailureNotification(
       JSON.stringify(input.payload),
     ],
   );
-  return notificationEnqueueResult(result);
+  return finalizeNotificationEnqueue(client, result, {
+    organizationId: input.organizationId,
+    channel: "slack",
+    eventType: "action.execution_failed",
+    dedupeKey: `release-execution:${input.payload.requestId}:failed:${input.payload.attemptCount}`,
+    payload: input.payload,
+  });
 }
 
 export async function enqueueActionApprovalNotification(
@@ -263,7 +319,13 @@ export async function enqueueActionApprovalNotification(
       JSON.stringify(input.payload),
     ],
   );
-  return notificationEnqueueResult(result);
+  return finalizeNotificationEnqueue(client, result, {
+    organizationId: input.organizationId,
+    channel: "slack",
+    eventType: "action.approval_requested",
+    dedupeKey: `action-approval:${input.payload.requestId}:requested`,
+    payload: input.payload,
+  });
 }
 
 export async function enqueuePolicyActivationNotification(
@@ -299,5 +361,16 @@ export async function enqueuePolicyActivationNotification(
       JSON.stringify(input.payload),
     ],
   );
-  return notificationEnqueueResult(result);
+  return finalizeNotificationEnqueue(client, result, {
+    organizationId: input.organizationId,
+    channel: "slack",
+    eventType: `policy.activation_${input.payload.kind}`,
+    dedupeKey: [
+      "policy-activation",
+      input.payload.requestId,
+      input.payload.kind,
+      input.sequence,
+    ].join(":"),
+    payload: input.payload,
+  });
 }

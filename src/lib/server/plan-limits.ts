@@ -4,9 +4,9 @@ import type { PoolClient } from "pg";
 import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
 import { ConflictError } from "./errors";
 
-export type LimitResource = "agents" | "repositories" | "pending_approvals";
+export type LimitResource = "agents" | "repositories" | "pending_approvals" | "https_webhooks";
 
-const limitConfig: Record<LimitResource, { table: string; where: string; label: string; limitKey: "agents" | "repositories" | "pendingApprovals" }> = {
+const limitConfig: Record<LimitResource, { table: string; where: string; label: string; limitKey: "agents" | "repositories" | "pendingApprovals" | "httpsWebhooks" }> = {
   agents: {
     table: "agents",
     where: "",
@@ -24,6 +24,12 @@ const limitConfig: Record<LimitResource, { table: string; where: string; label: 
     where: "and decision_status = 'pending' and (expires_at is null or expires_at > now())",
     label: "pending approvals",
     limitKey: "pendingApprovals",
+  },
+  https_webhooks: {
+    table: "organization_https_webhooks",
+    where: "and revoked_at is null",
+    label: "HTTPS webhook destinations",
+    limitKey: "httpsWebhooks",
   },
 };
 

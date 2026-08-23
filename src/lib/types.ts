@@ -294,6 +294,19 @@ export interface Integration {
   githubConnections?: GitHubConnection[];
   slackConnections?: SlackConnection[];
   slackAuthenticationMode?: "oauth" | "not_configured";
+  httpsWebhooks?: HttpsWebhook[];
+}
+
+export interface HttpsWebhook {
+  id: string;
+  name: string;
+  destinationUrl: string;
+  secretPrefix: string;
+  enabled: boolean;
+  lastDeliveredAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SlackConnection {

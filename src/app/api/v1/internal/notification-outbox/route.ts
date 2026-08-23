@@ -28,6 +28,7 @@ import {
   notifySlackOfReleaseGovernance,
   notifySlackOfSecurityDigest,
 } from "@/lib/server/slack";
+import { deliverHttpsOutboxItem } from "@/lib/server/https-webhooks";
 import { runApprovedReleaseWorker } from "@/lib/server/release-execution-worker";
 import { runApprovedDraftGovernanceWorker } from "@/lib/server/release-governance-worker";
 
@@ -36,7 +37,7 @@ export const maxDuration = 60;
 interface OutboxRow {
   id: string;
   organization_id: string;
-  channel: "slack" | "email";
+  channel: "slack" | "email" | "https";
   event_type: string;
   payload: unknown;
   attempt_count: number;
@@ -51,6 +52,14 @@ interface DeliveryResult {
 
 async function deliver(row: OutboxRow): Promise<DeliveryResult> {
   try {
+    if (row.channel === "https") {
+      const result = await deliverHttpsOutboxItem({
+        organizationId: row.organization_id,
+        eventType: row.event_type,
+        payload: row.payload,
+      });
+      return { row, delivered: result.delivered, reason: result.reason };
+    }
     if (row.channel === "email" && row.event_type === "security.daily_digest") {
       const parsed = securityDigestNotificationSchema.safeParse(row.payload);
       if (!parsed.success) return { row, delivered: false, reason: "invalid_payload" };

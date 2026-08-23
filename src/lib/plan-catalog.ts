@@ -7,6 +7,7 @@ export const planCatalog = {
     repositories: 2,
     pendingApprovals: 20,
     auditRetentionDays: 90,
+    httpsWebhooks: 3,
   },
   enterprise: {
     name: "Enterprise",
@@ -14,5 +15,6 @@ export const planCatalog = {
     repositories: null,
     pendingApprovals: null,
     auditRetentionDays: 3650,
+    httpsWebhooks: null,
   },
 } as const;

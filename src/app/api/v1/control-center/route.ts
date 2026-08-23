@@ -5,6 +5,7 @@ import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
 import { listOrganizationGitHubConnections } from "@/lib/server/github-connections";
 import { listOrganizationSlackConnections } from "@/lib/server/slack-connections";
+import { listOrganizationHttpsWebhooks } from "@/lib/server/https-webhooks";
 import type { PolicyActivationSimulation } from "@/lib/types";
 
 export async function GET() {
@@ -30,6 +31,7 @@ export async function GET() {
       notificationOutboxResult,
       githubConnections,
       slackConnections,
+      httpsWebhooks,
     ] =
       await Promise.all([
         pool.query<{
@@ -349,6 +351,7 @@ export async function GET() {
         ),
         listOrganizationGitHubConnections(operator.organizationId),
         listOrganizationSlackConnections(operator.organizationId),
+        listOrganizationHttpsWebhooks(operator.organizationId),
       ]);
 
     const latestGitHubEvidence = auditResult.rows.find((row) => {
@@ -636,6 +639,26 @@ export async function GET() {
           slackAuthenticationMode: slackConnections.length > 0
             ? "oauth"
             : "not_configured",
+        },
+        {
+          id: "int-https-webhooks",
+          name: "HTTPS Webhooks",
+          description: "Push signed governance and security events to SIEM or SOAR endpoints.",
+          connected: httpsWebhooks.length > 0,
+          category: "SIEM & Webhooks",
+          events: httpsWebhooks.length > 0
+            ? `${httpsWebhooks.length} destination${httpsWebhooks.length === 1 ? "" : "s"} configured`
+            : "No destinations configured",
+          status: httpsWebhooks.length > 0
+            ? httpsWebhooks.some((webhook) => Boolean(webhook.lastError))
+              ? "attention"
+              : "configured"
+            : "not_connected",
+          mode: httpsWebhooks.length > 0
+            ? `${httpsWebhooks.filter((webhook) => webhook.enabled).length} active / ${httpsWebhooks.length} total`
+            : "HMAC-SHA256 Signed",
+          url: null,
+          httpsWebhooks,
         },
         {
           id: "int-python-sdk",

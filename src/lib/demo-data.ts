@@ -271,6 +271,16 @@ export const integrations: Integration[] = [
     events: "1.8k events",
   },
   {
+    id: "int-https-webhooks",
+    name: "HTTPS Webhooks",
+    description: "Push signed governance and security events to SIEM or SOAR endpoints.",
+    connected: true,
+    category: "SIEM & Webhooks",
+    events: "2 destinations configured",
+    status: "configured",
+    mode: "HMAC-SHA256 Signed",
+  },
+  {
     id: "int-salesforce",
     name: "Salesforce",
     description: "Monitor agent access to customer and account records.",

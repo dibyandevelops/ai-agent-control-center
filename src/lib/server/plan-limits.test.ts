@@ -7,5 +7,7 @@ describe("commercial plan catalog", () => {
     expect(planCatalog.pilot.repositories).toBe(2);
     expect(planCatalog.enterprise.agents).toBeNull();
     expect(planCatalog.enterprise.auditRetentionDays).toBe(3650);
+    expect(planCatalog.pilot.httpsWebhooks).toBe(3);
+    expect(planCatalog.enterprise.httpsWebhooks).toBeNull();
   });
 });

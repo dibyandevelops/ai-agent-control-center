@@ -37,6 +37,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   UsersRound,
+  Webhook,
   X,
   XCircle,
   Zap,
@@ -82,6 +83,7 @@ import { ReleaseGovernanceQueue } from "@/components/release-governance-queue";
 import { GitHubDriftIncidents } from "@/components/github-drift-incidents";
 import { GitHubAppConnection } from "@/components/github-app-connection";
 import { SlackConnection } from "@/components/slack-connection";
+import { HttpsWebhookConnection } from "@/components/https-webhook-connection";
 
 export type DashboardView =
   | "overview"
@@ -1651,6 +1653,7 @@ function ActionDetailDrawer({
 function IntegrationLogo({ integration }: { integration: Integration }) {
   if (integration.name === "GitHub") return <GitBranch />;
   if (integration.name === "Slack") return <Zap />;
+  if (integration.name === "HTTPS Webhooks") return <Webhook />;
   if (integration.name === "AWS") return <Boxes />;
   if (integration.name === "Microsoft 365") return <FileKey2 />;
   if (integration.name === "Python SDK") return <Bot />;
@@ -1805,6 +1808,14 @@ function IntegrationsView({
             ) : null}
             {live && integration.name === "Slack" ? (
               <SlackConnection
+                integration={integration}
+                canManage={canAcknowledgeDrift}
+                onChanged={onRefresh}
+                onNotify={onNotify}
+              />
+            ) : null}
+            {live && (integration.name === "HTTPS Webhooks" || integration.id === "int-https-webhooks") ? (
+              <HttpsWebhookConnection
                 integration={integration}
                 canManage={canAcknowledgeDrift}
                 onChanged={onRefresh}
