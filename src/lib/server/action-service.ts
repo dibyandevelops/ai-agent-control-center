@@ -148,7 +148,11 @@ export async function evaluateAction(
       });
     }
 
-    const agentResult = await client.query<{ id: string }>(
+    const agentResult = await client.query<{
+      id: string;
+      status: string;
+      quarantine_reason: string | null;
+    }>(
       `
         insert into agents (
           organization_id,
@@ -170,7 +174,7 @@ export async function evaluateAction(
             environment = excluded.environment,
             last_seen_at = now(),
             updated_at = now()
-        returning id
+        returning id, status, quarantine_reason
       `,
       [
         identity.organizationId,
@@ -182,9 +186,24 @@ export async function evaluateAction(
         input.environment,
       ],
     );
-    const agentId = agentResult.rows[0].id;
+    const agent = agentResult.rows[0];
+    const agentId = agent.id;
+    const isQuarantined = agent.status === "quarantined";
+
     const policies = await loadPolicies(client, identity.organizationId);
-    const decision = evaluatePolicies(input, policies);
+    let decision = evaluatePolicies(input, policies);
+
+    if (isQuarantined) {
+      decision = {
+        effect: "block",
+        risk: "high",
+        policyId: null,
+        policyVersionId: null,
+        policyName: "Emergency Quarantine Killswitch",
+        reason: `Action blocked: Agent is under emergency quarantine killswitch. ${agent.quarantine_reason ? `Reason: ${agent.quarantine_reason}` : ""}`,
+      };
+    }
+
     const status =
       decision.effect === "approval"
         ? "pending"

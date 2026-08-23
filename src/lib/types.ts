@@ -1,4 +1,4 @@
-export type AgentStatus = "healthy" | "review" | "blocked";
+export type AgentStatus = "healthy" | "review" | "blocked" | "quarantined";
 export type RiskLevel = "low" | "medium" | "high";
 export type ApprovalStatus = "pending" | "approved" | "denied";
 export type OperatorRole = "admin" | "approver" | "auditor";
@@ -56,6 +56,9 @@ export interface Agent {
   lastAction: string;
   lastSeen: string;
   lastExecutionStatus?: ExecutionStatus;
+  quarantinedAt?: string | null;
+  quarantinedBy?: string | null;
+  quarantineReason?: string | null;
 }
 
 export interface Approval {

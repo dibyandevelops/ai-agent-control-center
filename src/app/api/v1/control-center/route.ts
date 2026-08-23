@@ -40,7 +40,10 @@ export async function GET() {
           owner_email: string;
           team: string;
           provider: string;
-          status: "healthy" | "review" | "blocked";
+          status: "healthy" | "review" | "blocked" | "quarantined";
+          quarantined_at: Date | null;
+          quarantined_by: string | null;
+          quarantine_reason: string | null;
           action_count: string;
           last_action: string | null;
           last_execution_status: string | null;
@@ -53,6 +56,9 @@ export async function GET() {
             a.team,
             a.provider,
             a.status,
+            a.quarantined_at,
+            a.quarantined_by,
+            a.quarantine_reason,
             count(ar.id)::text as action_count,
             (
               select latest.action
@@ -416,6 +422,9 @@ export async function GET() {
         lastAction: row.last_action ?? "Agent registered",
         lastExecutionStatus: row.last_execution_status ?? "not_started",
         lastSeen: row.last_seen_at.toISOString(),
+        quarantinedAt: row.quarantined_at?.toISOString() ?? null,
+        quarantinedBy: row.quarantined_by ?? null,
+        quarantineReason: row.quarantine_reason ?? null,
       })),
       approvals: approvalsResult.rows.map((row) => ({
         id: row.id,

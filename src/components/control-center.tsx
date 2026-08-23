@@ -164,6 +164,14 @@ function displayTime(value: string) {
 }
 
 function Status({ status }: { status: AgentStatus }) {
+  if (status === "quarantined") {
+    return (
+      <span className="status status-blocked border-sentinel-red/40 bg-sentinel-red/15 text-red-300 font-semibold inline-flex items-center gap-1">
+        <ShieldAlert className="h-3 w-3 text-red-400 shrink-0" />
+        Quarantined
+      </span>
+    );
+  }
   return (
     <span className={`status status-${status}`}>
       <span className="status-dot" />
@@ -486,18 +494,48 @@ function RiskPosture({ events }: { events: AuditEvent[] }) {
 function AgentTable({
   agents,
   compact = false,
+  onQuarantine,
+  onLiftQuarantine,
 }: {
   agents: Agent[];
   compact?: boolean;
+  onQuarantine?: (agent: Agent, reason: string) => Promise<void>;
+  onLiftQuarantine?: (agent: Agent, reason: string) => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | AgentStatus>("all");
+  const [quarantineTarget, setQuarantineTarget] = useState<Agent | null>(null);
+  const [quarantineMode, setQuarantineMode] = useState<"quarantine" | "unquarantine">("quarantine");
+  const [quarantineReason, setQuarantineReason] = useState("");
+  const [quarantineBusy, setQuarantineBusy] = useState(false);
+  const [quarantineError, setQuarantineError] = useState("");
+
   const filtered = agents.filter((agent) => {
     const matchesQuery =
       agent.name.toLowerCase().includes(query.toLowerCase()) ||
       agent.owner.toLowerCase().includes(query.toLowerCase());
     return matchesQuery && (status === "all" || agent.status === status);
   });
+
+  async function handleConfirmQuarantine(e: React.FormEvent) {
+    e.preventDefault();
+    if (!quarantineTarget) return;
+    setQuarantineBusy(true);
+    setQuarantineError("");
+    try {
+      if (quarantineMode === "quarantine") {
+        if (onQuarantine) await onQuarantine(quarantineTarget, quarantineReason);
+      } else {
+        if (onLiftQuarantine) await onLiftQuarantine(quarantineTarget, quarantineReason);
+      }
+      setQuarantineTarget(null);
+      setQuarantineReason("");
+    } catch (err) {
+      setQuarantineError(err instanceof Error ? err.message : "Operation failed.");
+    } finally {
+      setQuarantineBusy(false);
+    }
+  }
 
   return (
     <section className={`panel table-panel ${compact ? "table-panel-compact" : ""}`}>
@@ -527,6 +565,7 @@ function AgentTable({
               <option value="healthy">Healthy</option>
               <option value="review">Review</option>
               <option value="blocked">Blocked</option>
+              <option value="quarantined">Quarantined</option>
             </select>
           </label>
           <button className="icon-button bordered" aria-label="Export agents">
@@ -590,7 +629,41 @@ function AgentTable({
                 </td>
                 <td className="mono">{agent.actions.toLocaleString()}</td>
                 <td className="mono">{money(agent.cost)}</td>
-                <td><button className="icon-button row-action" aria-label={`More actions for ${agent.name}`}><MoreHorizontal /></button></td>
+                <td>
+                  {(onQuarantine || onLiftQuarantine) ? (
+                    <div className="flex items-center justify-end gap-1.5">
+                      {agent.status === "quarantined" ? (
+                        <button
+                          className="secondary-button text-xs py-1 px-2 text-sentinel-lime border-sentinel-lime/30"
+                          onClick={() => {
+                            setQuarantineTarget(agent);
+                            setQuarantineMode("unquarantine");
+                            setQuarantineReason("");
+                            setQuarantineError("");
+                          }}
+                          title="Lift emergency quarantine"
+                        >
+                          <ShieldCheck className="h-3.5 w-3.5" /> Lift
+                        </button>
+                      ) : (
+                        <button
+                          className="secondary-button text-xs py-1 px-2 text-sentinel-red border-sentinel-red/30 hover:bg-sentinel-red/10"
+                          onClick={() => {
+                            setQuarantineTarget(agent);
+                            setQuarantineMode("quarantine");
+                            setQuarantineReason("");
+                            setQuarantineError("");
+                          }}
+                          title="Trigger Emergency Killswitch"
+                        >
+                          <ShieldAlert className="h-3.5 w-3.5 text-sentinel-red" /> Killswitch
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <button className="icon-button row-action" aria-label={`More actions for ${agent.name}`}><MoreHorizontal /></button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -609,6 +682,104 @@ function AgentTable({
           <button><ChevronRight /></button>
         </div>
       </div>
+
+      {quarantineTarget ? (
+        <div
+          className="fixed inset-0 z-[80] grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(e) => e.target === e.currentTarget && setQuarantineTarget(null)}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-start justify-between border-b border-sentinel-line px-6 py-5">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`grid h-10 w-10 place-items-center rounded-xl border ${
+                    quarantineMode === "quarantine"
+                      ? "border-sentinel-red/30 bg-sentinel-red/10 text-sentinel-red"
+                      : "border-sentinel-lime/30 bg-sentinel-lime/10 text-sentinel-lime"
+                  }`}
+                >
+                  {quarantineMode === "quarantine" ? <ShieldAlert className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+                </span>
+                <div>
+                  <h2 className="text-base font-semibold text-sentinel-text">
+                    {quarantineMode === "quarantine"
+                      ? `Emergency Killswitch: ${quarantineTarget.name}`
+                      : `Lift Quarantine: ${quarantineTarget.name}`}
+                  </h2>
+                  <p className="text-xs text-sentinel-muted">
+                    {quarantineMode === "quarantine"
+                      ? "Instantly halts all pending evaluations and revokes execution authority."
+                      : "Restores normal policy evaluation and removes emergency hold."}
+                  </p>
+                </div>
+              </div>
+              <button
+                className="grid h-8 w-8 place-items-center rounded-lg border border-sentinel-line text-sentinel-muted transition hover:text-sentinel-text"
+                onClick={() => setQuarantineTarget(null)}
+                aria-label="Close dialog"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <form onSubmit={handleConfirmQuarantine} className="space-y-4 px-6 py-5">
+              <label className="block text-xs font-medium text-sentinel-muted">
+                {quarantineMode === "quarantine" ? "Incident / Killswitch Justification" : "Restoration Justification"}
+                <textarea
+                  className="mt-2 min-h-[80px] w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 py-2.5 text-xs text-sentinel-text outline-none transition focus:border-sentinel-lime/70 focus:ring-2 focus:ring-sentinel-lime/10"
+                  placeholder={
+                    quarantineMode === "quarantine"
+                      ? "e.g. Rogue autonomous execution loop detected in production"
+                      : "e.g. Prompt injection vulnerability patched and regression verified"
+                  }
+                  value={quarantineReason}
+                  onChange={(e) => setQuarantineReason(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </label>
+
+              {quarantineError ? (
+                <div className="rounded-lg border border-sentinel-red/30 bg-sentinel-red/10 p-3 text-xs text-red-200">
+                  {quarantineError}
+                </div>
+              ) : null}
+
+              <div className="flex justify-end gap-3 border-t border-sentinel-line pt-4">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setQuarantineTarget(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={quarantineBusy || quarantineReason.trim().length < 3}
+                  className={`primary-button ${
+                    quarantineMode === "quarantine"
+                      ? "bg-sentinel-red hover:bg-red-600 border-red-500 text-white"
+                      : ""
+                  }`}
+                >
+                  {quarantineBusy ? (
+                    <LoaderCircle className="animate-spin" />
+                  ) : quarantineMode === "quarantine" ? (
+                    <ShieldAlert />
+                  ) : (
+                    <ShieldCheck />
+                  )}
+                  {quarantineMode === "quarantine" ? "Activate Killswitch" : "Restore Agent"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -797,9 +968,13 @@ function PilotReadiness({
 function AgentsView({
   agents,
   onRegister,
+  onQuarantine,
+  onLiftQuarantine,
 }: {
   agents: Agent[];
   onRegister: () => void;
+  onQuarantine?: (agent: Agent, reason: string) => Promise<void>;
+  onLiftQuarantine?: (agent: Agent, reason: string) => Promise<void>;
 }) {
   return (
     <main className="page">
@@ -810,10 +985,11 @@ function AgentsView({
       <div className="summary-strip">
         <span><strong>{agents.length}</strong> Registered</span>
         <span><strong>{agents.filter((a) => a.status === "healthy").length}</strong> Healthy</span>
-        <span><strong>{agents.filter((a) => a.status !== "healthy").length}</strong> Need attention</span>
+        <span><strong>{agents.filter((a) => a.status === "quarantined").length}</strong> Quarantined</span>
+        <span><strong>{agents.filter((a) => a.status !== "healthy" && a.status !== "quarantined").length}</strong> Need attention</span>
         <span><strong>{new Set(agents.map((a) => a.team)).size}</strong> Teams</span>
       </div>
-      <AgentTable agents={agents} />
+      <AgentTable agents={agents} onQuarantine={onQuarantine} onLiftQuarantine={onLiftQuarantine} />
     </main>
   );
 }
@@ -2490,6 +2666,52 @@ export function ControlCenter({
     }
   }
 
+  async function handleQuarantineAgent(agent: Agent, reason: string) {
+    try {
+      const response = await fetch(`/api/v1/agents/${agent.id}/quarantine`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Unable to quarantine agent.");
+      setAgentList((cur) =>
+        cur.map((a) =>
+          a.id === agent.id
+            ? { ...a, status: "quarantined", quarantineReason: reason, quarantinedAt: new Date().toISOString() }
+            : a,
+        ),
+      );
+      setApprovalList((cur) => cur.filter((app) => app.agentId !== agent.id));
+      await refreshLiveWorkspace();
+      setToast(`Agent ${agent.name} quarantined under emergency killswitch.`);
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : "Quarantine failed.");
+    }
+  }
+
+  async function handleUnquarantineAgent(agent: Agent, reason: string) {
+    try {
+      const response = await fetch(`/api/v1/agents/${agent.id}/unquarantine`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Unable to lift quarantine.");
+      setAgentList((cur) =>
+        cur.map((a) =>
+          a.id === agent.id
+            ? { ...a, status: "healthy", quarantineReason: null, quarantinedAt: null }
+            : a,
+        ),
+      );
+      setToast(`Quarantine lifted for agent ${agent.name}.`);
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : "Failed to lift quarantine.");
+    }
+  }
+
   async function acknowledgeGitHubDrift(incidentId: string, note: string) {
     try {
       const response = await fetch(
@@ -2833,7 +3055,12 @@ export function ControlCenter({
           />
         )}
         {view === "agents" && (
-          <AgentsView agents={agentList} onRegister={openRegisterDialog} />
+          <AgentsView
+            agents={agentList}
+            onRegister={openRegisterDialog}
+            onQuarantine={canManagePolicies || canApprove ? handleQuarantineAgent : undefined}
+            onLiftQuarantine={canManagePolicies || canApprove ? handleUnquarantineAgent : undefined}
+          />
         )}
         {view === "approvals" && (
           <ApprovalsView
