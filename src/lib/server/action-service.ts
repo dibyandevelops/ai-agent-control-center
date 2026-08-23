@@ -289,12 +289,26 @@ export async function evaluateAction(
   });
 }
 
+import { assertTransitiveFourEyes } from "./approver-delegation";
+
 export async function decideAction(
   requestId: string,
   input: DecisionInput,
-  operator: { organizationId: string; email: string },
+  operator: { id?: string; organizationId: string; email: string },
 ) {
   return withTransaction(async (client) => {
+    let delegatedFrom: { id: string; email: string } | null = null;
+    if (operator.id) {
+      const delegationCheck = await assertTransitiveFourEyes(
+        client,
+        operator.organizationId,
+        operator.id,
+        null,
+        "",
+      );
+      delegatedFrom = delegationCheck.delegatedFrom;
+    }
+
     const result = await client.query<ActionRequestRow>(
       `
         update action_requests
@@ -337,6 +351,7 @@ export async function decideAction(
       payload: {
         decision: input.decision,
         reason: input.reason,
+        delegatedFrom: delegatedFrom ? delegatedFrom.email : undefined,
       },
     });
 

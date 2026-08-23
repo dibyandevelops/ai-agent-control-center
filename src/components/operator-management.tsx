@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  ArrowRight,
+  Calendar,
   Check,
   Clock3,
   Copy,
@@ -12,6 +14,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Trash2,
+  UserCheck,
   UserPlus,
   UsersRound,
   X,
@@ -23,6 +26,24 @@ import type {
   OperatorRole,
 } from "@/lib/types";
 import { IdentityProvisioning } from "@/components/identity-provisioning";
+
+interface DelegationItem {
+  id: string;
+  organizationId: string;
+  delegatorOperatorId: string;
+  delegatorEmail: string;
+  delegatorDisplayName: string;
+  delegateeOperatorId: string;
+  delegateeEmail: string;
+  delegateeDisplayName: string;
+  reason: string;
+  startsAt: string;
+  endsAt: string;
+  revokedAt: string | null;
+  createdAt: string;
+  isActive: boolean;
+  status: "active" | "scheduled" | "revoked" | "expired";
+}
 
 interface InvitationItem {
   id: string;
@@ -72,11 +93,13 @@ export function OperatorManagement({
 }) {
   const [operators, setOperators] = useState<OperatorAccount[]>([]);
   const [invitations, setInvitations] = useState<InvitationItem[]>([]);
+  const [delegations, setDelegations] = useState<DelegationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [delegationOpen, setDelegationOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<OperatorAccount | null>(null);
 
   useEffect(() => {
@@ -84,12 +107,14 @@ export function OperatorManagement({
 
     async function loadData() {
       try {
-        const [opsRes, invRes] = await Promise.all([
+        const [opsRes, invRes, delRes] = await Promise.all([
           fetch("/api/v1/operators", { cache: "no-store" }),
           fetch("/api/v1/invitations", { cache: "no-store" }),
+          fetch("/api/v1/approver-delegations", { cache: "no-store" }),
         ]);
         const opsPayload = (await opsRes.json()) as { operators?: OperatorAccount[]; error?: string };
         const invPayload = (await invRes.json()) as { invitations?: InvitationItem[]; error?: string };
+        const delPayload = (await delRes.json()) as { delegations?: DelegationItem[]; error?: string };
 
         if (!opsRes.ok || !opsPayload.operators) {
           throw new Error(opsPayload.error || "Unable to load operator accounts.");
@@ -98,6 +123,9 @@ export function OperatorManagement({
           setOperators(opsPayload.operators);
           if (invRes.ok && invPayload.invitations) {
             setInvitations(invPayload.invitations);
+          }
+          if (delRes.ok && delPayload.delegations) {
+            setDelegations(delPayload.delegations);
           }
         }
       } catch (loadError) {
@@ -114,6 +142,28 @@ export function OperatorManagement({
       cancelled = true;
     };
   }, []);
+
+  async function revokeDelegation(delegation: DelegationItem) {
+    setBusyId(delegation.id);
+    setError("");
+    try {
+      const response = await fetch(`/api/v1/approver-delegations/${delegation.id}`, {
+        method: "DELETE",
+      });
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Unable to revoke delegation.");
+      setDelegations((current) =>
+        current.map((d) =>
+          d.id === delegation.id ? { ...d, isActive: false, revokedAt: new Date().toISOString() } : d,
+        ),
+      );
+      onNotify("Approver delegation revoked.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to revoke delegation.");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   async function updateOperator(
     operator: OperatorAccount,
@@ -473,6 +523,105 @@ export function OperatorManagement({
         )}
       </section>
 
+      {/* Approver Delegation Section */}
+      <section className="mt-6 overflow-hidden rounded-app border border-sentinel-line bg-sentinel-surface shadow-app-1">
+        <div className="flex items-center justify-between border-b border-sentinel-line px-5 py-4">
+          <div>
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-sentinel-text">
+              <UserCheck className="h-4 w-4 text-sentinel-lime" />
+              Approver Delegation & Out-of-Office (OOO)
+            </h3>
+            <p className="mt-1 text-xs text-sentinel-muted">
+              Temporarily delegate your sign-off authority to another authorized operator during planned leave or travel. Transitive 4-eyes integrity is preserved.
+            </p>
+          </div>
+          <button
+            className="secondary-button"
+            onClick={() => setDelegationOpen(true)}
+          >
+            <Calendar className="h-4 w-4" /> New delegation
+          </button>
+        </div>
+
+        {delegations.length === 0 ? (
+          <div className="p-8 text-center text-xs text-sentinel-muted">
+            No active or historical approver delegations.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-sentinel-line bg-sentinel-canvas/50 text-[11px] font-semibold text-sentinel-muted">
+                  <th className="px-5 py-3">Delegator</th>
+                  <th className="px-5 py-3">Delegatee</th>
+                  <th className="px-5 py-3">Reason</th>
+                  <th className="px-5 py-3">Effective window</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-sentinel-line">
+                {delegations.map((d) => {
+                  const isBusy = busyId === d.id;
+                  const statusLabel =
+                    d.status === "active"
+                      ? "Active"
+                      : d.status === "scheduled"
+                        ? "Scheduled"
+                        : d.status === "revoked"
+                          ? "Revoked"
+                          : "Expired";
+
+                  const badgeClass =
+                    statusLabel === "Active"
+                      ? "bg-sentinel-lime/10 text-sentinel-lime border-sentinel-lime/30"
+                      : statusLabel === "Scheduled"
+                        ? "bg-sky-500/10 text-sky-400 border-sky-500/30"
+                        : "bg-sentinel-canvas text-sentinel-muted border-sentinel-line";
+
+                  return (
+                    <tr key={d.id} className="hover:bg-sentinel-canvas/30">
+                      <td className="px-5 py-3.5 font-medium text-sentinel-text">
+                        {d.delegatorDisplayName} <span className="text-sentinel-muted font-normal">({d.delegatorEmail})</span>
+                      </td>
+                      <td className="px-5 py-3.5 text-sentinel-text">
+                        <span className="flex items-center gap-1.5">
+                          <ArrowRight className="h-3 w-3 text-sentinel-muted" />
+                          {d.delegateeDisplayName} <span className="text-sentinel-muted font-normal">({d.delegateeEmail})</span>
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-sentinel-muted max-w-xs truncate" title={d.reason}>
+                        {d.reason}
+                      </td>
+                      <td className="px-5 py-3.5 text-sentinel-muted">
+                        {formatDate(d.startsAt)} → {formatDate(d.endsAt)}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${badgeClass}`}>
+                          {statusLabel}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        {d.isActive || (statusLabel === "Scheduled" && !d.revokedAt) ? (
+                          <button
+                            className="secondary-button text-xs text-sentinel-red"
+                            disabled={isBusy}
+                            onClick={() => void revokeDelegation(d)}
+                            title="Revoke delegation"
+                          >
+                            {isBusy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Revoke
+                          </button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
       {createOpen ? (
         <CreateOperatorDialog
           onClose={() => setCreateOpen(false)}
@@ -495,6 +644,18 @@ export function OperatorManagement({
         />
       ) : null}
 
+      {delegationOpen ? (
+        <CreateDelegationDialog
+          operators={operators.filter((op) => op.status === "active" && (op.role === "admin" || op.role === "approver") && op.id !== currentOperator.id)}
+          onClose={() => setDelegationOpen(false)}
+          onCreated={(newDel) => {
+            setDelegations((cur) => [newDel, ...cur]);
+            setDelegationOpen(false);
+            onNotify(`Delegated approval authority to ${newDel.delegateeDisplayName}.`);
+          }}
+        />
+      ) : null}
+
       {resetTarget ? (
         <ResetPasswordDialog
           operator={resetTarget}
@@ -503,6 +664,147 @@ export function OperatorManagement({
         />
       ) : null}
     </main>
+  );
+}
+
+function CreateDelegationDialog({
+  operators,
+  onClose,
+  onCreated,
+}: {
+  operators: OperatorAccount[];
+  onClose: () => void;
+  onCreated: (delegation: DelegationItem) => void;
+}) {
+  const [delegateeId, setDelegateeId] = useState(operators[0]?.id ?? "");
+  const [reason, setReason] = useState("");
+  const [startsAt, setStartsAt] = useState(() => new Date().toISOString().slice(0, 16));
+  const [endsAt, setEndsAt] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().slice(0, 16);
+  });
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  function applyPreset(days: number) {
+    const now = new Date();
+    setStartsAt(now.toISOString().slice(0, 16));
+    setEndsAt(new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString().slice(0, 16));
+  }
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
+    try {
+      const response = await fetch("/api/v1/approver-delegations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          delegateeOperatorId: delegateeId,
+          reason,
+          startsAt: new Date(startsAt).toISOString(),
+          endsAt: new Date(endsAt).toISOString(),
+        }),
+      });
+      const payload = (await response.json()) as DelegationItem & { error?: string };
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error || "Failed to create delegation.");
+      }
+      onCreated(payload);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create delegation.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-lg overflow-hidden rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2" role="dialog" aria-modal="true" aria-labelledby="delegation-dialog-title">
+        <div className="flex items-start justify-between border-b border-sentinel-line px-6 py-5">
+          <div>
+            <h2 id="delegation-dialog-title" className="text-lg font-semibold tracking-tight text-sentinel-text">Delegate sign-off authority</h2>
+            <p className="mt-1 text-xs leading-5 text-sentinel-muted">Assign an eligible approver to sign off on consequential AI-agent actions during your absence.</p>
+          </div>
+          <button className="grid h-9 w-9 place-items-center rounded-lg border border-sentinel-line text-sentinel-muted transition hover:text-sentinel-text" onClick={onClose} aria-label="Close dialog">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <form onSubmit={submit} className="space-y-4 px-6 py-5">
+          <label className="block text-xs font-medium text-sentinel-muted">
+            Designated delegatee
+            <select
+              className={fieldClass}
+              value={delegateeId}
+              onChange={(e) => setDelegateeId(e.target.value)}
+              required
+            >
+              {operators.map((op) => (
+                <option key={op.id} value={op.id}>
+                  {op.displayName} ({op.email}) — {op.role}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block text-xs font-medium text-sentinel-muted">
+            Delegation reason
+            <input
+              className={fieldClass}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Out of office / Annual leave"
+              required
+            />
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-xs font-medium text-sentinel-muted">
+              Start time
+              <input
+                className={fieldClass}
+                type="datetime-local"
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+                required
+              />
+            </label>
+            <label className="block text-xs font-medium text-sentinel-muted">
+              End time
+              <input
+                className={fieldClass}
+                type="datetime-local"
+                value={endsAt}
+                onChange={(e) => setEndsAt(e.target.value)}
+                required
+              />
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-[11px] text-sentinel-muted">Quick presets:</span>
+            <button type="button" className="secondary-button text-[11px] py-1 px-2" onClick={() => applyPreset(3)}>3 days</button>
+            <button type="button" className="secondary-button text-[11px] py-1 px-2" onClick={() => applyPreset(7)}>7 days</button>
+            <button type="button" className="secondary-button text-[11px] py-1 px-2" onClick={() => applyPreset(14)}>14 days</button>
+          </div>
+
+          {error ? (
+            <div className="rounded-lg border border-sentinel-red/30 bg-sentinel-red/10 p-3 text-xs text-red-200">
+              {error}
+            </div>
+          ) : null}
+
+          <div className="flex justify-end gap-3 border-t border-sentinel-line pt-4">
+            <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
+            <button type="submit" className="primary-button" disabled={submitting || !reason.trim() || !delegateeId}>
+              {submitting ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />} Enable delegation
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 

@@ -9,6 +9,7 @@ import { operatorCan } from "@/lib/server/operator-roles";
 import { enqueuePolicyActivationNotification } from "@/lib/server/notification-outbox";
 import { canReviewPolicyActivation } from "@/lib/server/policy-governance";
 import { policyActivationDecisionSchema } from "@/lib/server/policy-input";
+import { assertTransitiveFourEyes } from "@/lib/server/approver-delegation";
 
 export async function POST(
   request: NextRequest,
@@ -150,6 +151,14 @@ export async function POST(
         );
       }
 
+      const delegationCheck = await assertTransitiveFourEyes(
+        client,
+        operator.organizationId,
+        operator.id,
+        activation.requested_by_operator_id,
+        activation.requested_by_email,
+      );
+
       await client.query(
         `
           update policy_activation_requests
@@ -209,6 +218,9 @@ export async function POST(
           reviewedBy: operator.email,
           reason: input.reason,
           previousActiveVersionId: activation.active_version_id,
+          delegatedFrom: delegationCheck.delegatedFrom
+            ? delegationCheck.delegatedFrom.email
+            : undefined,
         },
       });
 
