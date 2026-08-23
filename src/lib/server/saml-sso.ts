@@ -269,7 +269,32 @@ export async function finishSamlLogin(input: { relayState: string; response: str
   const candidate = profile?.[row.saml_email_attribute] ?? profile?.email ?? profile?.mail ?? profile?.["urn:oid:0.9.2342.19200300.100.1.3"];
   if (typeof candidate !== "string") throw new AuthenticationError("The SAML assertion did not include the configured email attribute.");
   await assertOrganizationEmailAllowed(organizationId, candidate);
-  return { organizationId, email: candidate.trim().toLowerCase() };
+
+  const displayName =
+    typeof profile?.displayName === "string"
+      ? profile.displayName
+      : typeof profile?.cn === "string"
+        ? profile.cn
+        : typeof profile?.name === "string"
+          ? profile.name
+          : undefined;
+
+  let role: "admin" | "approver" | "auditor" | undefined;
+  const assertedRole =
+    profile?.["urn:sentinelops:role"] ?? profile?.role ?? profile?.groups;
+  if (typeof assertedRole === "string") {
+    const roleLower = assertedRole.toLowerCase().trim();
+    if (roleLower === "admin" || roleLower === "approver" || roleLower === "auditor") {
+      role = roleLower;
+    }
+  }
+
+  return {
+    organizationId,
+    email: candidate.trim().toLowerCase(),
+    displayName,
+    role,
+  };
 }
 
 export async function samlMetadata(organizationId: string) {

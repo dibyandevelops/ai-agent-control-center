@@ -354,21 +354,110 @@ export async function loginOperator(email: string, password: string) {
 export async function loginOperatorWithSaml(input: {
   organizationId: string;
   email: string;
+  displayName?: string;
+  role?: OperatorRole;
 }) {
-  const result = await getPool().query<{
-    id: string; organization_id: string; organization_name: string; email: string;
-    display_name: string; role: OperatorRole; password_change_required: boolean;
+  const normalizedEmail = input.email.trim().toLowerCase();
+  const pool = getPool();
+  interface SamlOperatorRow {
+    id: string;
+    organization_id: string;
+    organization_name: string;
+    email: string;
+    display_name: string;
+    role: OperatorRole;
+    password_change_required: boolean;
     status: "active" | "disabled";
-  }>(
-    `select op.id, op.organization_id, org.name as organization_name, op.email,
-            op.display_name, op.role, op.password_change_required, op.status
-       from operators op join organizations org on org.id = op.organization_id
-      where op.organization_id = $1 and op.email = $2
-      limit 1`,
-    [input.organizationId, input.email.trim().toLowerCase()],
-  );
-  const row = result.rows[0];
+  }
+
+  let row: SamlOperatorRow | null =
+    (
+      await pool.query<SamlOperatorRow>(
+        `select op.id, op.organization_id, org.name as organization_name, op.email,
+                op.display_name, op.role, op.password_change_required, op.status
+           from operators op join organizations org on org.id = op.organization_id
+          where op.organization_id = $1 and op.email = $2
+          limit 1`,
+        [input.organizationId, normalizedEmail],
+      )
+    ).rows[0] ?? null;
+
+  let jitProvisioned = false;
+
+  if (!row) {
+    row = await withTransaction(async (client) => {
+      await client.query("select pg_advisory_xact_lock(hashtext($1))", [
+        input.organizationId,
+      ]);
+
+      const orgResult = await client.query<{ name: string }>(
+        `select name from organizations where id = $1 limit 1`,
+        [input.organizationId],
+      );
+      if (!orgResult.rows[0]) return null;
+
+      const fallbackName =
+        input.displayName?.trim() ||
+        normalizedEmail
+          .split("@")[0]
+          .replace(/[._-]/g, " ")
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+      const role: OperatorRole = input.role ?? "approver";
+      const dummyPassword = `locked$saml$jit$${randomBytes(16).toString("hex")}`;
+      const passwordHash = await hashPassword(dummyPassword);
+
+      const insertResult = await client.query<{
+        id: string;
+        organization_id: string;
+        email: string;
+        display_name: string;
+        role: OperatorRole;
+        password_change_required: boolean;
+        status: "active" | "disabled";
+      }>(
+        `insert into operators (
+           organization_id, email, display_name, role,
+           password_hash, password_change_required, status, updated_at
+         ) values ($1, $2, $3, $4, $5, false, 'active', now())
+         on conflict (organization_id, email) do update set
+           last_login_at = now(),
+           updated_at = now()
+         returning id, organization_id, email, display_name, role, password_change_required, status`,
+        [
+          input.organizationId,
+          normalizedEmail,
+          fallbackName,
+          role,
+          passwordHash,
+        ],
+      );
+
+      const created = insertResult.rows[0];
+      if (!created) return null;
+
+      await appendAuditEvent(client, {
+        organizationId: input.organizationId,
+        requestId: null,
+        eventType: "operator.saml_jit_provisioned",
+        actorType: "system",
+        actorId: normalizedEmail,
+        payload: {
+          operatorId: created.id,
+          role: created.role,
+          displayName: created.display_name,
+        },
+      });
+
+      jitProvisioned = true;
+      return {
+        ...created,
+        organization_name: orgResult.rows[0].name,
+      };
+    });
+  }
+
   if (!row || row.status !== "active") return null;
+
   const token = `sos_session_${randomBytes(32).toString("base64url")}`;
   const expiresAt = await withTransaction(async (client) => {
     const sessionExpiry = await createSessionExpiry(client, row.organization_id);
@@ -383,13 +472,29 @@ export async function loginOperatorWithSaml(input: {
       eventType: "operator.saml_login",
       actorType: "human",
       actorId: row.email,
-      payload: { role: row.role },
+      payload: { role: row.role, jitProvisioned },
     });
     return sessionExpiry;
   });
+
   const cookieStore = await cookies();
-  cookieStore.set(sessionCookieName, token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", expires: expiresAt, path: "/" });
-  return { id: row.id, organizationId: row.organization_id, organizationName: row.organization_name, email: row.email, displayName: row.display_name, role: row.role, mustChangePassword: row.password_change_required } satisfies OperatorIdentity;
+  cookieStore.set(sessionCookieName, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    expires: expiresAt,
+    path: "/",
+  });
+
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    organizationName: row.organization_name,
+    email: row.email,
+    displayName: row.display_name,
+    role: row.role,
+    mustChangePassword: row.password_change_required,
+  } satisfies OperatorIdentity;
 }
 
 export type PasswordChangeResult =

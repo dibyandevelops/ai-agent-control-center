@@ -5,14 +5,29 @@ import { apiError } from "@/lib/server/http";
 import { configureSaml, disableSaml } from "@/lib/server/saml-sso";
 import { operatorCan } from "@/lib/server/operator-roles";
 
-const schema = z.object({
-  idpEntityId: z.string().url(),
-  entryPoint: z.string().url(),
-  idpCertificate: z.string().min(40).max(30_000),
-  emailAttribute: z.string().trim().min(1).max(255).default("email"),
-  enabled: z.boolean().default(false),
-  enforced: z.boolean().optional(),
-});
+import { parseSamlIdpMetadataXml } from "@/lib/server/saml-core";
+
+const schema = z
+  .object({
+    metadataXml: z.string().trim().min(20).optional(),
+    idpEntityId: z.string().url().optional(),
+    entryPoint: z.string().url().optional(),
+    idpCertificate: z.string().min(40).max(30_000).optional(),
+    emailAttribute: z.string().trim().min(1).max(255).default("email"),
+    enabled: z.boolean().default(false),
+    enforced: z.boolean().optional(),
+  })
+  .refine(
+    (data) =>
+      Boolean(data.metadataXml) ||
+      (Boolean(data.idpEntityId) &&
+        Boolean(data.entryPoint) &&
+        Boolean(data.idpCertificate)),
+    {
+      message:
+        "Either metadataXml or (idpEntityId, entryPoint, idpCertificate) must be provided.",
+    },
+  );
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -23,11 +38,28 @@ export async function PATCH(request: NextRequest) {
     }
     await requireRecentMfa(operator);
     const input = schema.parse(await request.json());
+
+    let idpEntityId = input.idpEntityId ?? "";
+    let entryPoint = input.entryPoint ?? "";
+    let idpCertificate = input.idpCertificate ?? "";
+
+    if (input.metadataXml) {
+      const parsed = parseSamlIdpMetadataXml(input.metadataXml);
+      idpEntityId = parsed.entityId;
+      entryPoint = parsed.entryPoint;
+      idpCertificate = parsed.certificate;
+    }
+
     const result = await configureSaml({
       organizationId: operator.organizationId,
       operatorId: operator.id,
       operatorEmail: operator.email,
-      ...input,
+      idpEntityId,
+      entryPoint,
+      idpCertificate,
+      emailAttribute: input.emailAttribute,
+      enabled: input.enabled,
+      enforced: input.enforced,
     });
     return NextResponse.json(result);
   } catch (error) {

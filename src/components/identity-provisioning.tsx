@@ -45,6 +45,8 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
   const [samlEmailAttribute, setSamlEmailAttribute] = useState("email");
   const [samlEnabled, setSamlEnabled] = useState(false);
   const [samlEnforced, setSamlEnforced] = useState(false);
+  const [samlMetadataXml, setSamlMetadataXml] = useState("");
+  const [showXmlPaste, setShowXmlPaste] = useState(false);
   const [error, setError] = useState("");
   const [mfaSecret, setMfaSecret] = useState<string | null>(null);
   const [mfaOtpAuthUrl, setMfaOtpAuthUrl] = useState<string | null>(null);
@@ -173,20 +175,33 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
   async function saveSaml() {
     setSamlBusy(true); setError("");
     try {
+      const body = samlMetadataXml.trim()
+        ? {
+            metadataXml: samlMetadataXml.trim(),
+            emailAttribute: samlEmailAttribute,
+            enabled: samlEnabled,
+            enforced: samlEnforced,
+          }
+        : {
+            idpEntityId: samlEntityId,
+            entryPoint: samlEntryPoint,
+            idpCertificate: samlCertificate,
+            emailAttribute: samlEmailAttribute,
+            enabled: samlEnabled,
+            enforced: samlEnforced,
+          };
+
       const response = await fetch("/api/v1/identity/saml", {
-        method: "PATCH", headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          idpEntityId: samlEntityId,
-          entryPoint: samlEntryPoint,
-          idpCertificate: samlCertificate,
-          emailAttribute: samlEmailAttribute,
-          enabled: samlEnabled,
-          enforced: samlEnforced,
-        }),
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
       });
       const payload = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(payload.error || "Unable to save SAML configuration.");
-      setSamlCertificate(""); await load();
+      setSamlCertificate("");
+      setSamlMetadataXml("");
+      setShowXmlPaste(false);
+      await load();
       onNotify(samlEnforced ? "SAML SSO is enforced for this organization." : samlEnabled ? "SAML SSO is enabled." : "SAML configuration saved.");
     } catch (samlError) { setError(samlError instanceof Error ? samlError.message : "Unable to save SAML configuration."); }
     finally { setSamlBusy(false); }
@@ -212,7 +227,7 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
   return (
     <section className="mt-5 rounded-app border border-sentinel-line bg-sentinel-surface p-5 shadow-app-1">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><h3 className="flex items-center gap-2 text-sm font-semibold text-sentinel-text"><ShieldCheck className="h-4 w-4 text-sentinel-lime" /> Enterprise identity</h3><p className="mt-1 max-w-2xl text-xs leading-5 text-sentinel-muted">Enforce company email domains and provision operator access automatically through SCIM. SAML SSO provides enterprise identity provider integration.</p></div>
+        <div><h3 className="flex items-center gap-2 text-sm font-semibold text-sentinel-text"><ShieldCheck className="h-4 w-4 text-sentinel-lime" /> Enterprise identity</h3><p className="mt-1 max-w-2xl text-xs leading-5 text-sentinel-muted">Enforce company email domains and provision operator access automatically through SCIM. SAML SSO provides enterprise identity provider integration with Just-In-Time (JIT) operator onboarding.</p></div>
         <span className="rounded-full border border-sentinel-line px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sentinel-muted">SCIM 2.0 & SAML</span>
       </div>
 
@@ -232,11 +247,13 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
           <div className="mt-3 flex justify-end"><button className="secondary-button" disabled={busy !== null} onClick={() => void rotateToken()}>{busy === "token" ? <LoaderCircle className="animate-spin" /> : <KeyRound />}{settings?.scimConfigured ? "Rotate token" : "Create token"}</button></div>
         </div>
       </div>
+
       <div className="mt-5 rounded-lg border border-sentinel-line bg-sentinel-canvas/50 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold text-sentinel-text">Session-risk policy</p><p className="mt-1 max-w-2xl text-[11px] leading-5 text-sentinel-muted">Limit how long an operator can stay signed in and how long an unattended browser remains trusted. The policy applies to every new password and SAML SSO session.</p></div><span className="rounded-full border border-sentinel-line px-2 py-1 text-[10px] font-semibold uppercase text-sentinel-muted">Enforced</span></div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2"><label className="text-xs text-sentinel-muted">Maximum session duration (minutes)<input type="number" min="30" max="1440" className="mt-2 h-10 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={sessionMaxDuration} onChange={(event) => setSessionMaxDuration(event.target.value)} /></label><label className="text-xs text-sentinel-muted">Idle timeout (minutes)<input type="number" min="5" max="480" className="mt-2 h-10 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={sessionIdleTimeout} onChange={(event) => setSessionIdleTimeout(event.target.value)} /></label></div>
         <div className="mt-3 flex justify-end"><button className="secondary-button" disabled={sessionPolicyBusy} onClick={() => void saveSessionPolicy()}>{sessionPolicyBusy ? <LoaderCircle className="animate-spin" /> : <Save />} Save session policy</button></div>
       </div>
+
       {token ? <div className="mt-4 rounded-lg border border-sentinel-lime/30 bg-sentinel-lime/10 p-3"><p className="text-xs font-semibold text-sentinel-text">Copy this token now—it cannot be retrieved later.</p><div className="mt-2 flex gap-2"><code className="min-w-0 flex-1 overflow-x-auto rounded bg-sentinel-canvas px-3 py-2 text-xs text-sentinel-text">{token}</code><button className="secondary-button" onClick={() => void copy(token)}><Copy /> Copy</button></div></div> : null}
       <div className="mt-5 rounded-lg border border-sentinel-line bg-sentinel-canvas/50 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-semibold text-sentinel-text">Administrator MFA</p><p className="mt-1 max-w-2xl text-[11px] leading-5 text-sentinel-muted">Use an authenticator app to protect this operator account. Secrets are encrypted server-side; recovery codes are shown once.</p></div>{!mfaSecret ? <button className="secondary-button" disabled={mfaBusy} onClick={() => void startMfaEnrollment()}>{mfaBusy ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />}{mfaStatus?.enabled ? "Enroll a new authenticator" : "Enroll authenticator"}</button> : null}</div>{mfaStatus ? <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]"><span className={mfaStatus.enabled ? "font-semibold text-sentinel-lime" : "font-semibold text-sentinel-muted"}>{mfaStatus.enabled ? "Authenticator enrolled" : "No authenticator enrolled"}</span>{mfaStatus.enabledAt ? <span className="text-sentinel-muted">Enabled {formatDate(mfaStatus.enabledAt)}</span> : null}{mfaStatus.lastVerifiedAt ? <span className="text-sentinel-muted">Last verified {formatDate(mfaStatus.lastVerifiedAt)}</span> : null}</div> : null}{mfaSecret ? <div className="mt-4 rounded-lg border border-sentinel-lime/30 bg-sentinel-lime/10 p-3"><div className="flex flex-col gap-4 sm:flex-row sm:items-center"><div className="shrink-0 rounded-md border border-sentinel-line bg-sentinel-canvas p-2">{mfaQrCode ? <Image src={mfaQrCode} alt="Scan this QR code with your authenticator app" width={160} height={160} unoptimized /> : <div className="flex h-40 w-40 items-center justify-center text-center text-xs text-sentinel-muted">Generating secure QR code…</div>}</div><div className="min-w-0"><p className="text-xs font-semibold text-sentinel-text">Scan this QR code with your authenticator app.</p><p className="mt-1 text-[11px] leading-5 text-sentinel-muted">The QR code is generated privately in your browser. If scanning is unavailable, use the setup key below.</p><div className="mt-3 flex gap-2"><code className="min-w-0 flex-1 overflow-x-auto rounded bg-sentinel-canvas px-3 py-2 text-xs text-sentinel-text">{mfaSecret}</code><button className="secondary-button" onClick={() => void copy(mfaSecret)}><Copy /> Copy</button></div></div></div><div className="mt-3 flex flex-wrap gap-2"><input className="h-10 w-48 rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} placeholder="123456" inputMode="numeric" /><button className="primary-button" disabled={mfaBusy || mfaCode.length < 6} onClick={() => void confirmMfaEnrollment()}>{mfaBusy ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />} Verify and enable</button></div></div> : null}{recoveryCodes ? <div className="mt-4 rounded-lg border border-sentinel-amber/30 bg-sentinel-amber/10 p-3"><p className="text-xs font-semibold text-sentinel-text">Save these recovery codes now. Each works once.</p><code className="mt-2 block whitespace-pre-wrap rounded bg-sentinel-canvas p-3 text-xs text-sentinel-text">{recoveryCodes.join("\n")}</code><button className="secondary-button mt-2" onClick={() => void copy(recoveryCodes.join("\n"))}><Copy /> Copy recovery codes</button></div> : null}{mfaStatus?.enabled && !mfaSecret ? <div className="mt-4 border-t border-sentinel-line pt-4">{showRecoveryRegeneration ? <div className="rounded-lg border border-sentinel-amber/30 bg-sentinel-amber/10 p-3"><p className="text-xs font-semibold text-sentinel-text">Generate new recovery codes</p><p className="mt-1 text-[11px] text-sentinel-muted">Verify with your authenticator first. This immediately invalidates all previous recovery codes.</p><div className="mt-3 flex flex-wrap gap-2"><input className="h-10 w-52 rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={recoveryVerificationCode} onChange={(event) => setRecoveryVerificationCode(event.target.value)} placeholder="Authenticator code" inputMode="numeric" /><button className="secondary-button" disabled={mfaBusy || recoveryVerificationCode.length < 6} onClick={() => void regenerateRecoveryCodes()}>{mfaBusy ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />} Verify and replace</button><button className="text-xs text-sentinel-muted" onClick={() => { setShowRecoveryRegeneration(false); setRecoveryVerificationCode(""); }}>Cancel</button></div></div> : <button className="text-xs font-medium text-sentinel-lime" onClick={() => setShowRecoveryRegeneration(true)}>Regenerate recovery codes</button>}</div> : null}<div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-sentinel-line pt-4"><label className="flex items-center gap-2 text-xs text-sentinel-text"><input type="checkbox" checked={mfaRequired} onChange={(event) => setMfaRequired(event.target.checked)} /> Require recent MFA for sensitive approvals</label><button className="secondary-button" disabled={mfaBusy} onClick={() => void saveMfaRequirement()}>{mfaBusy ? <LoaderCircle className="animate-spin" /> : <Save />} Save MFA enforcement</button></div></div>
 
@@ -246,12 +263,18 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-sentinel-text">SAML SSO connection</p>
-            <p className="mt-1 text-[11px] text-sentinel-muted">Paste your IdP metadata values. Keep verification mode on until a test login succeeds.</p>
+            <p className="mt-1 text-[11px] text-sentinel-muted">Paste your IdP metadata values or import raw IdP XML. Just-In-Time (JIT) provisioning automatically creates operator accounts for allowed domains.</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="rounded-full border border-sentinel-line px-2 py-1 text-[10px] font-semibold uppercase text-sentinel-muted">
               {settings?.saml.enforced ? "Enforced" : settings?.saml.enabled ? "Enabled" : settings?.saml.configured ? "Verification mode" : "Not configured"}
             </span>
+            <button
+              className="secondary-button text-xs"
+              onClick={() => setShowXmlPaste((prev) => !prev)}
+            >
+              {showXmlPaste ? "Manual fields" : "Import IdP XML"}
+            </button>
             {settings?.saml.configured ? (
               <button
                 className="secondary-button text-xs text-sentinel-red"
@@ -264,27 +287,59 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
             ) : null}
           </div>
         </div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          <input className="h-10 rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={samlEntityId} onChange={(e) => setSamlEntityId(e.target.value)} placeholder="IdP entity ID (URL)" />
-          <input className="h-10 rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={samlEntryPoint} onChange={(e) => setSamlEntryPoint(e.target.value)} placeholder="IdP SSO URL" />
-          <input className="h-10 rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={samlEmailAttribute} onChange={(e) => setSamlEmailAttribute(e.target.value)} placeholder="Email attribute, e.g. email" />
-          <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-2 text-xs text-sentinel-text">
-              <input type="checkbox" checked={samlEnabled} onChange={(e) => setSamlEnabled(e.target.checked)} /> Enable SAML SSO
-            </label>
-            <label className="flex items-center gap-2 text-xs text-sentinel-text">
-              <input type="checkbox" checked={samlEnforced} onChange={(e) => setSamlEnforced(e.target.checked)} disabled={!samlEnabled} /> Enforce SAML SSO (blocks password login)
-            </label>
+
+        {showXmlPaste ? (
+          <div className="mt-4">
+            <p className="text-xs text-sentinel-muted">Paste complete IdP metadata XML from Okta, Entra ID, Google Workspace, or Ping to auto-configure:</p>
+            <textarea
+              className="mt-2 min-h-32 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas p-3 font-mono text-xs text-sentinel-text"
+              value={samlMetadataXml}
+              onChange={(e) => setSamlMetadataXml(e.target.value)}
+              placeholder="<md:EntityDescriptor xmlns:md='urn:oasis:names:tc:SAML:2.0:metadata' entityID='...'>...</md:EntityDescriptor>"
+            />
+            <div className="mt-2 flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-xs text-sentinel-text">
+                <input type="checkbox" checked={samlEnabled} onChange={(e) => setSamlEnabled(e.target.checked)} /> Enable SAML SSO
+              </label>
+              <label className="flex items-center gap-2 text-xs text-sentinel-text">
+                <input type="checkbox" checked={samlEnforced} onChange={(e) => setSamlEnforced(e.target.checked)} disabled={!samlEnabled} /> Enforce SAML SSO (blocks password login)
+              </label>
+            </div>
+            <div className="mt-3 flex justify-end">
+              <button
+                className="secondary-button"
+                disabled={samlBusy || !samlMetadataXml.trim()}
+                onClick={() => void saveSaml()}
+              >
+                {samlBusy ? <LoaderCircle className="animate-spin" /> : <Save />} Import XML & save
+              </button>
+            </div>
           </div>
-        </div>
-        <textarea className="mt-3 min-h-28 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas p-3 font-mono text-xs text-sentinel-text" value={samlCertificate} onChange={(e) => setSamlCertificate(e.target.value)} placeholder="IdP X.509 signing certificate (PEM) — re-enter when changing SAML settings" />
-        {settings?.saml.certExpiresAt ? (
-          <p className="mt-2 text-[11px] text-sentinel-muted">
-            IdP Certificate valid until: <span className="font-semibold text-sentinel-text">{formatDate(settings.saml.certExpiresAt)}</span>
-          </p>
-        ) : null}
-        {settings?.saml.metadataUrl ? <p className="mt-2 break-all text-[11px] text-sentinel-muted">SP metadata: <span className="font-mono text-sentinel-text">{settings.saml.metadataUrl}</span></p> : null}
-        <div className="mt-3 flex justify-end"><button className="secondary-button" disabled={samlBusy || !samlCertificate.trim()} onClick={() => void saveSaml()}>{samlBusy ? <LoaderCircle className="animate-spin" /> : <Save />} Save SAML connection</button></div>
+        ) : (
+          <>
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              <input className="h-10 rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={samlEntityId} onChange={(e) => setSamlEntityId(e.target.value)} placeholder="IdP entity ID (URL)" />
+              <input className="h-10 rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={samlEntryPoint} onChange={(e) => setSamlEntryPoint(e.target.value)} placeholder="IdP SSO URL" />
+              <input className="h-10 rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sm text-sentinel-text" value={samlEmailAttribute} onChange={(e) => setSamlEmailAttribute(e.target.value)} placeholder="Email attribute, e.g. email" />
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 text-xs text-sentinel-text">
+                  <input type="checkbox" checked={samlEnabled} onChange={(e) => setSamlEnabled(e.target.checked)} /> Enable SAML SSO
+                </label>
+                <label className="flex items-center gap-2 text-xs text-sentinel-text">
+                  <input type="checkbox" checked={samlEnforced} onChange={(e) => setSamlEnforced(e.target.checked)} disabled={!samlEnabled} /> Enforce SAML SSO (blocks password login)
+                </label>
+              </div>
+            </div>
+            <textarea className="mt-3 min-h-28 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas p-3 font-mono text-xs text-sentinel-text" value={samlCertificate} onChange={(e) => setSamlCertificate(e.target.value)} placeholder="IdP X.509 signing certificate (PEM) — re-enter when changing SAML settings" />
+            {settings?.saml.certExpiresAt ? (
+              <p className="mt-2 text-[11px] text-sentinel-muted">
+                IdP Certificate valid until: <span className="font-semibold text-sentinel-text">{formatDate(settings.saml.certExpiresAt)}</span>
+              </p>
+            ) : null}
+            {settings?.saml.metadataUrl ? <p className="mt-2 break-all text-[11px] text-sentinel-muted">SP metadata: <span className="font-mono text-sentinel-text">{settings.saml.metadataUrl}</span></p> : null}
+            <div className="mt-3 flex justify-end"><button className="secondary-button" disabled={samlBusy || !samlCertificate.trim()} onClick={() => void saveSaml()}>{samlBusy ? <LoaderCircle className="animate-spin" /> : <Save />} Save SAML connection</button></div>
+          </>
+        )}
       </div>
     </section>
   );
