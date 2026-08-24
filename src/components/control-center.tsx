@@ -51,9 +51,10 @@ import {
   policies as initialPolicies,
 } from "@/lib/demo-data";
 import {
-  buildSevenDayActivity,
+  buildActivityChartData,
   summarizePolicyDecisions,
   type ActivityPoint,
+  type ActivityTimeRange,
 } from "@/lib/dashboard-metrics";
 import { MfaVerificationDialog } from "@/components/mfa-verification-dialog";
 import { PythonSDKConnection } from "@/components/python-sdk-connection";
@@ -445,15 +446,32 @@ function chartMaximum(data: ActivityPoint[]) {
   return rounded * magnitude;
 }
 
-function ActivityChart({ data }: { data: ActivityPoint[] }) {
+function ActivityChart({
+  events,
+  live,
+  fallbackData,
+}: {
+  events: AuditEvent[];
+  live: boolean;
+  fallbackData: ActivityPoint[];
+}) {
+  const [timeRange, setTimeRange] = useState<ActivityTimeRange>("7d");
   const width = 760;
   const height = 210;
   const padding = { left: 38, right: 12, top: 10, bottom: 24 };
+
+  const data = useMemo(() => {
+    if (live || events.length > 0) {
+      return buildActivityChartData(events, timeRange);
+    }
+    return fallbackData;
+  }, [events, live, fallbackData, timeRange]);
+
   const max = chartMaximum(data);
   const ticks = [0, max / 4, max / 2, (max * 3) / 4, max];
   const x = (index: number) =>
     padding.left +
-    (index * (width - padding.left - padding.right)) / (data.length - 1);
+    (index * (width - padding.left - padding.right)) / Math.max(1, data.length - 1);
   const y = (value: number) =>
     padding.top +
     (1 - value / max) * (height - padding.top - padding.bottom);
@@ -465,11 +483,30 @@ function ActivityChart({ data }: { data: ActivityPoint[] }) {
       <div className="section-heading">
         <div>
           <h2>Actions over time</h2>
-          <p>Policy decisions across the last 7 days</p>
+          <p>
+            {timeRange === "24h"
+              ? "Policy decisions across the last 24 hours"
+              : timeRange === "14d"
+                ? "Policy decisions across the last 14 days"
+                : timeRange === "30d"
+                  ? "Policy decisions across the last 30 days"
+                  : "Policy decisions across the last 7 days"}
+          </p>
         </div>
-        <button className="secondary-button">
-          <Clock3 /> Last 7 days <ChevronDown />
-        </button>
+        <label className="select-field secondary-button flex items-center gap-1.5 cursor-pointer">
+          <Clock3 className="h-3.5 w-3.5 text-sentinel-muted shrink-0" />
+          <select
+            className="bg-transparent text-xs text-sentinel-text outline-none cursor-pointer pr-1 font-medium"
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value as ActivityTimeRange)}
+            aria-label="Filter actions over time chart by time range"
+          >
+            <option value="24h">Last 24 hours</option>
+            <option value="7d">Last 7 days</option>
+            <option value="14d">Last 14 days</option>
+            <option value="30d">Last 30 days</option>
+          </select>
+        </label>
       </div>
       <div className="chart-legend" aria-hidden="true">
         <span><i className="legend-allowed" />Allowed</span>
@@ -967,10 +1004,6 @@ function Overview({
   const totalSpend = agents.reduce((sum, agent) => sum + agent.cost, 0);
   const healthyAgents = agents.filter((agent) => agent.status === "healthy").length;
   const policySummary = useMemo(() => summarizePolicyDecisions(audit), [audit]);
-  const activityData = useMemo(
-    () => (live ? buildSevenDayActivity(audit) : chartData),
-    [audit, live],
-  );
   const compliance = policySummary.compliancePercent === null
     ? "—"
     : `${policySummary.compliancePercent.toFixed(1)}%`;
@@ -995,7 +1028,7 @@ function Overview({
       <div className="dashboard-grid">
         <div className="dashboard-main">
           <div className="analytics-grid">
-            <ActivityChart data={activityData} />
+            <ActivityChart events={audit} live={live} fallbackData={chartData} />
             <RiskPosture events={audit} />
           </div>
           <AgentTable agents={agents} compact />
