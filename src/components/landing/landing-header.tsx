@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Brand } from "./brand";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const navItems = [
   { label: "Product", href: "#product" },
@@ -39,7 +40,8 @@ export function LandingHeader() {
           </a>
         ))}
       </nav>
-      <div className="flex items-center justify-end gap-[26px] text-[13px] font-semibold max-lg:hidden">
+      <div className="flex items-center justify-end gap-[18px] text-[13px] font-semibold max-lg:hidden">
+        <ThemeToggle />
         <Link href="/dashboard" className="transition-colors hover:text-sentinel-lime">
           Sign in
         </Link>

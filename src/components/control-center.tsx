@@ -90,6 +90,7 @@ import { NotificationPopover } from "@/components/notification-popover";
 import { RequestIntegrationDialog } from "@/components/request-integration-dialog";
 import { AwsConnection } from "@/components/aws-connection";
 import { MicrosoftConnection } from "@/components/microsoft-connection";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export type DashboardView =
   | "overview"
@@ -318,6 +319,7 @@ function TopBar({
             <Command />K
           </kbd>
         </button>
+        <ThemeToggle />
         <div className="relative">
           <button
             className={`icon-button notification-button ${notificationsOpen ? "bg-white/10 text-sentinel-lime" : ""}`}

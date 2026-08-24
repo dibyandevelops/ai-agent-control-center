@@ -2,7 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+.dark,
+[data-theme="dark"] {
   --font-geist-sans: var(--font-app), Arial, Helvetica, sans-serif;
   --font-geist-mono: "Geist Mono", "SFMono-Regular", Consolas, monospace;
   --canvas: #06090e;
@@ -26,11 +28,32 @@
   --sidebar-width: 184px;
 }
 
+.light,
+[data-theme="light"] {
+  --canvas: #f8fafc;
+  --sidebar: #ffffff;
+  --surface: #ffffff;
+  --surface-raised: #f1f5f9;
+  --surface-soft: #e2e8f0;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text: #0f172a;
+  --muted: #64748b;
+  --muted-2: #94a3b8;
+  --accent: #0284c7;
+  --accent-soft: #e0f2fe;
+  --amber: #d97706;
+  --amber-soft: #fef3c7;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --success: #059669;
+}
+
 * {
   box-sizing: border-box;
 }
 
-/* Sleek Cyber-Dark Custom Scrollbars */
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -39,17 +62,17 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(183, 243, 74, 0.4);
+  background: var(--accent);
 }
 
 html {
   background: var(--canvas);
-  color-scheme: dark;
   scrollbar-gutter: stable;
+  transition: background-color 200ms ease, color 200ms ease;
 }
 
 body {
@@ -64,6 +87,14 @@ body {
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.light body,
+[data-theme="light"] body {
+  background:
+    radial-gradient(circle at 80% -10%, rgba(2, 132, 199, 0.04), transparent 40%),
+    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.025), transparent 35%),
+    var(--canvas);
 }
 
 button,
@@ -347,7 +378,7 @@ button:disabled {
   align-items: center;
   padding: 0 28px;
   border-bottom: 1px solid var(--border);
-  background: rgba(9, 12, 16, 0.88);
+  background: var(--canvas);
   backdrop-filter: blur(16px);
 }
 
@@ -355,6 +386,7 @@ button:disabled {
   margin: 0;
   font-size: 14px;
   font-weight: 580;
+  color: var(--text);
 }
 
 .topbar-actions {
@@ -373,8 +405,16 @@ button:disabled {
   gap: 8px;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: #0d1116;
-  color: #d9dde2;
+  background: var(--surface);
+  color: var(--text);
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.organization-control:hover,
+.command-control:hover,
+.profile-control:hover {
+  background: var(--surface-raised);
+  border-color: var(--border-strong);
 }
 
 .organization-control {
@@ -407,9 +447,9 @@ kbd {
   align-items: center;
   gap: 1px;
   padding: 3px 5px;
-  border: 1px solid #303640;
+  border: 1px solid var(--border-strong);
   border-radius: 5px;
-  background: #171c23;
+  background: var(--surface-soft);
   color: var(--muted);
   font-family: var(--font-geist-sans);
   font-size: 10px;
