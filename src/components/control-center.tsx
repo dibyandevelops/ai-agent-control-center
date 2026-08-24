@@ -2937,6 +2937,37 @@ export function ControlCenter({
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
+  const handleSelectView = useCallback((nextView: DashboardView) => {
+    setView(nextView);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("view", nextView);
+      window.history.pushState({ view: nextView }, "", url.toString());
+    }
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const requested = params.get("view");
+      const validViews = [
+        "overview",
+        "agents",
+        "approvals",
+        "policies",
+        "audit",
+        "integrations",
+        "credentials",
+        "team",
+      ];
+      if (requested && validViews.includes(requested)) {
+        setView(requested as DashboardView);
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const params = new URLSearchParams(window.location.search);
@@ -3592,7 +3623,7 @@ export function ControlCenter({
         collapsed={sidebarCollapsed}
         pendingCount={pendingApprovals.length + releaseGovernanceList.filter((item) => item.status === "pending").length}
         canManageOperators={canManageOperators}
-        onSelect={setView}
+        onSelect={handleSelectView}
         onClose={() => setSidebarOpen(false)}
         onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
       />
@@ -3614,13 +3645,13 @@ export function ControlCenter({
           pendingApprovalsCount={pendingApprovals.length}
           quarantinedAgentsCount={agentList.filter((a) => a.status === "quarantined").length}
           integrityVerified={true}
-          onSelectView={setView}
+          onSelectView={handleSelectView}
         />
         <CommandPalette
           open={commandPaletteOpen}
           onClose={() => setCommandPaletteOpen(false)}
-          onSelectView={setView}
-          onOpenCreatePolicy={() => setView("policies")}
+          onSelectView={handleSelectView}
+          onOpenCreatePolicy={() => handleSelectView("policies")}
           agents={agentList}
           policies={policyList}
         />
@@ -3641,10 +3672,10 @@ export function ControlCenter({
             live={workspaceMode === "live"}
             onRegister={openRegisterDialog}
             onDecision={decide}
-            onViewApprovals={() => setView("approvals")}
-            onOpenCredentials={() => setView("credentials")}
-            onOpenIntegrations={() => setView("integrations")}
-            onOpenPolicies={() => setView("policies")}
+            onViewApprovals={() => handleSelectView("approvals")}
+            onOpenCredentials={() => handleSelectView("credentials")}
+            onOpenIntegrations={() => handleSelectView("integrations")}
+            onOpenPolicies={() => handleSelectView("policies")}
             canDecide={canApprove}
           />
         )}
