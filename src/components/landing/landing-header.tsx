@@ -11,6 +11,7 @@ const navItems = [
   { label: "Live Sandbox", href: "#sandbox" },
   { label: "Workflow", href: "#workflow" },
   { label: "Security", href: "#security" },
+  { label: "Pricing", href: "#pricing" },
   { label: "Deployments", href: "#deployments" },
 ] as const;
 

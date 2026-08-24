@@ -1,20 +1,66 @@
-export type PlanCode = "pilot" | "enterprise";
+export type PlanCode = "pilot" | "pro" | "enterprise";
 
 export const planCatalog = {
   pilot: {
     name: "Pilot",
+    priceMonthly: 0,
+    priceAnnual: 0,
     agents: 5,
     repositories: 2,
     pendingApprovals: 20,
     auditRetentionDays: 90,
     httpsWebhooks: 3,
+    features: [
+      "Up to 5 AI Agents",
+      "2 Connected Repositories",
+      "20 Pending Human Approvals",
+      "90-Day Cryptographic Audit Chain",
+      "3 HTTPS Webhook Destinations",
+      "Community Slack Support",
+    ],
+  },
+  pro: {
+    name: "Team Pro",
+    priceMonthly: 79,
+    priceAnnual: 64, // $64/mo when billed annually ($768/yr)
+    stripePriceIdMonthly: "price_sentinel_pro_monthly",
+    stripePriceIdAnnual: "price_sentinel_pro_annual",
+    agents: 25,
+    repositories: 10,
+    pendingApprovals: 100,
+    auditRetentionDays: 365,
+    httpsWebhooks: 10,
+    features: [
+      "Up to 25 AI Agents",
+      "10 Connected Repositories",
+      "100 Pending Human Approvals",
+      "1-Year Cryptographic Audit Chain",
+      "10 HTTPS Webhook Destinations",
+      "Multi-Approver Quorum & Delegation",
+      "Instant Quarantine Killswitch",
+      "Priority Email & Slack Support (4h SLA)",
+    ],
   },
   enterprise: {
     name: "Enterprise",
+    priceMonthly: 299,
+    priceAnnual: 249,
+    stripePriceIdMonthly: "price_sentinel_enterprise_monthly",
+    stripePriceIdAnnual: "price_sentinel_enterprise_annual",
     agents: null,
     repositories: null,
     pendingApprovals: null,
     auditRetentionDays: 3650,
     httpsWebhooks: null,
+    features: [
+      "Unlimited AI Agents & Repositories",
+      "Unlimited Pending Human Approvals",
+      "10-Year Immutable Audit Hash Chain",
+      "Unlimited SIEM / SOAR Webhooks",
+      "SCIM 2.0 & SAML 2.0 SSO (Okta, Azure AD)",
+      "Dedicated Private VPC Gateway",
+      "Custom SLA & 24/7 Phone Support",
+      "Dedicated Solutions Architect",
+    ],
   },
 } as const;

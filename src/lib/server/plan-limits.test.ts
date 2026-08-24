@@ -5,9 +5,12 @@ describe("commercial plan catalog", () => {
   it("keeps the pilot constrained and enterprise unbounded", () => {
     expect(planCatalog.pilot.agents).toBe(5);
     expect(planCatalog.pilot.repositories).toBe(2);
+    expect(planCatalog.pro.agents).toBe(25);
+    expect(planCatalog.pro.auditRetentionDays).toBe(365);
     expect(planCatalog.enterprise.agents).toBeNull();
     expect(planCatalog.enterprise.auditRetentionDays).toBe(3650);
     expect(planCatalog.pilot.httpsWebhooks).toBe(3);
+    expect(planCatalog.pro.httpsWebhooks).toBe(10);
     expect(planCatalog.enterprise.httpsWebhooks).toBeNull();
   });
 });

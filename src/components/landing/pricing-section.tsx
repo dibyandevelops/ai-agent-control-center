@@ -1,0 +1,318 @@
+"use client";
+
+import {
+  ArrowRight,
+  Check,
+  ChevronDown,
+  Minus,
+  Sparkles,
+  Zap,
+} from "lucide-react";
+import Link from "next/link";
+import React, { useState } from "react";
+import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
+import { StripeCheckoutDialog } from "@/components/pricing/stripe-checkout-dialog";
+
+export function PricingSection() {
+  const [billingInterval, setBillingInterval] = useState<"month" | "year">("year");
+  const [checkoutPlan, setCheckoutPlan] = useState<PlanCode | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  const faqs = [
+    {
+      q: "How does SentinelOps count and discover agents?",
+      a: "SentinelOps integrates via lightweight decorators (Python SDK), API gateway proxies, or VCS webhooks. Every unique agent credential or identity that evaluates policy is tracked as an active agent.",
+    },
+    {
+      q: "Can we self-host SentinelOps or run in a private VPC?",
+      a: "Yes. Enterprise customers can deploy the SentinelOps control plane in their AWS, Azure, or GCP private VPC with zero egress and local cryptographic audit anchoring.",
+    },
+    {
+      q: "How does the sub-20ms policy enforcement SLA work?",
+      a: "Our distributed in-memory evaluation cache evaluates pre-compiled deterministic rules and velocity boundaries in sub-20ms before requests reach downstream tool APIs.",
+    },
+    {
+      q: "Can I cancel or switch plans at any time?",
+      a: "Yes. You can upgrade, downgrade, or cancel your subscription anytime directly from the Control Center with automatic prorated credits via Stripe.",
+    },
+  ];
+
+  return (
+    <section className="relative mx-auto max-w-[1380px] px-6 py-20 lg:py-28" id="pricing">
+      {/* Background ambient lighting */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-sentinel-lime/10 blur-[140px] rounded-full pointer-events-none -z-10" />
+
+      {/* Header */}
+      <div className="text-center max-w-3xl mx-auto mb-12">
+        <div className="inline-flex items-center gap-2 rounded-full border border-sentinel-lime/30 bg-sentinel-lime/10 px-3.5 py-1 text-xs font-semibold text-sentinel-lime mb-4">
+          <Sparkles className="h-3.5 w-3.5" /> Transparent Enterprise Pricing
+        </div>
+        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-sentinel-text">
+          Predictable Control. Zero Risk.
+        </h2>
+        <p className="mt-4 text-base sm:text-lg text-sentinel-muted leading-relaxed">
+          Start for free with your first 5 AI agents, then scale securely with automated Stripe billing or tailored enterprise agreements.
+        </p>
+
+        {/* Billing Cycle Switcher */}
+        <div className="mt-8 inline-flex items-center rounded-2xl border border-sentinel-line bg-sentinel-surface p-1.5 shadow-sm">
+          <button
+            type="button"
+            className={`rounded-xl px-5 py-2 text-xs font-bold transition ${
+              billingInterval === "month"
+                ? "bg-sentinel-raised text-sentinel-text shadow-sm"
+                : "text-sentinel-muted hover:text-sentinel-text"
+            }`}
+            onClick={() => setBillingInterval("month")}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            className={`rounded-xl px-5 py-2 text-xs font-bold transition flex items-center gap-2 ${
+              billingInterval === "year"
+                ? "bg-sentinel-lime text-sentinel-canvas shadow-sm"
+                : "text-sentinel-muted hover:text-sentinel-text"
+            }`}
+            onClick={() => setBillingInterval("year")}
+          >
+            <span>Annually</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                billingInterval === "year"
+                  ? "bg-sentinel-canvas text-sentinel-lime"
+                  : "bg-sentinel-lime/20 text-sentinel-lime"
+              }`}
+            >
+              SAVE 20%
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3 Pricing Tier Cards */}
+      <div className="grid gap-6 lg:grid-cols-3 lg:items-stretch mb-20">
+        {/* Tier 1: Pilot / Developer */}
+        <div className="flex flex-col justify-between rounded-3xl border border-sentinel-line bg-sentinel-surface p-8 shadow-sm transition hover:border-sentinel-line-strong">
+          <div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-sentinel-text">Pilot</h3>
+              <span className="rounded-full border border-sentinel-line bg-sentinel-canvas px-2.5 py-0.5 text-[11px] font-semibold text-sentinel-muted">
+                Free Forever
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-sentinel-muted leading-relaxed">
+              Validate governed agent workflows with your immediate team.
+            </p>
+            <div className="mt-6 flex items-baseline gap-1">
+              <span className="text-4xl font-black text-sentinel-text">$0</span>
+              <span className="text-xs text-sentinel-muted">/ month</span>
+            </div>
+
+            <ul className="mt-8 space-y-3.5 text-xs text-sentinel-muted">
+              {planCatalog.pilot.features.map((feat) => (
+                <li key={feat} className="flex items-start gap-2.5">
+                  <Check className="h-4 w-4 text-sentinel-lime shrink-0 mt-0.5" />
+                  <span>{feat}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <Link
+            href="/get-started"
+            className="secondary-button mt-8 w-full justify-center py-3 text-xs font-bold"
+          >
+            Start Free Workspace <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        {/* Tier 2: Team Pro (Featured) */}
+        <div className="relative flex flex-col justify-between rounded-3xl border-2 border-sentinel-lime bg-sentinel-surface p-8 shadow-xl shadow-sentinel-lime/10 scale-100 lg:scale-105 z-10">
+          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-sentinel-lime px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-sentinel-canvas shadow-sm">
+            Most Popular
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-sentinel-text">Team Pro</h3>
+              <span className="rounded-full border border-sentinel-lime/40 bg-sentinel-lime/10 px-2.5 py-0.5 text-[11px] font-semibold text-sentinel-lime">
+                Stripe Direct
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-sentinel-muted leading-relaxed">
+              Scale production AI agents with multi-party sign-offs & instant quarantine.
+            </p>
+            <div className="mt-6 flex items-baseline gap-1">
+              <span className="text-4xl font-black text-sentinel-text">
+                ${billingInterval === "year" ? planCatalog.pro.priceAnnual : planCatalog.pro.priceMonthly}
+              </span>
+              <span className="text-xs text-sentinel-muted">/ month</span>
+              {billingInterval === "year" && (
+                <span className="ml-2 text-[11px] font-semibold text-sentinel-lime">
+                  billed annually
+                </span>
+              )}
+            </div>
+
+            <ul className="mt-8 space-y-3.5 text-xs text-sentinel-text font-medium">
+              {planCatalog.pro.features.map((feat) => (
+                <li key={feat} className="flex items-start gap-2.5">
+                  <Check className="h-4 w-4 text-sentinel-lime shrink-0 mt-0.5" />
+                  <span>{feat}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <button
+            type="button"
+            className="primary-button mt-8 w-full justify-center py-3.5 text-xs font-bold shadow-lg shadow-sentinel-lime/25"
+            onClick={() => setCheckoutPlan("pro")}
+          >
+            <Zap className="h-4 w-4" /> Subscribe with Stripe
+          </button>
+        </div>
+
+        {/* Tier 3: Enterprise Security */}
+        <div className="flex flex-col justify-between rounded-3xl border border-sentinel-line bg-sentinel-surface p-8 shadow-sm transition hover:border-sentinel-line-strong">
+          <div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-sentinel-text">Enterprise</h3>
+              <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-cyan-400">
+                Full Sovereignty
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-sentinel-muted leading-relaxed">
+              Total governance sovereignty for regulated healthcare, fintech, and defense.
+            </p>
+            <div className="mt-6 flex items-baseline gap-1">
+              <span className="text-4xl font-black text-sentinel-text">
+                ${billingInterval === "year" ? planCatalog.enterprise.priceAnnual : planCatalog.enterprise.priceMonthly}
+              </span>
+              <span className="text-xs text-sentinel-muted">/ month</span>
+            </div>
+
+            <ul className="mt-8 space-y-3.5 text-xs text-sentinel-muted">
+              {planCatalog.enterprise.features.map((feat) => (
+                <li key={feat} className="flex items-start gap-2.5">
+                  <Check className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+                  <span>{feat}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <button
+            type="button"
+            className="secondary-button mt-8 w-full justify-center py-3 text-xs font-bold hover:border-cyan-500/60"
+            onClick={() => setCheckoutPlan("enterprise")}
+          >
+            Upgrade with Stripe <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Feature Comparison Matrix */}
+      <div className="rounded-3xl border border-sentinel-line bg-sentinel-surface/80 p-8 shadow-sm mb-20 overflow-x-auto">
+        <h3 className="text-xl font-bold text-sentinel-text mb-6">Detailed Feature Comparison</h3>
+        <table className="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr className="border-b border-sentinel-line text-sentinel-muted">
+              <th className="pb-3 font-semibold">Governance Capability</th>
+              <th className="pb-3 font-semibold text-center w-36">Pilot</th>
+              <th className="pb-3 font-semibold text-center w-36 text-sentinel-lime">Team Pro</th>
+              <th className="pb-3 font-semibold text-center w-36 text-cyan-400">Enterprise</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-sentinel-line/60">
+            <tr>
+              <td className="py-3.5 font-medium text-sentinel-text">Active Agent Registrations</td>
+              <td className="py-3.5 text-center text-sentinel-muted">5</td>
+              <td className="py-3.5 text-center font-bold text-sentinel-text">25</td>
+              <td className="py-3.5 text-center font-bold text-sentinel-lime">Unlimited</td>
+            </tr>
+            <tr>
+              <td className="py-3.5 font-medium text-sentinel-text">Sub-20ms Policy Engine</td>
+              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+            </tr>
+            <tr>
+              <td className="py-3.5 font-medium text-sentinel-text">Dual-Custody Quorum Sign-offs</td>
+              <td className="py-3.5 text-center text-sentinel-dim"><Minus className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+            </tr>
+            <tr>
+              <td className="py-3.5 font-medium text-sentinel-text">Cryptographic Audit Immutability</td>
+              <td className="py-3.5 text-center text-sentinel-muted">90 Days</td>
+              <td className="py-3.5 text-center font-semibold text-sentinel-text">1 Year</td>
+              <td className="py-3.5 text-center font-bold text-sentinel-lime">10 Years</td>
+            </tr>
+            <tr>
+              <td className="py-3.5 font-medium text-sentinel-text">SAML 2.0 & SCIM User Provisioning</td>
+              <td className="py-3.5 text-center text-sentinel-dim"><Minus className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-sentinel-dim"><Minus className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+            </tr>
+            <tr>
+              <td className="py-3.5 font-medium text-sentinel-text">Private VPC / Air-Gapped Gateway</td>
+              <td className="py-3.5 text-center text-sentinel-dim"><Minus className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-sentinel-dim"><Minus className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Frequently Asked Questions */}
+      <div className="max-w-3xl mx-auto">
+        <h3 className="text-2xl font-bold text-sentinel-text text-center mb-8">
+          Frequently Asked Questions
+        </h3>
+        <div className="space-y-3">
+          {faqs.map((faq, index) => {
+            const isOpen = openFaq === index;
+            return (
+              <div
+                key={faq.q}
+                className="rounded-2xl border border-sentinel-line bg-sentinel-surface overflow-hidden transition"
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between p-5 text-left text-sm font-semibold text-sentinel-text hover:text-sentinel-lime"
+                  onClick={() => setOpenFaq(isOpen ? null : index)}
+                >
+                  <span>{faq.q}</span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-sentinel-muted transition-transform duration-200 ${
+                      isOpen ? "rotate-180 text-sentinel-lime" : ""
+                    }`}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="px-5 pb-5 text-xs text-sentinel-muted leading-relaxed border-t border-sentinel-line/60 pt-3">
+                    {faq.a}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Stripe Checkout Modal */}
+      {checkoutPlan && (
+        <StripeCheckoutDialog
+          open={Boolean(checkoutPlan)}
+          planCode={checkoutPlan}
+          billingInterval={billingInterval}
+          onClose={() => setCheckoutPlan(null)}
+          onSuccess={() => {
+            // Notification or redirect handled inside dialog
+          }}
+        />
+      )}
+    </section>
+  );
+}
