@@ -26,6 +26,13 @@ export async function POST(request: NextRequest) {
 
     const input = policySimulationInputSchema.parse(await request.json());
     const pool = getPool();
+    const queryParams: unknown[] = [operator.organizationId, input.limit];
+    let envClause = "";
+    if (input.environment) {
+      queryParams.push(input.environment);
+      envClause = `and ar.environment = $${queryParams.length}`;
+    }
+
     const [policiesResult, actionsResult] = await Promise.all([
       pool.query<{
         id: string;
@@ -82,10 +89,11 @@ export async function POST(request: NextRequest) {
           from action_requests ar
           join agents a on a.id = ar.agent_id
           where ar.organization_id = $1
+            ${envClause}
           order by ar.requested_at desc, ar.id desc
           limit $2
         `,
-        [operator.organizationId, input.limit],
+        queryParams,
       ),
     ]);
 
@@ -125,9 +133,65 @@ export async function POST(request: NextRequest) {
       },
     }));
 
+    let syntheticResult: {
+      action: string;
+      resource: string;
+      environment: string;
+      baselineEffect: PolicyEffect;
+      simulatedEffect: PolicyEffect;
+      winningPolicyName: string;
+      decisionChanged: boolean;
+    } | null = null;
+
+    if (input.syntheticAction) {
+      const syntheticInput: ActionEvaluationInput = {
+        idempotencyKey: "synthetic-dry-run",
+        agent: {
+          externalId: "synthetic-agent",
+          name: "Synthetic Dry-Run Agent",
+          ownerEmail: operator.email,
+          team: "Security Simulation",
+          provider: "synthetic",
+        },
+        action: input.syntheticAction.action,
+        resource: input.syntheticAction.resource,
+        environment: input.syntheticAction.environment,
+        riskHint: input.syntheticAction.risk,
+        context: input.syntheticAction.context,
+      };
+
+      const baselineEval = simulatePolicyImpact({
+        candidate: currentPolicies[0] || candidate,
+        currentPolicies,
+        actions: [{ requestId: "synth", agentName: "Synthetic Agent", requestedAt: new Date(), input: syntheticInput }],
+      });
+
+      const candidateEval = simulatePolicyImpact({
+        candidate,
+        currentPolicies,
+        actions: [{ requestId: "synth", agentName: "Synthetic Agent", requestedAt: new Date(), input: syntheticInput }],
+      });
+
+      const baselineRow = baselineEval.rows[0];
+      const candidateRow = candidateEval.rows[0];
+
+      if (candidateRow) {
+        syntheticResult = {
+          action: input.syntheticAction.action,
+          resource: input.syntheticAction.resource,
+          environment: input.syntheticAction.environment,
+          baselineEffect: baselineRow?.simulatedEffect ?? "allow",
+          simulatedEffect: candidateRow.simulatedEffect,
+          winningPolicyName: candidateRow.winningPolicyName,
+          decisionChanged: (baselineRow?.simulatedEffect ?? "allow") !== candidateRow.simulatedEffect,
+        };
+      }
+    }
+
     return NextResponse.json(
       {
         ...simulatePolicyImpact({ candidate, currentPolicies, actions }),
+        syntheticResult,
         simulatedAt: new Date().toISOString(),
         policyOrderBasis: "Current enabled policies and draft priority",
       },

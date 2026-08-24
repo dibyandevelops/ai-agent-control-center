@@ -113,7 +113,22 @@ export const policySimulationInputSchema = policyWriteSchema
   })
   .extend({
     policyId: z.string().uuid().optional(),
-    limit: z.number().int().min(1).max(50).default(25),
+    limit: z.number().int().min(1).max(100).default(25),
+    environment: z.enum(["development", "staging", "production"]).optional(),
+    syntheticAction: z
+      .object({
+        action: z.string().trim().min(1).max(120),
+        resource: z.string().trim().min(1).max(160),
+        environment: z.enum(["development", "staging", "production"]).default("production"),
+        risk: z.enum(["low", "medium", "high"]).default("high"),
+        context: z
+          .record(
+            z.string(),
+            z.union([z.string(), z.number(), z.boolean(), z.null()]),
+          )
+          .default({}),
+      })
+      .optional(),
   });
 
 export const policyActivationDecisionSchema = z.object({
