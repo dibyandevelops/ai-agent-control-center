@@ -88,6 +88,8 @@ import { TablePagination } from "@/components/table-pagination";
 import { CommandPalette } from "@/components/command-palette";
 import { NotificationPopover } from "@/components/notification-popover";
 import { RequestIntegrationDialog } from "@/components/request-integration-dialog";
+import { AwsConnection } from "@/components/aws-connection";
+import { MicrosoftConnection } from "@/components/microsoft-connection";
 
 export type DashboardView =
   | "overview"
@@ -2252,9 +2254,38 @@ function IntegrationsView({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
   const visibleItems = live ? items : demoItems;
   const driftIncidents = visibleItems.find((item) => item.name === "GitHub")
     ?.driftIncidents ?? [];
+
+  const filteredItems = useMemo(() => {
+    return visibleItems.filter((item) => {
+      const matchesSearch = `${item.name} ${item.description} ${item.category}`
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+      if (categoryFilter === "connected" && !item.connected) return false;
+      if (
+        categoryFilter !== "all" &&
+        categoryFilter !== "connected" &&
+        item.category !== categoryFilter
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [visibleItems, searchQuery, categoryFilter]);
+
+  const categories = useMemo(() => {
+    const list = Array.from(new Set(visibleItems.map((i) => i.category)));
+    return ["all", "connected", ...list];
+  }, [visibleItems]);
+
+  const connectedCount = visibleItems.filter((i) => i.connected).length;
+
   function toggle(id: string) {
     setDemoItems((current) =>
       current.map((item) =>
@@ -2268,6 +2299,7 @@ function IntegrationsView({
       ),
     );
   }
+
   async function retryFailedNotifications() {
     setRetrying(true);
     try {
@@ -2276,28 +2308,124 @@ function IntegrationsView({
       setRetrying(false);
     }
   }
+
   return (
     <main className="page">
       <div className="page-title-row">
-        <div><h2>Enterprise integrations</h2><p>Connect the systems where AI agents read data and take action.</p></div>
-        <button className="secondary-button" onClick={() => setRequestDialogOpen(true)}>
+        <div>
+          <h2>Enterprise integrations</h2>
+          <p>Connect the systems where AI agents read data, call APIs, and take consequential actions.</p>
+        </div>
+        <button className="primary-button" onClick={() => setRequestDialogOpen(true)}>
           <Plus /> Request integration
         </button>
       </div>
+
+      {/* Top Metrics Summary Band */}
+      <section className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">
+              Active Connectors
+            </p>
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sentinel-lime opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-sentinel-lime" />
+            </span>
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-sentinel-lime">
+            {connectedCount} <span className="text-sm font-normal text-sentinel-muted">/ {visibleItems.length}</span>
+          </p>
+          <p className="mt-1 text-xs text-sentinel-muted">Enforcing policy controls</p>
+        </div>
+
+        <div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">
+            GitHub Drift Guard
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-sentinel-text">
+            {driftIncidents.length === 0 ? "Protected" : `${driftIncidents.length} Drift Alert`}
+          </p>
+          <p className="mt-1 text-xs text-sentinel-muted">Release workflow guard</p>
+        </div>
+
+        <div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">
+            SIEM / ChatOps Routing
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-sentinel-text">
+            Active
+          </p>
+          <p className="mt-1 text-xs text-sentinel-muted">Slack + HTTPS Webhook outbox</p>
+        </div>
+
+        <div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">
+            Agent SDK & APIs
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-sentinel-lime">
+            Ready
+          </p>
+          <p className="mt-1 text-xs text-sentinel-muted">Python SDK + HTTP REST</p>
+        </div>
+      </section>
+
+      {/* Search & Filter Header */}
+      <section className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <label className="search-field wide-search max-w-sm flex-1">
+          <Search />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search integrations, tools, or categories…"
+            aria-label="Search integrations"
+          />
+        </label>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              className={`filter-chip ${categoryFilter === cat ? "filter-active" : ""}`}
+              onClick={() => setCategoryFilter(cat)}
+            >
+              {cat === "all" ? "All" : cat === "connected" ? "Connected" : cat}
+              {cat === "all" ? (
+                <span>{visibleItems.length}</span>
+              ) : cat === "connected" ? (
+                <span>{connectedCount}</span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Integrations Grid */}
       <div className="integrations-grid">
-        {visibleItems.map((integration) => (
-          <article className={`panel integration-card ${expandedId === integration.id ? "integration-card-expanded" : ""}`} key={integration.id}>
-            <div className="integration-logo"><IntegrationLogo integration={integration} /></div>
+        {filteredItems.map((integration) => (
+          <article
+            className={`panel integration-card ${
+              expandedId === integration.id ? "integration-card-expanded" : ""
+            }`}
+            key={integration.id}
+          >
+            <div className="integration-logo">
+              <IntegrationLogo integration={integration} />
+            </div>
             <div className="integration-copy">
-              <div>
+              <div className="flex items-center justify-between gap-2">
                 <h3>{integration.name}</h3>
-                {(integration.connected || integration.status === "attention") ? (
+                {integration.connected || integration.status === "attention" ? (
                   <span className="connected">
                     <Check /> {integrationStatusLabel(integration)}
                   </span>
-                ) : null}
+                ) : (
+                  <span className="rounded-full border border-sentinel-line bg-sentinel-canvas px-2 py-0.5 text-[10px] font-medium text-sentinel-muted">
+                    Available
+                  </span>
+                )}
               </div>
-              <span>{integration.category}</span>
+              <span className="text-[11px] font-medium text-sentinel-dim">{integration.category}</span>
               <p>{integration.description}</p>
               {integration.repository || integration.mode ? (
                 <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-medium text-sentinel-muted">
@@ -2319,7 +2447,9 @@ function IntegrationsView({
               {integration.id === "int-python-sdk" ? (
                 <button
                   className="secondary-button"
-                  onClick={() => setExpandedId(expandedId === integration.id ? null : integration.id)}
+                  onClick={() =>
+                    setExpandedId(expandedId === integration.id ? null : integration.id)
+                  }
                 >
                   {expandedId === integration.id ? "Hide Guide" : "Configure"}
                 </button>
@@ -2338,26 +2468,58 @@ function IntegrationsView({
                   </button>
                 ) : (
                   <button
-                    className={expandedId === integration.id ? "secondary-button" : integration.connected ? "secondary-button" : "primary-button"}
-                    onClick={() => setExpandedId(expandedId === integration.id ? null : integration.id)}
+                    className={
+                      expandedId === integration.id
+                        ? "secondary-button"
+                        : integration.connected
+                        ? "secondary-button"
+                        : "primary-button"
+                    }
+                    onClick={() =>
+                      setExpandedId(expandedId === integration.id ? null : integration.id)
+                    }
                   >
                     {expandedId === integration.id
                       ? "Hide settings"
                       : integration.connected
-                        ? "Configure"
-                        : "Connect"}
+                      ? "Configure"
+                      : "Connect"}
                   </button>
                 )
               ) : (
                 <button
-                  className={integration.connected ? "secondary-button" : "primary-button"}
-                  onClick={() => toggle(integration.id)}
+                  className={
+                    expandedId === integration.id
+                      ? "secondary-button"
+                      : integration.connected
+                      ? "secondary-button"
+                      : "primary-button"
+                  }
+                  onClick={() => {
+                    if (
+                      integration.name === "AWS" ||
+                      integration.name === "Microsoft 365" ||
+                      integration.name === "GitHub" ||
+                      integration.name === "Slack" ||
+                      integration.name === "HTTPS Webhooks"
+                    ) {
+                      setExpandedId(expandedId === integration.id ? null : integration.id);
+                    } else {
+                      toggle(integration.id);
+                    }
+                  }}
                 >
-                  {integration.connected ? "Configure" : "Connect"}
+                  {expandedId === integration.id
+                    ? "Hide settings"
+                    : integration.connected
+                    ? "Configure"
+                    : "Connect"}
                 </button>
               )}
             </div>
-            {expandedId === integration.id && live && integration.name === "GitHub" ? (
+
+            {/* Expandable Configuration Panels */}
+            {expandedId === integration.id && integration.name === "GitHub" ? (
               <GitHubAppConnection
                 integration={integration}
                 canManage={canAcknowledgeDrift}
@@ -2365,7 +2527,7 @@ function IntegrationsView({
                 onNotify={onNotify}
               />
             ) : null}
-            {expandedId === integration.id && live && integration.name === "Slack" ? (
+            {expandedId === integration.id && integration.name === "Slack" ? (
               <SlackConnection
                 integration={integration}
                 canManage={canAcknowledgeDrift}
@@ -2373,7 +2535,8 @@ function IntegrationsView({
                 onNotify={onNotify}
               />
             ) : null}
-            {expandedId === integration.id && live && (integration.name === "HTTPS Webhooks" || integration.id === "int-https-webhooks") ? (
+            {expandedId === integration.id &&
+            (integration.name === "HTTPS Webhooks" || integration.id === "int-https-webhooks") ? (
               <HttpsWebhookConnection
                 integration={integration}
                 canManage={canAcknowledgeDrift}
@@ -2384,9 +2547,32 @@ function IntegrationsView({
             {expandedId === integration.id && integration.id === "int-python-sdk" ? (
               <PythonSDKConnection />
             ) : null}
+            {expandedId === integration.id && integration.name === "AWS" ? (
+              <AwsConnection onNotify={onNotify} />
+            ) : null}
+            {expandedId === integration.id && integration.name === "Microsoft 365" ? (
+              <MicrosoftConnection onNotify={onNotify} />
+            ) : null}
           </article>
         ))}
       </div>
+
+      {filteredItems.length === 0 && (
+        <div className="panel p-8 text-center space-y-3">
+          <EmptyState
+            icon={PlugZap}
+            title="No matching integrations found"
+            description="Try adjusting your search term or category filter, or request a custom connector."
+          />
+          <button
+            className="secondary-button mx-auto mt-2"
+            onClick={() => setRequestDialogOpen(true)}
+          >
+            <Plus /> Request custom integration
+          </button>
+        </div>
+      )}
+
       <GitHubDriftIncidents
         incidents={driftIncidents}
         canAcknowledge={canAcknowledgeDrift}
