@@ -77,7 +77,7 @@ export function NotificationPopover({
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-12 top-14 z-50 w-80 sm:w-96 rounded-2xl border border-sentinel-line-strong bg-[#0f141a] shadow-2xl p-4 animate-dialog-in">
+      <div className="absolute right-12 top-14 z-50 w-80 sm:w-96 rounded-2xl border border-sentinel-line-strong bg-sentinel-surface shadow-2xl p-4 animate-dialog-in">
         <div className="flex items-center justify-between border-b border-sentinel-line pb-3 mb-3">
           <div className="flex items-center gap-2">
             <Bell className="h-4 w-4 text-sentinel-lime" />
@@ -98,12 +98,12 @@ export function NotificationPopover({
             return (
               <button
                 key={item.id}
-                className="flex w-full items-start gap-3 rounded-xl p-2.5 text-left transition hover:bg-white/[0.04] group"
+                className="flex w-full items-start gap-3 rounded-xl p-2.5 text-left transition hover:bg-sentinel-raised group"
                 onClick={item.action}
               >
                 <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${item.tone}`} />
                 <div className="min-w-0 flex-1">
-                  <strong className="block text-xs font-semibold text-sentinel-text group-hover:text-white">
+                  <strong className="block text-xs font-semibold text-sentinel-text group-hover:text-sentinel-lime">
                     {item.title}
                   </strong>
                   <p className="mt-0.5 text-[11px] leading-4 text-sentinel-muted">

@@ -1946,13 +1946,13 @@ function ActionDetailDrawer({
       onMouseDown={onClose}
     >
       <aside
-        className="h-full w-full max-w-2xl overflow-y-auto border-l border-sentinel-border bg-[#0d1217] shadow-2xl"
+        className="h-full w-full max-w-2xl overflow-y-auto border-l border-sentinel-line bg-sentinel-surface shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="action-detail-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <header className="sticky top-0 z-10 flex items-start justify-between border-b border-sentinel-border bg-[#0d1217]/95 px-4 sm:px-7 py-4 sm:py-6 backdrop-blur">
+        <header className="sticky top-0 z-10 flex items-start justify-between border-b border-sentinel-line bg-sentinel-surface/95 px-4 sm:px-7 py-4 sm:py-6 backdrop-blur">
           <div>
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sentinel-lime">
               Tamper-evident record
@@ -2192,7 +2192,7 @@ function ActionDetailDrawer({
               </section>
 
               {Object.keys(detail.context).length > 0 ? (
-                <section className="rounded-xl border border-sentinel-border bg-[#090d11] p-5">
+                <section className="rounded-xl border border-sentinel-line bg-sentinel-canvas p-5">
                   <h3 className="text-sm font-semibold text-sentinel-text">Request context</h3>
                   <dl className="mt-4 space-y-2 font-mono text-xs">
                     {Object.entries(detail.context).map(([key, value]) => (
@@ -2660,7 +2660,7 @@ function WorkspaceBanner({
   onConnect: () => void;
 }) {
   return (
-    <div className="mx-7 mt-4 flex min-h-12 items-center gap-3 rounded-lg border border-[#2b333c] bg-[#0d1217] px-4 text-xs max-md:mx-4 max-md:items-start max-md:py-3">
+    <div className="mx-7 mt-4 flex min-h-12 items-center gap-3 rounded-lg border border-sentinel-line bg-sentinel-surface px-4 text-xs max-md:mx-4 max-md:items-start max-md:py-3">
       <span
         className={`h-2 w-2 shrink-0 rounded-full ${
           mode === "live"

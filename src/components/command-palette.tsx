@@ -137,7 +137,7 @@ export function CommandPalette({
       }}
     >
       <div
-        className="w-full max-w-xl overflow-hidden rounded-2xl border border-sentinel-line-strong bg-[#0f141a] shadow-2xl animate-dialog-in"
+        className="w-full max-w-xl overflow-hidden rounded-2xl border border-sentinel-line-strong bg-sentinel-surface shadow-2xl animate-dialog-in"
         role="dialog"
         aria-modal="true"
         aria-label="Command Palette"
@@ -169,7 +169,7 @@ export function CommandPalette({
                 return (
                   <button
                     key={item.id}
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs transition hover:bg-white/[0.06] hover:text-sentinel-lime group"
+                    className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs transition hover:bg-sentinel-raised hover:text-sentinel-lime group"
                     onClick={() => {
                       item.action();
                       setQuery("");
@@ -178,7 +178,7 @@ export function CommandPalette({
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Icon className="h-4 w-4 text-sentinel-muted group-hover:text-sentinel-lime shrink-0" />
-                      <span className="truncate text-sentinel-text group-hover:text-white font-medium">
+                      <span className="truncate text-sentinel-text group-hover:text-sentinel-lime font-medium">
                         {item.label}
                       </span>
                     </div>
@@ -192,7 +192,7 @@ export function CommandPalette({
           )}
         </div>
 
-        <div className="border-t border-sentinel-line bg-[#0c1015] px-4 py-2 text-[11px] text-sentinel-dim flex items-center justify-between">
+        <div className="border-t border-sentinel-line bg-sentinel-canvas/60 px-4 py-2 text-[11px] text-sentinel-dim flex items-center justify-between">
           <span>Navigate with click or arrow keys</span>
           <span>SentinelOps v0.1.0</span>
         </div>
