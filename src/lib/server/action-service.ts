@@ -370,7 +370,7 @@ export async function decideAction(
       payload: {
         decision: input.decision,
         reason: input.reason,
-        delegatedFrom: delegatedFrom ? delegatedFrom.email : undefined,
+        ...(delegatedFrom ? { delegatedFrom: delegatedFrom.email } : {}),
       },
     });
 
