@@ -6,8 +6,12 @@
       "schedule": "0 0 * * *"
     },
     {
+      "path": "/api/v1/internal/audit-retention",
+      "schedule": "30 0 * * *"
+    },
+    {
       "path": "/api/v1/internal/notification-outbox",
-      "schedule": "15 0 * * *"
+      "schedule": "*/10 * * * *"
     },
     {
       "path": "/api/v1/internal/security-digest",
