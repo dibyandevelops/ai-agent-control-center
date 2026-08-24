@@ -7,6 +7,7 @@ import { Brand } from "./brand";
 
 const navItems = [
   { label: "Product", href: "#product" },
+  { label: "Live Sandbox", href: "#sandbox" },
   { label: "Workflow", href: "#workflow" },
   { label: "Security", href: "#security" },
   { label: "Deployments", href: "#deployments" },

@@ -4,6 +4,7 @@ import { LandingFooter } from "./landing-footer";
 import { LandingHeader } from "./landing-header";
 import { SecuritySection } from "./security-section";
 import { WorkflowSection } from "./workflow-section";
+import { InteractiveSandbox } from "./interactive-sandbox";
 
 export function LandingPage() {
   return (
@@ -11,6 +12,7 @@ export function LandingPage() {
       <LandingHeader />
       <main>
         <HeroSection />
+        <InteractiveSandbox />
         <WorkflowSection />
         <IntelligenceSection />
         <SecuritySection />

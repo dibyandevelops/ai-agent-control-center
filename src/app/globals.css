@@ -5,13 +5,13 @@
 :root {
   --font-geist-sans: var(--font-app), Arial, Helvetica, sans-serif;
   --font-geist-mono: "Geist Mono", "SFMono-Regular", Consolas, monospace;
-  --canvas: #090c10;
-  --sidebar: #0b0f14;
-  --surface: #10151b;
-  --surface-raised: #141a21;
-  --surface-soft: #171d24;
-  --border: #252b33;
-  --border-strong: #333a44;
+  --canvas: #070a0e;
+  --sidebar: #090e14;
+  --surface: #0f151c;
+  --surface-raised: #131a23;
+  --surface-soft: #18212c;
+  --border: #222a36;
+  --border-strong: #2f3a4a;
   --text: #f4f6f8;
   --muted: #949ca8;
   --muted-2: #69717d;
@@ -30,6 +30,22 @@
   box-sizing: border-box;
 }
 
+/* Sleek Cyber-Dark Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(183, 243, 74, 0.4);
+}
+
 html {
   background: var(--canvas);
   color-scheme: dark;
@@ -40,11 +56,14 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at 72% -20%, rgba(183, 243, 74, 0.035), transparent 28%),
+    radial-gradient(circle at 80% -10%, rgba(183, 243, 74, 0.04), transparent 35%),
+    radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.025), transparent 30%),
     var(--canvas);
   color: var(--text);
   font-family: var(--font-app), Arial, Helvetica, sans-serif;
   font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button,
