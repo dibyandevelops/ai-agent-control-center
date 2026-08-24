@@ -35,7 +35,6 @@ import {
   Shield,
   ShieldAlert,
   ShieldCheck,
-  SlidersHorizontal,
   UsersRound,
   Webhook,
   X,
@@ -85,6 +84,8 @@ import { GitHubAppConnection } from "@/components/github-app-connection";
 import { SlackConnection } from "@/components/slack-connection";
 import { HttpsWebhookConnection } from "@/components/https-webhook-connection";
 import { TablePagination } from "@/components/table-pagination";
+import { CommandPalette } from "@/components/command-palette";
+import { NotificationPopover } from "@/components/notification-popover";
 
 export type DashboardView =
   | "overview"
@@ -222,12 +223,26 @@ function TopBar({
   operator,
   onChangePassword,
   onLogout,
+  onOpenCommandPalette,
+  onToggleNotifications,
+  notificationsOpen,
+  pendingApprovalsCount,
+  quarantinedAgentsCount,
+  integrityVerified,
+  onSelectView,
 }: {
   view: DashboardView;
   onMenu: () => void;
   operator: OperatorIdentity | null;
   onChangePassword: () => void;
   onLogout: () => void;
+  onOpenCommandPalette: () => void;
+  onToggleNotifications: () => void;
+  notificationsOpen: boolean;
+  pendingApprovalsCount: number;
+  quarantinedAgentsCount: number;
+  integrityVerified: boolean;
+  onSelectView: (view: DashboardView) => void;
 }) {
   const initials = operator?.displayName
     .split(" ")
@@ -236,28 +251,51 @@ function TopBar({
     .slice(0, 2)
     .toUpperCase() || "SO";
   return (
-    <header className="topbar">
+    <header className="topbar relative">
       <button className="icon-button menu-button" onClick={onMenu} aria-label="Open navigation">
         <Menu />
       </button>
       <h1>{titles[view]}</h1>
       <div className="topbar-actions">
-        <button className="organization-control">
+        <button
+          className="organization-control"
+          onClick={() => onSelectView("team")}
+          title="Manage organization & directory"
+        >
           <Building2 />
           <span>{operator?.organizationName || "Aperture Labs"}</span>
           <ChevronDown />
         </button>
-        <button className="command-control" aria-label="Search or run command">
+        <button
+          className="command-control"
+          onClick={onOpenCommandPalette}
+          aria-label="Search or run command"
+        >
           <Search />
           <span>Search or run command…</span>
           <kbd>
             <Command />K
           </kbd>
         </button>
-        <button className="icon-button notification-button" aria-label="Notifications">
-          <Bell />
-          <span />
-        </button>
+        <div className="relative">
+          <button
+            className={`icon-button notification-button ${notificationsOpen ? "bg-white/10 text-sentinel-lime" : ""}`}
+            onClick={onToggleNotifications}
+            aria-label="Notifications"
+            aria-expanded={notificationsOpen}
+          >
+            <Bell />
+            {(pendingApprovalsCount > 0 || quarantinedAgentsCount > 0) ? <span /> : null}
+          </button>
+          <NotificationPopover
+            open={notificationsOpen}
+            onClose={onToggleNotifications}
+            pendingApprovalsCount={pendingApprovalsCount}
+            quarantinedAgentsCount={quarantinedAgentsCount}
+            integrityVerified={integrityVerified}
+            onSelectView={onSelectView}
+          />
+        </div>
         <button
           className="profile-control"
           onClick={onChangePassword}
@@ -1055,22 +1093,74 @@ function ApprovalsView({
   canDecide: boolean;
   canGovernReleases: boolean;
 }) {
+  const [filter, setFilter] = useState<"pending" | "high_risk" | "assigned">("pending");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(6);
+
+  const filteredApprovals = useMemo(() => {
+    if (filter === "high_risk") {
+      return approvals.filter((a) => a.risk === "high");
+    }
+    return approvals;
+  }, [approvals, filter]);
+
+  const paginatedApprovals = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredApprovals.slice(startIndex, startIndex + pageSize);
+  }, [filteredApprovals, currentPage, pageSize]);
+
   return (
     <main className="page">
       <div className="page-title-row">
         <div><h2>Approval queue</h2><p>Review consequential actions before they reach production systems.</p></div>
-        <button className="secondary-button"><SlidersHorizontal /> Routing rules</button>
       </div>
       <div className="filter-row">
-        <button className="filter-chip filter-active">Pending <span>{approvals.length}</span></button>
-        <button className="filter-chip">High risk</button>
-        <button className="filter-chip">Assigned to me</button>
+        <button
+          className={`filter-chip ${filter === "pending" ? "filter-active" : ""}`}
+          onClick={() => {
+            setFilter("pending");
+            setCurrentPage(1);
+          }}
+        >
+          Pending <span>{approvals.length}</span>
+        </button>
+        <button
+          className={`filter-chip ${filter === "high_risk" ? "filter-active" : ""}`}
+          onClick={() => {
+            setFilter("high_risk");
+            setCurrentPage(1);
+          }}
+        >
+          High risk <span>{approvals.filter((a) => a.risk === "high").length}</span>
+        </button>
+        <button
+          className={`filter-chip ${filter === "assigned" ? "filter-active" : ""}`}
+          onClick={() => {
+            setFilter("assigned");
+            setCurrentPage(1);
+          }}
+        >
+          Assigned to me
+        </button>
       </div>
-      {approvals.length ? (
-        <div className="approvals-grid">
-          {approvals.map((approval) => (
-            <ApprovalCard key={approval.id} approval={approval} onDecision={onDecision} canDecide={canDecide} />
-          ))}
+      {filteredApprovals.length ? (
+        <div className="space-y-4">
+          <div className="approvals-grid">
+            {paginatedApprovals.map((approval) => (
+              <ApprovalCard key={approval.id} approval={approval} onDecision={onDecision} canDecide={canDecide} />
+            ))}
+          </div>
+          {filteredApprovals.length > 6 && (
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={filteredApprovals.length}
+              pageSize={pageSize}
+              pageSizeOptions={[6, 12, 24]}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              itemLabel="approvals"
+            />
+          )}
         </div>
       ) : (
         <section className="panel">
@@ -2409,6 +2499,8 @@ export function ControlCenter({
   const [pendingMfaAction, setPendingMfaAction] = useState<null | { label: string; retry: () => Promise<void> }>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -3081,6 +3173,21 @@ export function ControlCenter({
             setPasswordChangeOpen(true);
           }}
           onLogout={() => void logout()}
+          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+          onToggleNotifications={() => setNotificationsOpen((prev) => !prev)}
+          notificationsOpen={notificationsOpen}
+          pendingApprovalsCount={pendingApprovals.length}
+          quarantinedAgentsCount={agentList.filter((a) => a.status === "quarantined").length}
+          integrityVerified={true}
+          onSelectView={setView}
+        />
+        <CommandPalette
+          open={commandPaletteOpen}
+          onClose={() => setCommandPaletteOpen(false)}
+          onSelectView={setView}
+          onOpenCreatePolicy={() => setView("policies")}
+          agents={agentList}
+          policies={policyList}
         />
         <WorkspaceBanner
           mode={workspaceMode}

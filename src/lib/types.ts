@@ -2,6 +2,15 @@ export type AgentStatus = "healthy" | "review" | "blocked" | "quarantined";
 export type RiskLevel = "low" | "medium" | "high";
 export type ApprovalStatus = "pending" | "approved" | "denied";
 export type OperatorRole = "admin" | "approver" | "auditor";
+export type DashboardView =
+  | "overview"
+  | "agents"
+  | "approvals"
+  | "policies"
+  | "audit"
+  | "integrations"
+  | "credentials"
+  | "team";
 
 export interface OperatorIdentity {
   id: string;
