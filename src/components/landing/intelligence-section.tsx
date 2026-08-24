@@ -39,7 +39,7 @@ export function IntelligenceSection() {
         </Reveal>
       </section>
 
-      <section className="relative border-t border-[#38434e]/45 bg-[#090d11] px-[max(28px,calc((100vw-1420px)/2))] py-[clamp(80px,8vw,120px)] max-[760px]:px-3.5 max-[760px]:py-[78px]">
+      <section className="relative border-t border-sentinel-line bg-sentinel-surface px-[max(28px,calc((100vw-1420px)/2))] py-[clamp(80px,8vw,120px)] max-[760px]:px-3.5 max-[760px]:py-[78px]">
         <Reveal>
           <SectionHeader
             title="Policy becomes an execution decision."
@@ -63,7 +63,7 @@ export function IntelligenceSection() {
         </Reveal>
       </section>
 
-      <section className="relative border-t border-[#38434e]/45 bg-[linear-gradient(90deg,rgba(183,243,74,0.04),transparent_32%)] bg-[#0c1116] px-[max(28px,calc((100vw-1420px)/2))] py-[65px] max-[760px]:px-3.5" id="deployments">
+      <section className="relative border-t border-sentinel-line bg-[linear-gradient(90deg,rgba(56,189,248,0.03),transparent_32%)] bg-sentinel-canvas px-[max(28px,calc((100vw-1420px)/2))] py-[65px] max-[760px]:px-3.5" id="deployments">
         <Reveal className="grid grid-cols-[0.78fr_1.22fr] items-center gap-[70px] max-lg:grid-cols-1 max-[760px]:gap-[38px]">
           <div>
             <Building2 className="h-7 w-7 text-sentinel-lime" aria-hidden="true" />

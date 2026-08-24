@@ -5,6 +5,7 @@ import Script from "next/script";
 import { ArrowRight, Building2, Check, LoaderCircle, Mail, ShieldAlert, ShieldCheck } from "lucide-react";
 import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 import { shouldBypassTurnstile } from "@/lib/turnstile-host";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const subscribeToClient = () => () => undefined;
 const getClientSnapshot = () => true;
@@ -81,9 +82,12 @@ export function WorkspaceOnboarding() {
     setSubmitting(true);
     setError("");
     try {
-      const formData = new FormData(event.currentTarget);
-      const turnstileToken = formData.get("cf-turnstile-response");
-      const response = await fetch("/api/v1/onboarding", {
+      const turnstileToken =
+        typeof window !== "undefined" && "turnstile" in window
+          ? (window as unknown as { turnstile?: { getResponse?: () => string } }).turnstile?.getResponse?.()
+          : undefined;
+
+      const response = await fetch("/api/v1/onboarding/workspaces", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -138,9 +142,9 @@ export function WorkspaceOnboarding() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email: resendEmail }),
       });
-      const payload = (await response.json()) as { message?: string; error?: string };
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
       if (!response.ok) throw new Error(payload.error || "Failed to resend verification email.");
-      setResendStatus(payload.message || "If a pending account exists, a new link has been sent.");
+      setResendStatus("Verification email sent if the account exists and is not verified.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to resend verification email.");
     } finally {
@@ -155,12 +159,16 @@ export function WorkspaceOnboarding() {
 
   return (
     <main className="min-h-screen bg-sentinel-canvas px-4 py-14 font-sentinel text-sentinel-text sm:px-6">
-      <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
-        <section>
+      <div className="mx-auto max-w-5xl">
+        <div className="flex items-center justify-between pb-8">
           <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-sentinel-lime">
             <ShieldCheck className="h-5 w-5" /> SentinelOps
           </Link>
-          <p className="mt-12 text-sm font-semibold uppercase tracking-[0.18em] text-sentinel-lime">
+          <ThemeToggle />
+        </div>
+        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+        <section>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sentinel-lime">
             {invitationToken ? "Team invitation" : "Start your workspace"}
           </p>
           <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
@@ -370,6 +378,7 @@ export function WorkspaceOnboarding() {
             </>
           )}
         </section>
+      </div>
       </div>
     </main>
   );

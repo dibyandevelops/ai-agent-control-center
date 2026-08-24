@@ -1,29 +1,30 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: "class",
+  darkMode: ["class", '[data-theme="dark"]'],
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
       colors: {
         sentinel: {
-          canvas: "#06090e",
-          deep: "#03060a",
-          surface: "#0a0f16",
-          raised: "#0f1722",
-          soft: "#141f2e",
-          line: "#1c2838",
-          "line-strong": "#2b3c54",
-          text: "#f1f5f9",
-          muted: "#94a3b8",
-          dim: "#64748b",
-          lime: "#38bdf8", // Cyber-Azure primary accent
-          cyan: "#00f0ff",
-          azure: "#38bdf8",
+          canvas: "var(--canvas)",
+          deep: "var(--sidebar)",
+          surface: "var(--surface)",
+          raised: "var(--surface-raised)",
+          soft: "var(--surface-soft)",
+          line: "var(--border)",
+          "line-strong": "var(--border-strong)",
+          border: "var(--border)",
+          text: "var(--text)",
+          muted: "var(--muted)",
+          dim: "var(--muted-2)",
+          lime: "var(--accent)", // Primary accent
+          cyan: "var(--accent)",
+          azure: "var(--accent)",
           indigo: "#6366f1",
-          emerald: "#10b981",
-          amber: "#f59e0b",
-          red: "#f43f5e",
+          emerald: "var(--success)",
+          amber: "var(--amber)",
+          red: "var(--danger)",
         },
       },
       fontFamily: {
@@ -35,8 +36,8 @@ const config: Config = {
         "app-lg": "20px",
       },
       boxShadow: {
-        "app-1": "0 1px 2px rgba(2, 6, 23, 0.16)",
-        "app-2": "0 18px 50px rgba(2, 6, 23, 0.24)",
+        "app-1": "0 1px 2px rgba(2, 6, 23, 0.08)",
+        "app-2": "0 18px 50px rgba(2, 6, 23, 0.16)",
       },
       keyframes: {
         "dash-flow": {

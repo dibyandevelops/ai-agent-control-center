@@ -6,7 +6,7 @@ import { Reveal } from "./reveal";
 export function LandingFooter() {
   return (
     <>
-      <section className="relative min-h-[420px] overflow-hidden border-y border-sentinel-line bg-[linear-gradient(rgba(183,243,74,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(183,243,74,0.045)_1px,transparent_1px),radial-gradient(circle_at_80%_100%,rgba(183,243,74,0.09),transparent_32%)] bg-[length:48px_48px,48px_48px,auto] bg-[#0b1014] max-[760px]:min-h-[490px]" id="contact">
+      <section className="relative min-h-[420px] overflow-hidden border-y border-sentinel-line bg-[linear-gradient(rgba(56,189,248,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,0.03)_1px,transparent_1px),radial-gradient(circle_at_80%_100%,rgba(56,189,248,0.06),transparent_32%)] bg-[length:48px_48px,48px_48px,auto] bg-sentinel-surface max-[760px]:min-h-[490px]" id="contact">
         <Reveal className="grid min-h-[420px] place-items-center content-center px-6 py-[60px] text-center max-[760px]:min-h-[490px]">
           <h2 className="m-0 max-w-[980px] font-mono text-[clamp(40px,4.8vw,68px)] font-medium leading-[1.08] tracking-[-0.055em] max-[760px]:text-[clamp(37px,10vw,50px)]">Put your AI workforce on a shorter leash.</h2>
           <p className="mt-[21px] text-[17px] text-sentinel-muted max-[760px]:text-sm max-[760px]:leading-[1.6]">Start with one high-risk workflow. Expand as your agent estate grows.</p>

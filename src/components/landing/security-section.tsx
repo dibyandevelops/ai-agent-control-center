@@ -51,9 +51,9 @@ const controls = [
 
 export function SecuritySection() {
   return (
-    <section className="relative border-t border-[#38434e]/45 bg-[linear-gradient(rgba(255,255,255,0.014)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.014)_1px,transparent_1px)] bg-[length:44px_44px] bg-sentinel-canvas px-[max(28px,calc((100vw-1420px)/2))] py-[clamp(90px,10vw,150px)] max-[760px]:px-3.5 max-[760px]:py-[78px]" id="security">
+    <section className="relative border-t border-sentinel-line bg-sentinel-canvas px-[max(28px,calc((100vw-1420px)/2))] py-[clamp(90px,10vw,150px)] max-[760px]:px-3.5 max-[760px]:py-[78px]" id="security">
       <Reveal>
-        <div className="grid grid-cols-[0.9fr_1.1fr] overflow-hidden rounded-3xl border border-sentinel-line-strong bg-[#0a0f14]/85 shadow-app-1 max-lg:grid-cols-1">
+        <div className="grid grid-cols-[0.9fr_1.1fr] overflow-hidden rounded-3xl border border-sentinel-line bg-sentinel-surface shadow-app-1 max-lg:grid-cols-1">
           <div className="border-r border-sentinel-line p-[50px] max-lg:border-b max-lg:border-r-0 max-[760px]:p-[28px_18px] [&_h2]:font-mono [&_h2]:text-[clamp(34px,3.2vw,50px)] [&_h2]:tracking-[-0.045em]">
             <SectionHeader title="Control without slowing teams down." />
             <div className="mt-[39px]">

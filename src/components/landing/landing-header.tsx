@@ -58,7 +58,7 @@ export function LandingHeader() {
         {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
       </button>
       <div
-        className={`absolute inset-x-0 top-[calc(100%+8px)] hidden rounded-2xl border border-sentinel-line bg-[#090d11]/[0.98] p-3.5 shadow-app-2 backdrop-blur-xl transition-[opacity,transform,visibility] duration-150 max-lg:block ${
+        className={`absolute inset-x-0 top-[calc(100%+8px)] hidden rounded-2xl border border-sentinel-line bg-sentinel-surface/[0.98] p-3.5 shadow-app-2 backdrop-blur-xl transition-[opacity,transform,visibility] duration-150 max-lg:block ${
           menuOpen ? "visible translate-y-0 opacity-100" : "invisible -translate-y-2 opacity-0"
         }`}
       >
