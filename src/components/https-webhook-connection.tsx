@@ -127,26 +127,30 @@ export function HttpsWebhookConnection({
 
       {canManage ? (
         <form
-          className="mt-4 grid gap-3 rounded-lg border border-dashed border-sentinel-border p-3 md:grid-cols-[1fr_2fr_auto]"
+          className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 rounded-lg border border-dashed border-sentinel-border p-3"
           onSubmit={(event) => {
             event.preventDefault();
             void run(createWebhook);
           }}
         >
           <input
-            className="rounded-md border border-sentinel-border bg-sentinel-panel px-3 py-2 text-xs text-white"
+            className="flex-1 min-w-0 rounded-md border border-sentinel-border bg-sentinel-panel px-3 py-2 text-xs text-white placeholder:text-sentinel-muted outline-none focus:border-sentinel-lime/60"
             onChange={(event) => setName(event.target.value)}
-            placeholder="SIEM production"
+            placeholder="SIEM name (e.g. Splunk Production)"
             value={name}
           />
           <input
-            className="rounded-md border border-sentinel-border bg-sentinel-panel px-3 py-2 text-xs text-white"
+            className="flex-[2] min-w-0 rounded-md border border-sentinel-border bg-sentinel-panel px-3 py-2 text-xs text-white placeholder:text-sentinel-muted outline-none focus:border-sentinel-lime/60"
             onChange={(event) => setDestinationUrl(event.target.value)}
             placeholder="https://siem.example.com/sentinelops"
             value={destinationUrl}
           />
-          <button className="primary-button" disabled={busy !== null || name.trim().length < 2 || !destinationUrl} type="submit">
-            {busy === "create" ? <LoaderCircle className="animate-spin" /> : <Plus />}
+          <button
+            className="primary-button shrink-0 whitespace-nowrap self-stretch sm:self-auto"
+            disabled={busy !== null || name.trim().length < 2 || !destinationUrl}
+            type="submit"
+          >
+            {busy === "create" ? <LoaderCircle className="animate-spin h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
             Add destination
           </button>
         </form>

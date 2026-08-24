@@ -281,27 +281,33 @@ function TopBar({
 function Sidebar({
   view,
   open,
+  collapsed,
   pendingCount,
   canManageOperators,
   onSelect,
   onClose,
+  onToggleCollapse,
 }: {
   view: DashboardView;
   open: boolean;
+  collapsed: boolean;
   pendingCount: number;
   canManageOperators: boolean;
   onSelect: (view: DashboardView) => void;
   onClose: () => void;
+  onToggleCollapse: () => void;
 }) {
   return (
     <>
       {open && <button className="mobile-overlay" onClick={onClose} aria-label="Close navigation" />}
-      <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
+      <aside className={`sidebar ${open ? "sidebar-open" : ""} ${collapsed ? "sidebar-collapsed" : ""}`}>
         <div className="brand">
           <BrandMark />
-          <span>
-            Sentinel<strong>Ops</strong>
-          </span>
+          {!collapsed ? (
+            <span>
+              Sentinel<strong>Ops</strong>
+            </span>
+          ) : null}
           <button className="icon-button sidebar-close" onClick={onClose} aria-label="Close navigation">
             <X />
           </button>
@@ -318,10 +324,11 @@ function Sidebar({
                   onSelect(item.id);
                   onClose();
                 }}
+                title={collapsed ? item.label : undefined}
                 aria-current={selected ? "page" : undefined}
               >
                 <Icon />
-                <span>{item.label}</span>
+                {!collapsed ? <span>{item.label}</span> : null}
                 {item.id === "approvals" && pendingCount > 0 && (
                   <span className="nav-count">{pendingCount}</span>
                 )}
@@ -330,16 +337,23 @@ function Sidebar({
           })}
         </nav>
         <div className="sidebar-footer">
-          <div className="system-state">
-            <span className="online-dot" />
-            <div>
-              <span>System status</span>
-              <strong>All systems operational</strong>
+          {!collapsed ? (
+            <div className="system-state">
+              <span className="online-dot" />
+              <div>
+                <span>System status</span>
+                <strong>All systems operational</strong>
+              </div>
             </div>
-          </div>
-          <button className="collapse-control">
-            <ChevronLeft />
-            Collapse
+          ) : null}
+          <button
+            className="collapse-control"
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <ChevronRight /> : <ChevronLeft />}
+            {!collapsed ? <span>Collapse</span> : null}
           </button>
         </div>
       </aside>
@@ -1903,7 +1917,7 @@ function IntegrationsView({
       </div>
       <div className="integrations-grid">
         {visibleItems.map((integration) => (
-          <article className="panel integration-card" key={integration.id}>
+          <article className={`panel integration-card ${expandedId === integration.id ? "integration-card-expanded" : ""}`} key={integration.id}>
             <div className="integration-logo"><IntegrationLogo integration={integration} /></div>
             <div className="integration-copy">
               <div>
@@ -1953,18 +1967,16 @@ function IntegrationsView({
                       ? "Requeueing"
                       : `Retry ${integration.deadLetters} failed`}
                   </button>
-                ) : integration.connected && integration.url ? (
-                  <a
-                    className="secondary-button"
-                    href={integration.url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open repository
-                  </a>
                 ) : (
-                  <button className="secondary-button" disabled>
-                    {integration.connected ? "Configured" : "Not configured"}
+                  <button
+                    className={expandedId === integration.id ? "secondary-button" : integration.connected ? "secondary-button" : "primary-button"}
+                    onClick={() => setExpandedId(expandedId === integration.id ? null : integration.id)}
+                  >
+                    {expandedId === integration.id
+                      ? "Hide settings"
+                      : integration.connected
+                        ? "Configure"
+                        : "Connect"}
                   </button>
                 )
               ) : (
@@ -1976,7 +1988,7 @@ function IntegrationsView({
                 </button>
               )}
             </div>
-            {live && integration.name === "GitHub" ? (
+            {expandedId === integration.id && live && integration.name === "GitHub" ? (
               <GitHubAppConnection
                 integration={integration}
                 canManage={canAcknowledgeDrift}
@@ -1984,7 +1996,7 @@ function IntegrationsView({
                 onNotify={onNotify}
               />
             ) : null}
-            {live && integration.name === "Slack" ? (
+            {expandedId === integration.id && live && integration.name === "Slack" ? (
               <SlackConnection
                 integration={integration}
                 canManage={canAcknowledgeDrift}
@@ -1992,7 +2004,7 @@ function IntegrationsView({
                 onNotify={onNotify}
               />
             ) : null}
-            {live && (integration.name === "HTTPS Webhooks" || integration.id === "int-https-webhooks") ? (
+            {expandedId === integration.id && live && (integration.name === "HTTPS Webhooks" || integration.id === "int-https-webhooks") ? (
               <HttpsWebhookConnection
                 integration={integration}
                 canManage={canAcknowledgeDrift}
@@ -2335,6 +2347,7 @@ export function ControlCenter({
 }) {
   const [view, setView] = useState<DashboardView>(initialView);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
   const [connectLoading, setConnectLoading] = useState(false);
@@ -3012,12 +3025,14 @@ export function ControlCenter({
       <Sidebar
         view={view}
         open={sidebarOpen}
+        collapsed={sidebarCollapsed}
         pendingCount={pendingApprovals.length + releaseGovernanceList.filter((item) => item.status === "pending").length}
         canManageOperators={canManageOperators}
         onSelect={setView}
         onClose={() => setSidebarOpen(false)}
+        onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
       />
-      <div className="app-content">
+      <div className={`app-content ${sidebarCollapsed ? "app-content-collapsed" : ""}`}>
         <TopBar
           view={view}
           operator={operatorIdentity}
