@@ -205,10 +205,21 @@ export const policies: Policy[] = [
   },
 ];
 
+const _demoNow = Date.now();
+const _daysAgo = (days: number, hours = 10, minutes = 15) => {
+  const d = new Date(_demoNow - days * 86400 * 1000);
+  d.setHours(hours, minutes, 0, 0);
+  return d.toISOString();
+};
+const _hoursAgo = (hours: number, minutes = 20) => {
+  const d = new Date(_demoNow - hours * 3600 * 1000 - minutes * 60 * 1000);
+  return d.toISOString();
+};
+
 export const auditEvents: AuditEvent[] = [
   {
     id: "evt-1",
-    time: "10:24:31",
+    time: _hoursAgo(1, 12),
     agent: "GitHub Release Assistant",
     action: "Create GitHub release v2.4.1",
     result: "Blocked",
@@ -217,7 +228,7 @@ export const auditEvents: AuditEvent[] = [
   },
   {
     id: "evt-2",
-    time: "10:21:07",
+    time: _hoursAgo(2, 45),
     agent: "Finance Reconciliation",
     action: "Export financial dataset",
     result: "Approved",
@@ -226,16 +237,16 @@ export const auditEvents: AuditEvent[] = [
   },
   {
     id: "evt-3",
-    time: "10:18:44",
+    time: _hoursAgo(4, 18),
     agent: "PII Data Handling",
     action: "Policy configuration updated",
-    result: "Changed",
+    result: "Allowed",
     actor: "Maya Patel",
     detail: "Added customer payment metadata",
   },
   {
     id: "evt-4",
-    time: "10:15:12",
+    time: _hoursAgo(8, 30),
     agent: "Contract Review Agent",
     action: "Read contract NDA-119",
     result: "Allowed",
@@ -244,12 +255,66 @@ export const auditEvents: AuditEvent[] = [
   },
   {
     id: "evt-5",
-    time: "10:11:53",
+    time: _hoursAgo(14, 50),
     agent: "Support Resolution Agent",
     action: "Bulk read sensitive tickets",
     result: "Blocked",
     actor: "Policy engine",
     detail: "Privilege boundary exceeded",
+  },
+  {
+    id: "evt-6",
+    time: _daysAgo(2, 14, 30),
+    agent: "GitHub Release Assistant",
+    action: "Deploy canary release v2.4.0",
+    result: "Approved",
+    actor: "Jordan Malik",
+    detail: "Four-eyes quorum reached",
+  },
+  {
+    id: "evt-7",
+    time: _daysAgo(3, 9, 15),
+    agent: "Finance Reconciliation",
+    action: "Sync Q2 ledger transactions",
+    result: "Allowed",
+    actor: "Policy engine",
+    detail: "Standard scheduled reconciliation",
+  },
+  {
+    id: "evt-8",
+    time: _daysAgo(5, 16, 45),
+    agent: "Security Guard",
+    action: "operator.login_attempt",
+    result: "Allowed",
+    actor: "Sam Ortega",
+    detail: "MFA challenge verified successfully",
+  },
+  {
+    id: "evt-9",
+    time: _daysAgo(10, 11, 20),
+    agent: "Contract Review Agent",
+    action: "Export vendor redlines",
+    result: "Approved",
+    actor: "Nina Park",
+    detail: "Legal counsel sign-off",
+  },
+  {
+    id: "evt-10",
+    time: _daysAgo(18, 13, 10),
+    agent: "Support Resolution Agent",
+    action: "Mass refund processing",
+    result: "Blocked",
+    actor: "Policy engine",
+    detail: "Threshold exceeded ($10,000 safety limit)",
+  },
+  {
+    id: "evt-11",
+    time: _daysAgo(35, 10, 0),
+    agent: "Platform Operations",
+    action: "api_key.create",
+    result: "Allowed",
+    actor: "Admin",
+    detail: "Production agent token issued",
   },
 ];
 
