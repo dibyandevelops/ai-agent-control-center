@@ -1354,6 +1354,8 @@ function AuditView({
 }) {
   const [query, setQuery] = useState(initialEventId ?? "");
   const [scope, setScope] = useState<"all" | "security">(initialEventId ? "security" : "all");
+  const [timeFilter, setTimeFilter] = useState<"all" | "today" | "7d" | "30d">("all");
+  const [decisionFilter, setDecisionFilter] = useState<"all" | "Allowed" | "Approved" | "Blocked">("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [verifying, setVerifying] = useState(false);
@@ -1361,6 +1363,7 @@ function AuditView({
   const [deliveryMessage, setDeliveryMessage] = useState("");
   const [digestMfaPrompt, setDigestMfaPrompt] = useState(false);
   const [integrityError, setIntegrityError] = useState("");
+  const [referenceTime] = useState(() => Date.now());
   const [integrity, setIntegrity] = useState<{
     verified: boolean;
     eventsChecked: number;
@@ -1369,14 +1372,44 @@ function AuditView({
     firstInvalidEventId: string | null;
     checkedAt: string;
   } | null>(null);
-  const securityEvents = audit.filter((event) => /^(operator\.|identity\.|api_key\.|github_app\.|slack\.)/.test(event.action));
-  const filtered = (scope === "security" ? securityEvents : audit).filter((event) =>
-    `${event.id} ${event.agent} ${event.action} ${event.actor}`.toLowerCase().includes(query.toLowerCase()),
+
+  const securityEvents = useMemo(
+    () => audit.filter((event) => /^(operator\.|identity\.|api_key\.|github_app\.|slack\.)/.test(event.action)),
+    [audit],
   );
+
+  const filtered = useMemo(() => {
+    const baseList = scope === "security" ? securityEvents : audit;
+
+    return baseList.filter((event) => {
+      const matchesQuery = `${event.id} ${event.agent} ${event.action} ${event.actor} ${event.result}`
+        .toLowerCase()
+        .includes(query.toLowerCase());
+      if (!matchesQuery) return false;
+
+      if (decisionFilter !== "all" && event.result !== decisionFilter) {
+        return false;
+      }
+
+      if (timeFilter !== "all") {
+        const eventTime = new Date(event.time).getTime();
+        if (!Number.isNaN(eventTime)) {
+          const diffMs = referenceTime - eventTime;
+          if (timeFilter === "today" && diffMs > 24 * 60 * 60 * 1000) return false;
+          if (timeFilter === "7d" && diffMs > 7 * 24 * 60 * 60 * 1000) return false;
+          if (timeFilter === "30d" && diffMs > 30 * 24 * 60 * 60 * 1000) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [audit, securityEvents, scope, query, decisionFilter, timeFilter, referenceTime]);
+
   const paginatedEvents = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
     return filtered.slice(startIndex, startIndex + pageSize);
   }, [filtered, currentPage, pageSize]);
+
   const mfaEvents = securityEvents.filter((event) => event.action.includes("mfa"));
   const sessionEvents = securityEvents.filter((event) => event.action.includes("session"));
 
@@ -1485,7 +1518,55 @@ function AuditView({
       <section className="panel table-panel audit-table">
         <div className="section-heading table-heading">
           <label className="search-field wide-search"><Search /><input value={query} onChange={(e) => { setQuery(e.target.value); setCurrentPage(1); }} placeholder="Search actions, agents, or actors…" /></label>
-          <div className="table-controls"><button className="secondary-button"><Clock3 /> Today <ChevronDown /></button><button className="secondary-button" onClick={() => { setScope((current) => current === "all" ? "security" : "all"); setCurrentPage(1); }}><Filter /> {scope === "security" ? "Security activity" : "All results"}</button></div>
+          <div className="table-controls flex items-center gap-2 flex-wrap">
+            <label className="select-field secondary-button flex items-center gap-1.5 cursor-pointer">
+              <Clock3 className="h-3.5 w-3.5 text-sentinel-muted shrink-0" />
+              <select
+                className="bg-transparent text-xs text-sentinel-text outline-none cursor-pointer pr-1 font-medium"
+                value={timeFilter}
+                onChange={(e) => {
+                  setTimeFilter(e.target.value as "all" | "today" | "7d" | "30d");
+                  setCurrentPage(1);
+                }}
+                aria-label="Filter audit events by time range"
+              >
+                <option value="all">All time</option>
+                <option value="today">Today / 24h</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+              </select>
+            </label>
+
+            <label className="select-field secondary-button flex items-center gap-1.5 cursor-pointer">
+              <Filter className="h-3.5 w-3.5 text-sentinel-muted shrink-0" />
+              <select
+                className="bg-transparent text-xs text-sentinel-text outline-none cursor-pointer pr-1 font-medium"
+                value={decisionFilter}
+                onChange={(e) => {
+                  setDecisionFilter(e.target.value as "all" | "Allowed" | "Approved" | "Blocked");
+                  setCurrentPage(1);
+                }}
+                aria-label="Filter audit events by decision"
+              >
+                <option value="all">All decisions</option>
+                <option value="Allowed">Allowed</option>
+                <option value="Approved">Approved</option>
+                <option value="Blocked">Blocked</option>
+              </select>
+            </label>
+
+            <button
+              className={`secondary-button ${scope === "security" ? "border-sentinel-lime/40 text-sentinel-lime bg-sentinel-lime/10" : ""}`}
+              onClick={() => {
+                setScope((current) => (current === "all" ? "security" : "all"));
+                setCurrentPage(1);
+              }}
+              title="Toggle between all events and security-specific events"
+            >
+              <Filter className="h-3.5 w-3.5" />
+              {scope === "security" ? "Security activity" : "All activity"}
+            </button>
+          </div>
         </div>
         <div className="table-scroll">
           <table>
@@ -1535,6 +1616,13 @@ function AuditView({
             </tbody>
           </table>
         </div>
+        {filtered.length === 0 && (
+          <EmptyState
+            icon={Search}
+            title="No audit events found"
+            description="Try adjusting your search query, time range, or decision filters."
+          />
+        )}
         <TablePagination
           currentPage={currentPage}
           totalItems={filtered.length}
