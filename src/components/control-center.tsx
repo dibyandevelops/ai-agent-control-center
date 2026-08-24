@@ -682,6 +682,32 @@ function AgentTable({
     }
   }
 
+  function handleExportCsv() {
+    const headers = ["Name", "Status", "Owner", "Team", "Provider", "Permissions", "7d Actions", "MTD Cost ($)", "Last Action", "Last Seen"];
+    const rows = filtered.map((agent) => [
+      `"${(agent.name || "").replace(/"/g, '""')}"`,
+      `"${(agent.status || "").replace(/"/g, '""')}"`,
+      `"${(agent.owner || "").replace(/"/g, '""')}"`,
+      `"${(agent.team || "").replace(/"/g, '""')}"`,
+      `"${(agent.provider || "").replace(/"/g, '""')}"`,
+      `"${(agent.permissions?.join("; ") || "").replace(/"/g, '""')}"`,
+      agent.actions ?? 0,
+      (agent.cost ?? 0).toFixed(2),
+      `"${(agent.lastAction || "").replace(/"/g, '""')}"`,
+      `"${(agent.lastSeen || "").replace(/"/g, '""')}"`,
+    ]);
+    const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `sentinelops-agents-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <section className={`panel table-panel ${compact ? "table-panel-compact" : ""}`}>
       <div className="section-heading table-heading">
@@ -719,7 +745,12 @@ function AgentTable({
               <option value="quarantined">Quarantined</option>
             </select>
           </label>
-          <button className="icon-button bordered" aria-label="Export agents">
+          <button
+            className="icon-button bordered cursor-pointer"
+            onClick={handleExportCsv}
+            aria-label="Export agents as CSV"
+            title="Export agents as CSV"
+          >
             <ArrowDownToLine />
           </button>
         </div>
@@ -1278,10 +1309,25 @@ function PoliciesView({
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [historyPolicy, setHistoryPolicy] = useState<Policy | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [modeFilter, setModeFilter] = useState<"all" | "Block" | "Approval" | "Monitor">("all");
+
   const policySummary = useMemo(() => summarizePolicyDecisions(audit), [audit]);
   const compliance = policySummary.compliancePercent === null
     ? "—"
     : `${policySummary.compliancePercent.toFixed(1)}%`;
+
+  const filteredPolicies = useMemo(() => {
+    return policies.filter((policy) => {
+      const matchesSearch = `${policy.name} ${policy.description} ${policy.scope}`
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+      if (modeFilter !== "all" && policy.mode !== modeFilter) return false;
+      return true;
+    });
+  }, [policies, searchQuery, modeFilter]);
+
   const decisionWidth = (count: number) =>
     policySummary.total ? `${Math.max((count / policySummary.total) * 100, count ? 8 : 0)}%` : "0%";
 
@@ -1298,11 +1344,38 @@ function PoliciesView({
       </div>
       <div className="policy-layout">
         <section className="panel policy-list">
-          <div className="section-heading">
-            <div><h2>Enforcement policies</h2><p>{policies.filter((p) => p.enabled).length} policies active</p></div>
-            <button className="secondary-button"><Filter /> Filter</button>
+          <div className="section-heading flex-wrap gap-3">
+            <div>
+              <h2>Enforcement policies</h2>
+              <p>{policies.filter((p) => p.enabled).length} of {policies.length} policies active</p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="search-field">
+                <Search />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search policies…"
+                  aria-label="Search policies"
+                />
+              </label>
+              <label className="select-field secondary-button flex items-center gap-1.5 cursor-pointer">
+                <Filter className="h-3.5 w-3.5 text-sentinel-muted shrink-0" />
+                <select
+                  className="bg-transparent text-xs text-sentinel-text outline-none cursor-pointer pr-1 font-medium"
+                  value={modeFilter}
+                  onChange={(e) => setModeFilter(e.target.value as "all" | "Block" | "Approval" | "Monitor")}
+                  aria-label="Filter policies by enforcement mode"
+                >
+                  <option value="all">All modes</option>
+                  <option value="Block">Block</option>
+                  <option value="Approval">Approval</option>
+                  <option value="Monitor">Monitor</option>
+                </select>
+              </label>
+            </div>
           </div>
-          {policies.map((policy) => (
+          {filteredPolicies.map((policy) => (
             <article className="policy-row" key={policy.id}>
               <div className={`policy-icon policy-${policy.mode.toLowerCase()}`}>
                 {policy.mode === "Block" ? <LockKeyhole /> : policy.mode === "Approval" ? <ClipboardCheck /> : <Activity />}
@@ -1339,6 +1412,13 @@ function PoliciesView({
               </div>
             </article>
           ))}
+          {filteredPolicies.length === 0 && (
+            <EmptyState
+              icon={Search}
+              title="No policies found"
+              description="Try adjusting your policy search query or mode filter."
+            />
+          )}
         </section>
         <aside className="space-y-4">
           <PolicyActivationQueue
