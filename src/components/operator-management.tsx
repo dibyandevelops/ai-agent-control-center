@@ -26,6 +26,7 @@ import type {
   OperatorRole,
 } from "@/lib/types";
 import { IdentityProvisioning } from "@/components/identity-provisioning";
+import { TablePagination } from "@/components/table-pagination";
 
 interface DelegationItem {
   id: string;
@@ -92,6 +93,8 @@ export function OperatorManagement({
   onNotify: (message: string) => void;
 }) {
   const [operators, setOperators] = useState<OperatorAccount[]>([]);
+  const [operatorPage, setOperatorPage] = useState(1);
+  const [operatorPageSize, setOperatorPageSize] = useState(10);
   const [invitations, setInvitations] = useState<InvitationItem[]>([]);
   const [delegations, setDelegations] = useState<DelegationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +104,11 @@ export function OperatorManagement({
   const [inviteOpen, setInviteOpen] = useState(false);
   const [delegationOpen, setDelegationOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<OperatorAccount | null>(null);
+
+  const paginatedOperators = operators.slice(
+    (operatorPage - 1) * operatorPageSize,
+    operatorPage * operatorPageSize,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -427,7 +435,7 @@ export function OperatorManagement({
                 </tr>
               </thead>
               <tbody className="divide-y divide-sentinel-line">
-                {operators.map((operator) => {
+                {paginatedOperators.map((operator) => {
                   const isCurrent = operator.id === currentOperator.id;
                   const isBusy = busyId === operator.id;
                   const isLocked = isAccountLocked(operator);
@@ -520,6 +528,16 @@ export function OperatorManagement({
               </tbody>
             </table>
           </div>
+        )}
+        {operators.length > 0 && (
+          <TablePagination
+            currentPage={operatorPage}
+            totalItems={operators.length}
+            pageSize={operatorPageSize}
+            onPageChange={setOperatorPage}
+            onPageSizeChange={setOperatorPageSize}
+            itemLabel="operators"
+          />
         )}
       </section>
 

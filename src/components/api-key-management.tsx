@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AgentApiKey } from "@/lib/types";
 import { AgentQuickstart } from "@/components/agent-quickstart";
 import { MfaVerificationDialog } from "@/components/mfa-verification-dialog";
+import { TablePagination } from "@/components/table-pagination";
 
 const fieldClass =
   "mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 text-sm text-sentinel-text outline-none transition placeholder:text-sentinel-dim focus:border-sentinel-lime/70 focus:ring-2 focus:ring-sentinel-lime/10";
@@ -73,6 +74,8 @@ export function ApiKeyManagement({
   onNotify: (message: string) => void;
 }) {
   const [apiKeys, setApiKeys] = useState<AgentApiKey[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -86,6 +89,11 @@ export function ApiKeyManagement({
     secret: string;
     apiKey: AgentApiKey;
   } | null>(null);
+
+  const paginatedApiKeys = apiKeys.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
 
   const loadApiKeys = useCallback(async () => {
     try {
@@ -269,7 +277,7 @@ export function ApiKeyManagement({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-sentinel-line">
-                  {apiKeys.map((apiKey) => (
+                  {paginatedApiKeys.map((apiKey) => (
                     <tr key={apiKey.id} className="transition hover:bg-white/[0.025]">
                       <td className="px-5 py-4">
                         <strong className="block text-sm font-medium text-sentinel-text">{apiKey.name}</strong>
@@ -300,7 +308,7 @@ export function ApiKeyManagement({
               </table>
             </div>
             <div className="divide-y divide-sentinel-line md:hidden">
-              {apiKeys.map((apiKey) => (
+              {paginatedApiKeys.map((apiKey) => (
                 <article key={apiKey.id} className="space-y-4 px-5 py-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -325,6 +333,14 @@ export function ApiKeyManagement({
                 </article>
               ))}
             </div>
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={apiKeys.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              itemLabel="credentials"
+            />
           </>
         )}
       </section>

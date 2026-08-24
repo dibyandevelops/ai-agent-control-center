@@ -84,6 +84,7 @@ import { GitHubDriftIncidents } from "@/components/github-drift-incidents";
 import { GitHubAppConnection } from "@/components/github-app-connection";
 import { SlackConnection } from "@/components/slack-connection";
 import { HttpsWebhookConnection } from "@/components/https-webhook-connection";
+import { TablePagination } from "@/components/table-pagination";
 
 export type DashboardView =
   | "overview"
@@ -528,6 +529,8 @@ function AgentTable({
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | AgentStatus>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [quarantineTarget, setQuarantineTarget] = useState<Agent | null>(null);
   const [quarantineMode, setQuarantineMode] = useState<"quarantine" | "unquarantine">("quarantine");
   const [quarantineReason, setQuarantineReason] = useState("");
@@ -540,6 +543,11 @@ function AgentTable({
       agent.owner.toLowerCase().includes(query.toLowerCase());
     return matchesQuery && (status === "all" || agent.status === status);
   });
+
+  const paginatedAgents = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filtered.slice(startIndex, startIndex + pageSize);
+  }, [filtered, currentPage, pageSize]);
 
   async function handleConfirmQuarantine(e: React.FormEvent) {
     e.preventDefault();
@@ -573,7 +581,10 @@ function AgentTable({
             <Search />
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Search agents…"
               aria-label="Search agents"
             />
@@ -582,7 +593,10 @@ function AgentTable({
             <Filter />
             <select
               value={status}
-              onChange={(event) => setStatus(event.target.value as "all" | AgentStatus)}
+              onChange={(event) => {
+                setStatus(event.target.value as "all" | AgentStatus);
+                setCurrentPage(1);
+              }}
               aria-label="Filter by status"
             >
               <option value="all">All statuses</option>
@@ -612,7 +626,7 @@ function AgentTable({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((agent) => (
+            {paginatedAgents.map((agent) => (
               <tr key={agent.id}>
                 <td>
                   <div className="agent-name-cell">
@@ -696,16 +710,14 @@ function AgentTable({
       {filtered.length === 0 && (
         <EmptyState icon={Search} title="No agents found" description="Try a different name or status filter." />
       )}
-      <div className="table-footer">
-        <span>Showing {filtered.length} of {agents.length} agents</span>
-        <div className="pagination">
-          <button disabled><ChevronLeft /></button>
-          <button className="page-active">1</button>
-          <button>2</button>
-          <button>3</button>
-          <button><ChevronRight /></button>
-        </div>
-      </div>
+      <TablePagination
+        currentPage={currentPage}
+        totalItems={filtered.length}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+        itemLabel="agents"
+      />
 
       {quarantineTarget ? (
         <div
@@ -1219,6 +1231,8 @@ function AuditView({
 }) {
   const [query, setQuery] = useState(initialEventId ?? "");
   const [scope, setScope] = useState<"all" | "security">(initialEventId ? "security" : "all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [verifying, setVerifying] = useState(false);
   const [testingDelivery, setTestingDelivery] = useState(false);
   const [deliveryMessage, setDeliveryMessage] = useState("");
@@ -1236,6 +1250,10 @@ function AuditView({
   const filtered = (scope === "security" ? securityEvents : audit).filter((event) =>
     `${event.id} ${event.agent} ${event.action} ${event.actor}`.toLowerCase().includes(query.toLowerCase()),
   );
+  const paginatedEvents = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filtered.slice(startIndex, startIndex + pageSize);
+  }, [filtered, currentPage, pageSize]);
   const mfaEvents = securityEvents.filter((event) => event.action.includes("mfa"));
   const sessionEvents = securityEvents.filter((event) => event.action.includes("session"));
 
@@ -1343,14 +1361,14 @@ function AuditView({
       <section className="mb-5 grid gap-3 sm:grid-cols-3"><div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4"><p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">Security events</p><p className="mt-2 text-2xl font-semibold text-sentinel-text">{securityEvents.length}</p><p className="mt-1 text-xs text-sentinel-muted">Last 100 audit records</p></div><div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4"><p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">MFA evidence</p><p className="mt-2 text-2xl font-semibold text-sentinel-lime">{mfaEvents.length}</p><p className="mt-1 text-xs text-sentinel-muted">Enrollments and verifications</p></div><div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4"><p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">Session events</p><p className="mt-2 text-2xl font-semibold text-sentinel-text">{sessionEvents.length}</p><p className="mt-1 text-xs text-sentinel-muted">Login, expiry, and session control</p></div></section>
       <section className="panel table-panel audit-table">
         <div className="section-heading table-heading">
-          <label className="search-field wide-search"><Search /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search actions, agents, or actors…" /></label>
-          <div className="table-controls"><button className="secondary-button"><Clock3 /> Today <ChevronDown /></button><button className="secondary-button" onClick={() => setScope((current) => current === "all" ? "security" : "all")}><Filter /> {scope === "security" ? "Security activity" : "All results"}</button></div>
+          <label className="search-field wide-search"><Search /><input value={query} onChange={(e) => { setQuery(e.target.value); setCurrentPage(1); }} placeholder="Search actions, agents, or actors…" /></label>
+          <div className="table-controls"><button className="secondary-button"><Clock3 /> Today <ChevronDown /></button><button className="secondary-button" onClick={() => { setScope((current) => current === "all" ? "security" : "all"); setCurrentPage(1); }}><Filter /> {scope === "security" ? "Security activity" : "All results"}</button></div>
         </div>
         <div className="table-scroll">
           <table>
             <thead><tr><th>Timestamp</th><th>Agent</th><th>Action</th><th>Decision</th><th>Actor</th><th>Evidence</th></tr></thead>
             <tbody>
-              {filtered.map((event) => (
+              {paginatedEvents.map((event) => (
                 <tr key={event.id}>
                   <td className="mono">{displayTime(event.time)}</td>
                   <td><strong className="plain-strong">{event.agent}</strong></td>
@@ -1394,6 +1412,15 @@ function AuditView({
             </tbody>
           </table>
         </div>
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          pageSizeOptions={[10, 25, 50, 100]}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemLabel="events"
+        />
       </section>
     </main>
   );
