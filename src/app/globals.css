@@ -1888,15 +1888,15 @@ tbody tr:hover {
   }
 
   .sidebar {
-    width: 240px;
+    width: 250px;
     transform: translateX(-102%);
     box-shadow: none;
-    transition: transform 180ms ease;
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .sidebar-open {
+  .sidebar.sidebar-open {
     transform: translateX(0);
-    box-shadow: 12px 0 36px rgba(2, 44, 34, 0.12);
+    box-shadow: 16px 0 48px rgba(0, 0, 0, 0.6);
   }
 
   .sidebar-close,
@@ -1910,15 +1910,20 @@ tbody tr:hover {
     z-index: 35;
     display: block;
     border: 0;
-    background: rgba(3, 5, 7, 0.68);
+    background: rgba(3, 5, 7, 0.72);
+    backdrop-filter: blur(4px);
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .app-content {
-    margin-left: 0;
+  .app-content,
+  .app-content.app-content-collapsed {
+    margin-left: 0 !important;
   }
 
   .command-control {
     width: 38px;
+    padding: 0;
+    justify-content: center;
   }
 
   .command-control span,
@@ -1937,7 +1942,8 @@ tbody tr:hover {
 
 @media (max-width: 760px) {
   .topbar {
-    padding: 0 14px;
+    padding: 0 12px;
+    height: 58px;
   }
 
   .organization-control,
@@ -1946,30 +1952,55 @@ tbody tr:hover {
     display: none;
   }
 
+  .profile-control {
+    padding: 0 4px;
+    height: 36px;
+    min-width: 36px;
+    justify-content: center;
+    border-radius: 12px;
+  }
+
+  .profile-control .avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .topbar-logout {
+    height: 36px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
   .page {
-    padding: 22px 14px 34px;
+    padding: 16px 12px 32px;
   }
 
   .page-title-row {
     align-items: flex-start;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
   }
 
   .policy-row {
-    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-columns: 36px minmax(0, 1fr);
     align-items: start;
+    gap: 10px;
+    padding: 12px;
   }
 
   .policy-actions {
-    grid-column: 2;
+    grid-column: 1 / -1;
     justify-content: flex-start;
     flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
   }
 
   .page-title-row .primary-button,
   .page-title-row .secondary-button {
     width: 100%;
+    justify-content: center;
   }
 
   .metrics-band {
@@ -1978,6 +2009,7 @@ tbody tr:hover {
 
   .metric {
     border-bottom: 1px solid var(--border);
+    padding: 12px;
   }
 
   .metric:nth-child(2) {
@@ -1998,6 +2030,7 @@ tbody tr:hover {
   .table-heading {
     align-items: stretch;
     flex-direction: column;
+    gap: 10px;
   }
 
   .table-controls,
@@ -2008,6 +2041,7 @@ tbody tr:hover {
 
   .table-controls {
     flex-wrap: wrap;
+    gap: 8px;
   }
 
   .select-field {
@@ -2016,6 +2050,8 @@ tbody tr:hover {
 
   .summary-strip {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
   }
 
   .audit-table .table-heading {
@@ -2025,14 +2061,56 @@ tbody tr:hover {
   .wide-search {
     width: 100%;
   }
+
+  .dialog-backdrop {
+    padding: 10px;
+    align-items: flex-end;
+  }
+
+  .dialog {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    border-radius: 20px 20px 12px 12px;
+    overflow-y: auto;
+  }
+
+  .dialog-header {
+    padding: 16px;
+  }
+
+  .dialog form {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .dialog-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .dialog-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Table touch scrolling wrapper */
+  .table-scroll,
+  .audit-table table,
+  .table-container {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @media (max-width: 520px) {
   .topbar h1 {
-    max-width: 120px;
+    max-width: 130px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: 13px;
   }
 
   .metrics-band {
@@ -2040,7 +2118,7 @@ tbody tr:hover {
   }
 
   .metric {
-    min-height: 84px;
+    min-height: 76px;
     border-right: 0;
     border-bottom: 1px solid var(--border) !important;
   }
@@ -2051,16 +2129,18 @@ tbody tr:hover {
 
   .chart-panel,
   .risk-panel {
-    padding: 14px;
+    padding: 12px;
   }
 
   .chart-panel .section-heading {
     align-items: stretch;
     flex-direction: column;
+    gap: 8px;
   }
 
   .chart-panel .secondary-button {
-    width: fit-content;
+    width: 100%;
+    justify-content: center;
   }
 
   .form-grid {
@@ -2068,9 +2148,22 @@ tbody tr:hover {
   }
 
   .toast {
-    right: 12px;
-    bottom: 12px;
-    left: 12px;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    font-size: 12px;
+  }
+
+  /* Touch buttons full width where appropriate */
+  .approval-actions {
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .approval-actions button {
+    width: 100%;
+    justify-content: center;
   }
 }
 

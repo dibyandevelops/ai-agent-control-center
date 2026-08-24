@@ -209,21 +209,21 @@ export function PolicyEditorDialog({
   return (
     <div className="fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4 backdrop-blur-sm" role="presentation">
       <div className="max-h-[92vh] w-full max-w-5xl overflow-x-hidden overflow-y-auto rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2" role="dialog" aria-modal="true" aria-labelledby="policy-editor-title">
-        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-sentinel-line bg-sentinel-surface/95 px-6 py-5 backdrop-blur">
+        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-sentinel-line bg-sentinel-surface/95 px-4 sm:px-6 py-4 sm:py-5 backdrop-blur">
           <div>
-            <h2 id="policy-editor-title" className="text-lg font-semibold tracking-tight text-sentinel-text">{policy ? "Edit policy" : "Create enforcement policy"}</h2>
-            <p className="mt-1 text-xs leading-5 text-sentinel-muted">All conditions must match before SentinelOps applies the decision.</p>
+            <h2 id="policy-editor-title" className="text-base sm:text-lg font-semibold tracking-tight text-sentinel-text">{policy ? "Edit policy" : "Create enforcement policy"}</h2>
+            <p className="mt-1 text-[11px] sm:text-xs leading-4 sm:leading-5 text-sentinel-muted">All conditions must match before SentinelOps applies the decision.</p>
           </div>
           <button className="grid h-9 w-9 place-items-center rounded-lg border border-sentinel-line text-sentinel-muted transition hover:text-sentinel-text" onClick={onClose} aria-label="Close policy editor"><X className="h-4 w-4" /></button>
         </div>
 
         <form onSubmit={submit} className="grid min-w-0 lg:grid-cols-[1.35fr_0.65fr]">
-          <div className="min-w-0 space-y-6 px-6 py-6 lg:border-r lg:border-sentinel-line">
-            <div className="grid gap-4 sm:grid-cols-[1fr_130px]">
-              <label className="text-xs font-medium text-sentinel-muted">Policy name<input className={`${inputClass} mt-2`} value={name} onChange={(event) => setName(event.target.value)} placeholder="Production changes require approval" required minLength={3} maxLength={160} autoFocus /></label>
-              <label className="text-xs font-medium text-sentinel-muted">Priority<input className={`${inputClass} mt-2`} type="number" min={0} max={10000} value={priority} onChange={(event) => setPriority(event.target.value)} required /></label>
+          <div className="min-w-0 space-y-5 sm:space-y-6 px-4 sm:px-6 py-4 sm:py-6 lg:border-r lg:border-sentinel-line">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-[1fr_130px]">
+              <label className="text-xs font-medium text-sentinel-muted">Policy name<input className={`${inputClass} mt-1.5 sm:mt-2`} value={name} onChange={(event) => setName(event.target.value)} placeholder="Production changes require approval" required minLength={3} maxLength={160} autoFocus /></label>
+              <label className="text-xs font-medium text-sentinel-muted">Priority<input className={`${inputClass} mt-1.5 sm:mt-2`} type="number" min={0} max={10000} value={priority} onChange={(event) => setPriority(event.target.value)} required /></label>
             </div>
-            <label className="block text-xs font-medium text-sentinel-muted">Description<textarea className="mt-2 min-h-20 w-full resize-y rounded-xl border border-sentinel-line bg-sentinel-canvas px-3 py-2.5 text-xs leading-5 text-sentinel-text outline-none transition placeholder:text-sentinel-dim focus:border-sentinel-lime/70 focus:ring-2 focus:ring-sentinel-lime/10" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Explain the business control and why it exists." required minLength={10} maxLength={500} /></label>
+            <label className="block text-xs font-medium text-sentinel-muted">Description<textarea className="mt-1.5 sm:mt-2 min-h-20 w-full resize-y rounded-xl border border-sentinel-line bg-sentinel-canvas px-3 py-2.5 text-xs leading-5 text-sentinel-text outline-none transition placeholder:text-sentinel-dim focus:border-sentinel-lime/70 focus:ring-2 focus:ring-sentinel-lime/10" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Explain the business control and why it exists." required minLength={10} maxLength={500} /></label>
 
             <fieldset>
               <legend className="text-xs font-medium text-sentinel-muted">When every condition matches</legend>
@@ -231,15 +231,15 @@ export function PolicyEditorDialog({
                 {conditions.map((condition, index) => {
                   const field = fieldOptions.find((option) => option.value === condition.field)!;
                   return (
-                    <div className="grid gap-2 rounded-xl border border-sentinel-line bg-sentinel-raised/45 p-3 sm:grid-cols-[1fr_130px_1fr_36px]" key={`${index}-${condition.field}`}>
-                      <select className={inputClass} aria-label={`Field for condition ${index + 1}`} value={condition.field} onChange={(event) => updateCondition(index, { field: event.target.value as PolicyField })}>{fieldOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
-                      <select className={inputClass} aria-label={`Operator for condition ${index + 1}`} value={condition.operator} onChange={(event) => updateCondition(index, { operator: event.target.value as PolicyOperator })}>{field.operators.map((operator) => <option key={operator} value={operator}>{operatorLabels[operator]}</option>)}</select>
+                    <div className="grid gap-2 rounded-xl border border-sentinel-line bg-sentinel-raised/45 p-3 grid-cols-[1fr_auto] sm:grid-cols-[1fr_130px_1fr_36px] items-center" key={`${index}-${condition.field}`}>
+                      <select className={`${inputClass} col-span-1`} aria-label={`Field for condition ${index + 1}`} value={condition.field} onChange={(event) => updateCondition(index, { field: event.target.value as PolicyField })}>{fieldOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+                      <button type="button" className="grid h-10 w-9 place-items-center rounded-xl border border-sentinel-line text-sentinel-muted transition hover:border-sentinel-red/30 hover:text-red-300 disabled:opacity-30 sm:order-last" onClick={() => setConditions((current) => current.filter((_, conditionIndex) => conditionIndex !== index))} disabled={conditions.length === 1} aria-label={`Remove condition ${index + 1}`}><Trash2 className="h-3.5 w-3.5" /></button>
+                      <select className={`${inputClass} col-span-2 sm:col-span-1`} aria-label={`Operator for condition ${index + 1}`} value={condition.operator} onChange={(event) => updateCondition(index, { operator: event.target.value as PolicyOperator })}>{field.operators.map((operator) => <option key={operator} value={operator}>{operatorLabels[operator]}</option>)}</select>
                       {field.valueType === "boolean" ? (
-                        <select className={inputClass} aria-label={`Value for condition ${index + 1}`} value={condition.value} onChange={(event) => updateCondition(index, { value: event.target.value })}><option value="false">False</option><option value="true">True</option></select>
+                        <select className={`${inputClass} col-span-2 sm:col-span-1`} aria-label={`Value for condition ${index + 1}`} value={condition.value} onChange={(event) => updateCondition(index, { value: event.target.value })}><option value="false">False</option><option value="true">True</option></select>
                       ) : (
-                        <input className={inputClass} type={field.valueType === "number" ? "number" : "text"} aria-label={`Value for condition ${index + 1}`} value={condition.value} onChange={(event) => updateCondition(index, { value: event.target.value })} placeholder={condition.operator === "in" ? "value1, value2" : field.valueType === "number" ? "1000" : "deploy.release"} required />
+                        <input className={`${inputClass} col-span-2 sm:col-span-1`} type={field.valueType === "number" ? "number" : "text"} aria-label={`Value for condition ${index + 1}`} value={condition.value} onChange={(event) => updateCondition(index, { value: event.target.value })} placeholder={condition.operator === "in" ? "value1, value2" : field.valueType === "number" ? "1000" : "deploy.release"} required />
                       )}
-                      <button type="button" className="grid h-10 w-9 place-items-center rounded-xl border border-sentinel-line text-sentinel-muted transition hover:border-sentinel-red/30 hover:text-red-300 disabled:opacity-30" onClick={() => setConditions((current) => current.filter((_, conditionIndex) => conditionIndex !== index))} disabled={conditions.length === 1} aria-label={`Remove condition ${index + 1}`}><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   );
                 })}

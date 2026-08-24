@@ -272,7 +272,17 @@ function TopBar({
           </span>
           <KeyRound aria-hidden="true" />
         </button>
-        {operator ? <button className="secondary-button topbar-logout" onClick={onLogout}><LogOut /> Log out</button> : null}
+        {operator ? (
+          <button
+            className="secondary-button topbar-logout flex items-center gap-1.5"
+            onClick={onLogout}
+            aria-label="Log out"
+            title="Log out"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Log out</span>
+          </button>
+        ) : null}
       </div>
     </header>
   );
@@ -1582,15 +1592,15 @@ function ActionDetailDrawer({
         aria-labelledby="action-detail-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <header className="sticky top-0 z-10 flex items-start justify-between border-b border-sentinel-border bg-[#0d1217]/95 px-7 py-6 backdrop-blur">
+        <header className="sticky top-0 z-10 flex items-start justify-between border-b border-sentinel-border bg-[#0d1217]/95 px-4 sm:px-7 py-4 sm:py-6 backdrop-blur">
           <div>
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sentinel-lime">
               Tamper-evident record
             </span>
-            <h2 id="action-detail-title" className="mt-2 text-xl font-semibold text-sentinel-text">
+            <h2 id="action-detail-title" className="mt-1 sm:mt-2 text-lg sm:text-xl font-semibold text-sentinel-text">
               Action evidence
             </h2>
-            <p className="mt-1 font-mono text-xs text-sentinel-muted">
+            <p className="mt-1 font-mono text-[11px] sm:text-xs text-sentinel-muted break-all">
               {requestId}
             </p>
           </div>
@@ -1599,7 +1609,7 @@ function ActionDetailDrawer({
           </button>
         </header>
 
-        <div className="space-y-6 p-7">
+        <div className="space-y-4 sm:space-y-6 p-4 sm:p-7">
           {loading ? (
             <div className="flex min-h-64 items-center justify-center gap-3 text-sm text-sentinel-muted">
               <LoaderCircle className="h-5 w-5 animate-spin text-sentinel-lime" />
