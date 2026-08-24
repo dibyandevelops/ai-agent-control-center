@@ -87,6 +87,7 @@ import { HttpsWebhookConnection } from "@/components/https-webhook-connection";
 import { TablePagination } from "@/components/table-pagination";
 import { CommandPalette } from "@/components/command-palette";
 import { NotificationPopover } from "@/components/notification-popover";
+import { RequestIntegrationDialog } from "@/components/request-integration-dialog";
 
 export type DashboardView =
   | "overview"
@@ -2170,6 +2171,7 @@ function IntegrationsView({
   const [demoItems, setDemoItems] = useState(integrations);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const visibleItems = live ? items : demoItems;
   const driftIncidents = visibleItems.find((item) => item.name === "GitHub")
     ?.driftIncidents ?? [];
@@ -2198,7 +2200,9 @@ function IntegrationsView({
     <main className="page">
       <div className="page-title-row">
         <div><h2>Enterprise integrations</h2><p>Connect the systems where AI agents read data and take action.</p></div>
-        <button className="secondary-button"><Plus /> Request integration</button>
+        <button className="secondary-button" onClick={() => setRequestDialogOpen(true)}>
+          <Plus /> Request integration
+        </button>
       </div>
       <div className="integrations-grid">
         {visibleItems.map((integration) => (
@@ -2309,6 +2313,13 @@ function IntegrationsView({
         onAcknowledge={onAcknowledgeDrift}
         onResolve={onResolveDrift}
         onViewEvidence={onViewEvidence}
+      />
+      <RequestIntegrationDialog
+        open={requestDialogOpen}
+        onClose={() => setRequestDialogOpen(false)}
+        onSubmitted={(integrationName) => {
+          onNotify(`Integration request for "${integrationName}" submitted. Solutions engineering has been notified.`);
+        }}
       />
     </main>
   );
