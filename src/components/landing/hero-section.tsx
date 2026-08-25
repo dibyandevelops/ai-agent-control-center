@@ -54,33 +54,35 @@ export function HeroSection() {
             Explore control center <ArrowUpRight aria-hidden="true" />
           </Link>
         </div>
-        <div className="mt-10 flex flex-wrap text-sentinel-muted max-[760px]:mt-[30px] max-[760px]:grid max-[760px]:grid-cols-2 max-[760px]:gap-y-4 [&_span]:inline-flex [&_span]:items-center [&_span]:gap-2 [&_span]:whitespace-nowrap [&_span]:border-r [&_span]:border-sentinel-line [&_span]:px-3 [&_span]:text-xs [&_span:first-child]:pl-0 [&_span:last-child]:border-0 [&_svg]:h-[17px] [&_svg]:w-[17px] [&_svg]:text-sentinel-lime [&_svg]:[stroke-width:1.5] max-[760px]:[&_span]:border-0 max-[760px]:[&_span]:p-0" aria-label="Built for enterprise teams">
+        <div className="mt-8 flex flex-wrap text-sentinel-muted max-[760px]:mt-6 max-[760px]:grid max-[760px]:grid-cols-2 max-[760px]:gap-y-3 [&_span]:inline-flex [&_span]:items-center [&_span]:gap-2 [&_span]:whitespace-nowrap [&_span]:border-r [&_span]:border-sentinel-line [&_span]:px-3 [&_span]:text-xs [&_span:first-child]:pl-0 [&_span:last-child]:border-0 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-emerald-600 dark:[&_svg]:text-sentinel-lime [&_svg]:[stroke-width:1.5] max-[760px]:[&_span]:border-0 max-[760px]:[&_span]:p-0" aria-label="Built for enterprise teams">
           {audiences.map(({ label, icon: Icon }) => (
             <span key={label}>
               <Icon aria-hidden="true" /> {label}
             </span>
           ))}
         </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-sentinel-muted pt-4 border-t border-sentinel-line">
+          <span className="flex items-center gap-1.5 text-sentinel-text font-semibold">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-sentinel-lime" /> Audit-ready evidence
+          </span>
+          <span>• Sub-20ms policy SLA</span>
+          <span>• SHA-256 sealed logs</span>
+          <span>• SOC2 & ISO 27001</span>
+        </div>
       </div>
       <div className="relative z-[2] min-w-0 [perspective:1300px] max-lg:mt-2.5 max-[760px]:hidden">
         <HeroVisualLoader />
       </div>
-      <div className="mt-4 hidden gap-[9px] rounded-3xl border border-sentinel-line-strong bg-[linear-gradient(rgba(183,243,74,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(183,243,74,0.035)_1px,transparent_1px)] bg-[length:28px_28px] bg-sentinel-surface p-[18px] max-[760px]:grid [&>svg]:mx-auto [&>svg]:w-[15px] [&>svg]:text-sentinel-muted" aria-label="SentinelOps enforcement flow">
-        <span className="flex min-h-[52px] items-center justify-center gap-[9px] rounded border border-sentinel-line bg-sentinel-surface/90 text-[11px] [&_svg]:w-[17px]"><Bot aria-hidden="true" /> Agent request</span>
+      <div className="mt-4 hidden gap-[9px] rounded-3xl border border-sentinel-line bg-sentinel-surface p-[18px] max-[760px]:grid [&>svg]:mx-auto [&>svg]:w-[15px] [&>svg]:text-sentinel-muted" aria-label="SentinelOps enforcement flow">
+        <span className="flex min-h-[52px] items-center justify-center gap-[9px] rounded border border-sentinel-line bg-sentinel-surface text-[11px] text-sentinel-text [&_svg]:w-[17px]"><Bot aria-hidden="true" /> Agent request</span>
         <ArrowDown aria-hidden="true" />
-        <strong className="flex min-h-[52px] items-center justify-center gap-[9px] rounded border border-sentinel-lime bg-sentinel-surface/90 text-[11px] text-sentinel-lime [&_svg]:w-[17px]"><ShieldCheck aria-hidden="true" /> SentinelOps gateway</strong>
+        <strong className="flex min-h-[52px] items-center justify-center gap-[9px] rounded border border-emerald-500/50 dark:border-sentinel-lime bg-emerald-500/10 dark:bg-sentinel-lime/10 text-[11px] text-emerald-700 dark:text-sentinel-lime [&_svg]:w-[17px]"><ShieldCheck aria-hidden="true" /> SentinelOps gateway</strong>
         <div className="grid grid-cols-3 gap-1.5">
-          <span className="grid min-h-[61px] place-items-center content-center gap-1.5 rounded border border-sentinel-lime/40 bg-sentinel-lime/10 text-[8px] text-sentinel-lime [&_svg]:w-[17px]"><Check aria-hidden="true" /> Allow</span>
-          <span className="grid min-h-[61px] place-items-center content-center gap-1.5 rounded border border-sentinel-amber/40 bg-sentinel-amber/10 text-[8px] text-sentinel-amber [&_svg]:w-[17px]"><UserRoundCheck aria-hidden="true" /> Approval</span>
-          <span className="grid min-h-[61px] place-items-center content-center gap-1.5 rounded border border-sentinel-red/40 bg-sentinel-red/10 text-[8px] text-sentinel-red [&_svg]:w-[17px]"><X aria-hidden="true" /> Block</span>
+          <span className="grid min-h-[61px] place-items-center content-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-[8px] font-bold text-emerald-700 dark:text-sentinel-lime [&_svg]:w-[17px]"><Check aria-hidden="true" /> Allow</span>
+          <span className="grid min-h-[61px] place-items-center content-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-[8px] font-bold text-amber-700 dark:text-amber-400 [&_svg]:w-[17px]"><UserRoundCheck aria-hidden="true" /> Approval</span>
+          <span className="grid min-h-[61px] place-items-center content-center gap-1.5 rounded-xl border border-red-500/40 bg-red-500/10 text-[8px] font-bold text-red-700 dark:text-red-400 [&_svg]:w-[17px]"><X aria-hidden="true" /> Block</span>
         </div>
-      </div>
-      <div className="absolute bottom-[65px] right-[clamp(35px,5vw,85px)] z-[7] flex items-center gap-[17px] rounded-2xl border border-sentinel-line bg-sentinel-surface/90 px-[18px] py-[13px] text-[10px] text-sentinel-muted shadow-app-1 max-xl:hidden max-lg:bottom-10 max-lg:right-[45px] max-lg:flex max-[760px]:hidden [&>svg]:w-[18px] [&>svg]:text-sentinel-lime [&>strong]:text-[11px] [&>strong]:text-sentinel-text [&>span]:border-l [&>span]:border-sentinel-line [&>span]:pl-3.5">
-        <CheckCircle2 aria-hidden="true" />
-        <strong>Audit-ready evidence</strong>
-        <span>Policy evaluated</span>
-        <span>Context captured</span>
-        <span>Action recorded</span>
       </div>
     </section>
   );
