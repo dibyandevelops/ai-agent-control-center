@@ -30,12 +30,12 @@ export function RiskBadge({
 }) {
   return (
     <span
-      className={`inline-flex w-max items-center justify-center rounded-full border px-2.5 py-1 font-mono text-[8px] font-semibold uppercase tracking-[0.06em] ${
+      className={`inline-flex w-max items-center justify-center rounded-full border px-2.5 py-1 font-mono text-[8px] font-bold uppercase tracking-[0.06em] ${
         level === "High"
-          ? "border-sentinel-red/50 bg-sentinel-red/10 text-sentinel-red"
+          ? "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
           : level === "Medium"
-            ? "border-sentinel-amber/50 bg-sentinel-amber/10 text-sentinel-amber"
-            : "border-sentinel-lime/50 bg-sentinel-lime/10 text-sentinel-lime"
+            ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-sentinel-lime"
       }`}
     >
       {level} risk

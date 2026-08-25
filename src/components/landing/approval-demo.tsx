@@ -237,24 +237,30 @@ export function ApprovalDemo() {
         </section>
       </div>
 
-      <div className="mt-3.5 grid gap-2" aria-label="Demo scenarios">
+      <div className="mt-3.5 grid gap-2.5" aria-label="Demo scenarios">
         {(Object.keys(scenarios) as ScenarioId[]).map((id) => {
           const item = scenarios[id];
           const ItemIcon = item.icon;
+          const isSelected = activeId === id;
           return (
             <button
               type="button"
               key={id}
-              className={`grid min-h-[70px] grid-cols-[42px_1.25fr_auto_0.7fr_18px] items-center gap-[18px] rounded-2xl border bg-gradient-to-r from-[#10171d] to-[#0a0f13] px-5 text-left transition hover:translate-x-[3px] hover:border-sentinel-lime/80 hover:from-sentinel-lime/10 max-[760px]:min-h-[94px] max-[760px]:grid-cols-[34px_1fr_18px] max-[760px]:gap-[11px] max-[760px]:p-3 max-[760px]:[&>span:nth-of-type(2)]:hidden ${
-                activeId === id ? "translate-x-[3px] border-sentinel-lime/80 from-sentinel-lime/10" : "border-sentinel-line"
+              className={`grid min-h-[70px] grid-cols-[42px_1.25fr_auto_0.7fr_18px] items-center gap-[18px] rounded-2xl border px-5 text-left transition-all hover:translate-x-1 shadow-sm max-[760px]:min-h-[94px] max-[760px]:grid-cols-[34px_1fr_18px] max-[760px]:gap-[11px] max-[760px]:p-3 max-[760px]:[&>span:nth-of-type(2)]:hidden ${
+                isSelected
+                  ? "border-emerald-600 dark:border-sentinel-lime bg-emerald-500/10 dark:bg-sentinel-lime/10 shadow-md"
+                  : "border-sentinel-line bg-sentinel-surface hover:border-emerald-500/50 dark:hover:border-sentinel-lime/50 hover:bg-sentinel-surface-raised"
               }`}
               onClick={() => selectScenario(id)}
             >
-              <ItemIcon className="w-6 text-sentinel-lime" aria-hidden="true" />
-              <span className="grid gap-1"><strong className="text-xs">{item.agent}</strong><small className="text-[10px] text-sentinel-muted">{item.action}</small></span>
+              <ItemIcon className="w-6 text-emerald-600 dark:text-sentinel-lime" aria-hidden="true" />
+              <span className="grid gap-1">
+                <strong className="text-xs font-bold text-sentinel-text">{item.agent}</strong>
+                <small className="text-[10px] text-sentinel-muted">{item.action}</small>
+              </span>
               <RiskBadge level={item.risk} />
-              <b className="text-right text-[10px] font-medium text-sentinel-lime max-[760px]:hidden">{item.outcome}</b>
-              <ArrowRight className="w-3.5" aria-hidden="true" />
+              <b className="text-right text-[10px] font-bold text-emerald-700 dark:text-sentinel-lime max-[760px]:hidden">{item.outcome}</b>
+              <ArrowRight className="w-3.5 text-sentinel-muted" aria-hidden="true" />
             </button>
           );
         })}
