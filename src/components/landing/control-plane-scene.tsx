@@ -1,84 +1,128 @@
 "use client";
 
+import Image from "next/image";
 import {
-  Bot,
-  Check,
   Code2,
   Database,
   Headphones,
+  KeyRound,
   Landmark,
   ShieldCheck,
-  UserRoundCheck,
-  X,
+  Zap,
 } from "lucide-react";
 import { useState } from "react";
 
 const agents = [
-  { id: "finance", label: "Finance Agent", risk: "High", icon: Landmark },
-  { id: "release", label: "Release Agent", risk: "Medium", icon: Code2 },
-  { id: "support", label: "Support Agent", risk: "Low", icon: Headphones },
-  { id: "data", label: "Data Agent", risk: "Medium", icon: Database },
+  { id: "finance", label: "Finance Agent", risk: "High", action: "stripe.refund.issue", policy: "POL-003 Ceiling Check", icon: Landmark },
+  { id: "release", label: "Release Agent", risk: "Critical", action: "github.release.publish", policy: "POL-004 Dual Quorum", icon: Code2 },
+  { id: "support", label: "Support Agent", risk: "Low", action: "tickets.read", policy: "POL-001 PII Redaction", icon: Headphones },
+  { id: "data", label: "Data Pipeline", risk: "Medium", action: "s3.export.dataset", policy: "POL-002 Egress Guard", icon: Database },
 ] as const;
 
 export function ControlPlaneScene() {
-  const [selected, setSelected] = useState("finance");
+  const [selected, setSelected] = useState<typeof agents[number]["id"]>("release");
   const selectedAgent = agents.find((agent) => agent.id === selected) ?? agents[0];
 
   return (
-    <div className="relative min-h-[650px] overflow-hidden rounded-3xl border border-[#4f5d6a]/50 bg-[linear-gradient(135deg,rgba(25,35,44,0.45),rgba(7,10,13,0.8))] bg-sentinel-surface shadow-[-30px_40px_100px_rgba(0,0,0,0.38),inset_0_1px_rgba(255,255,255,0.035)] [transform-style:preserve-3d] [transform:rotateY(-4deg)_rotateX(1deg)] max-xl:min-h-[570px] max-lg:min-h-[630px] max-lg:transform-none">
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(145,163,179,0.042)_1px,transparent_1px),linear-gradient(90deg,rgba(145,163,179,0.042)_1px,transparent_1px)] bg-[length:36px_36px] [mask-image:radial-gradient(circle_at_50%_50%,black,transparent_82%)]" aria-hidden="true" />
-      <div className="absolute left-[4%] top-[105px] z-[3] grid w-1/4 gap-[25px]">
-        {agents.map(({ id, label, risk, icon: Icon }, index) => (
+    <div className="relative min-h-[580px] lg:min-h-[660px] overflow-hidden rounded-3xl border border-sentinel-line/80 bg-sentinel-canvas shadow-2xl shadow-sentinel-lime/5 transition-all duration-300 group">
+      {/* 3D Render Image Background */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/images/sentinel-control-plane-3d.jpg"
+          alt="SentinelOps Zero-Trust AI Agent 3D Control Plane"
+          fill
+          priority
+          sizes="(max-width: 1024px) 100vw, 800px"
+          className="object-cover object-center brightness-95 contrast-105 transition-transform duration-700 group-hover:scale-[1.02]"
+        />
+        {/* Subtle Ambient Gradients & Vignette */}
+        <div className="absolute inset-0 bg-gradient-to-t from-sentinel-canvas via-transparent to-sentinel-canvas/40 pointer-events-none" />
+        <div className="absolute inset-0 bg-radial-gradient from-transparent via-sentinel-canvas/20 to-sentinel-canvas/60 pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(183,243,74,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(183,243,74,0.03)_1px,transparent_1px)] bg-[length:32px_32px] pointer-events-none" />
+      </div>
+
+      {/* Top Left Status Badge */}
+      <div className="absolute top-5 left-5 z-10 flex items-center gap-2 rounded-full border border-sentinel-lime/40 bg-sentinel-surface/85 px-3.5 py-1.5 backdrop-blur-md shadow-lg">
+        <span className="flex h-2 w-2 relative">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sentinel-lime opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-sentinel-lime" />
+        </span>
+        <span className="font-mono text-[11px] font-bold tracking-wider text-sentinel-lime uppercase">
+          Zero-Trust Gateway Online
+        </span>
+      </div>
+
+      {/* Top Right Quorum HUD Widget */}
+      <div className="absolute top-5 right-5 z-10 hidden sm:flex items-center gap-3 rounded-2xl border border-sentinel-line bg-sentinel-surface/90 px-4 py-2.5 backdrop-blur-md shadow-xl">
+        <KeyRound className="h-4 w-4 text-amber-400" />
+        <div className="text-left">
+          <div className="text-[10px] font-bold text-sentinel-text">Dual-Custody Quorum</div>
+          <div className="font-mono text-[9px] text-sentinel-muted">2 of 2 Approvals Required</div>
+        </div>
+      </div>
+
+      {/* Interactive Agent Telemetry Strip (Left Side) */}
+      <div className="absolute left-5 top-20 z-10 flex flex-col gap-2.5 max-w-[200px]">
+        <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-sentinel-muted px-1">
+          Connected Agents
+        </div>
+        {agents.map(({ id, label, risk, icon: Icon }) => (
           <button
             type="button"
             key={id}
-            className={`relative grid min-h-[76px] grid-cols-[38px_1fr] items-center gap-[11px] rounded-[5px] border bg-gradient-to-br from-sentinel-soft to-[#0b1015] p-[11px] text-left text-[#dce1e5] transition ${
-              selected === id
-                ? "translate-x-[5px] border-sentinel-lime/80 bg-gradient-to-br from-[#19231e] to-[#0b1015]"
-                : "border-[#3b4650] hover:translate-x-[5px] hover:border-sentinel-lime/80"
-            }`}
+            onClick={() => setSelected(id)}
             onMouseEnter={() => setSelected(id)}
-            onFocus={() => setSelected(id)}
-            style={{ transform: `translateZ(${index * 4}px)` }}
+            className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-all backdrop-blur-md ${
+              selected === id
+                ? "border-sentinel-lime bg-sentinel-surface/95 shadow-lg shadow-sentinel-lime/10 translate-x-1 text-sentinel-text"
+                : "border-sentinel-line/80 bg-sentinel-surface/75 text-sentinel-muted hover:border-sentinel-line hover:text-sentinel-text"
+            }`}
           >
-            <Icon className="w-[27px] text-sentinel-muted" aria-hidden="true" />
-            <span className="grid gap-[5px]"><strong className="text-xs font-semibold">{label}</strong><small className="text-[10px] text-sentinel-muted before:mr-1.5 before:inline-block before:h-1.5 before:w-1.5 before:rounded-full before:bg-sentinel-amber before:content-['']">{risk}</small></span>
-            <i className="absolute right-[-5px] top-[calc(50%-4px)] h-2 w-2 rounded-full bg-sentinel-lime shadow-[0_0_12px_rgba(183,243,74,0.7)]" />
+            <Icon className={`h-4 w-4 shrink-0 ${selected === id ? "text-sentinel-lime" : "text-sentinel-muted"}`} />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-semibold">{label}</div>
+              <div className="text-[9px] text-sentinel-muted font-mono">{risk} Risk</div>
+            </div>
+            {selected === id && (
+              <span className="h-1.5 w-1.5 rounded-full bg-sentinel-lime shadow-[0_0_8px_#b7f34a]" />
+            )}
           </button>
         ))}
       </div>
-      <svg className="pointer-events-none absolute inset-0 z-[1] h-full w-full overflow-visible [&_path]:animate-dash-flow [&_path]:fill-none [&_path]:stroke-sentinel-lime/70 [&_path]:[stroke-dasharray:5_7] [&_path]:[stroke-width:1.5]" viewBox="0 0 1000 650" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M290 143 C390 143 350 274 430 274" />
-        <path d="M290 244 C385 244 365 292 430 292" />
-        <path d="M290 345 C385 345 365 310 430 310" />
-        <path d="M290 446 C390 446 350 328 430 328" />
-        <path d="M660 283 C720 283 710 208 758 208" />
-        <path d="M660 301 C725 301 715 293 758 293" />
-        <path d="M660 319 C720 319 710 378 758 378" />
-      </svg>
-      <div className="absolute left-[43%] top-[225px] z-[4] aspect-square w-[23%] [transform-style:preserve-3d] [transform:translateZ(48px)]">
-        <div className="absolute inset-[6%] translate-x-2.5 translate-y-[22px] border border-sentinel-lime/30 bg-sentinel-raised shadow-[0_28px_45px_rgba(0,0,0,0.5)] [clip-path:polygon(50%_0,93%_25%,93%_75%,50%_100%,7%_75%,7%_25%)]" />
-        <div className="absolute inset-0 grid place-items-center content-center gap-[9px] border border-sentinel-lime/70 bg-[radial-gradient(circle_at_50%_30%,rgba(183,243,74,0.1),transparent_34%),linear-gradient(145deg,#1a242e,#0a0f13)] [clip-path:polygon(50%_0,93%_25%,93%_75%,50%_100%,7%_75%,7%_25%)]">
-          <ShieldCheck className="h-[43px] w-[43px] text-sentinel-lime [stroke-width:1.4]" aria-hidden="true" />
-          <strong className="text-[15px]">SentinelOps</strong>
-          <span className="font-mono text-[9px] uppercase text-sentinel-lime">Enforcement gateway</span>
+
+      {/* Active Evaluation Telemetry Card (Bottom Right Floating Glass) */}
+      <div className="absolute bottom-5 right-5 left-5 sm:left-auto z-10 sm:max-w-[340px] rounded-2xl border border-sentinel-line bg-sentinel-surface/90 p-4 backdrop-blur-xl shadow-2xl space-y-3">
+        <div className="flex items-center justify-between border-b border-sentinel-line pb-2.5">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-sentinel-lime" />
+            <strong className="text-xs font-bold text-sentinel-text">{selectedAgent.label}</strong>
+          </div>
+          <span className="rounded-full bg-sentinel-lime/15 border border-sentinel-lime/30 px-2 py-0.5 font-mono text-[10px] font-bold text-sentinel-lime">
+            Sub-20ms SLA
+          </span>
         </div>
-      </div>
-      <div className="absolute right-[3.2%] top-[173px] z-[3] grid w-[21%] gap-[15px] [&>div]:flex [&>div]:min-h-[70px] [&>div]:items-center [&>div]:gap-[9px] [&>div]:rounded-[5px] [&>div]:border [&>div]:bg-[#0b1015]/90 [&>div]:px-[13px] [&>div]:text-[11px] [&>div]:font-semibold [&_svg]:w-[19px]">
-        <div className="border-sentinel-lime/50 text-sentinel-lime"><Check /> Allow</div>
-        <div className="border-sentinel-amber/60 text-sentinel-amber"><UserRoundCheck /> Human approval</div>
-        <div className="border-sentinel-red/60 text-sentinel-red"><X /> Block</div>
-      </div>
-      <div className="absolute right-1/4 top-6 z-[6] grid w-[280px] grid-cols-[42px_1fr] gap-[11px] rounded-md border border-[#48545f] bg-[#0f151b]/90 p-[13px] shadow-[0_18px_50px_rgba(0,0,0,0.32)] backdrop-blur-xl max-xl:right-[21%] max-xl:w-[230px]">
-        <span className="grid h-[42px] w-[42px] place-items-center rounded border border-sentinel-line text-sentinel-lime [&_svg]:w-[21px]"><Bot aria-hidden="true" /></span>
-        <div className="grid content-center gap-[3px]">
-          <strong className="text-xs">{selectedAgent.label}</strong>
-          <small className="text-[10px] text-sentinel-muted">Finance Operations</small>
+
+        <div className="space-y-1.5 font-mono text-[11px]">
+          <div className="flex justify-between text-sentinel-muted">
+            <span>Action:</span>
+            <span className="font-semibold text-sentinel-text truncate max-w-[190px]">{selectedAgent.action}</span>
+          </div>
+          <div className="flex justify-between text-sentinel-muted">
+            <span>Enforced Rule:</span>
+            <span className="font-semibold text-amber-400 truncate max-w-[190px]">{selectedAgent.policy}</span>
+          </div>
+          <div className="flex justify-between text-sentinel-muted">
+            <span>Latency:</span>
+            <span className="font-semibold text-sentinel-lime">14.2 ms</span>
+          </div>
         </div>
-        <dl className="col-span-full mt-[3px]">
-          <div className="grid grid-cols-[55px_1fr] border-t border-sentinel-line py-[7px] text-[9px]"><dt className="text-sentinel-muted">Risk</dt><dd className="m-0 text-right">{selectedAgent.risk}</dd></div>
-          <div className="grid grid-cols-[55px_1fr] border-t border-sentinel-line py-[7px] text-[9px]"><dt className="text-sentinel-muted">Action</dt><dd className="m-0 text-right">Transfer vendor funds</dd></div>
-        </dl>
+
+        <div className="flex items-center justify-between pt-1 border-t border-sentinel-line text-[10px]">
+          <span className="flex items-center gap-1 text-sentinel-muted">
+            <Zap className="h-3 w-3 text-sentinel-lime" /> SHA-256 Audit Anchored
+          </span>
+          <span className="text-sentinel-lime font-bold">100% Policy Pass</span>
+        </div>
       </div>
     </div>
   );
