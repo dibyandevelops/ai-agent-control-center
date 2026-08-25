@@ -13,25 +13,35 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { DiagramNode, RiskBadge, TechnicalCard } from "./ui";
 import { SentinelLogo } from "@/components/brand-logo";
 
 const agents = [
   { id: "finance", label: "Finance Agent", icon: Landmark, risk: "High", owner: "Finance Operations", tools: "ERP · Payments" },
-  { id: "release", label: "Release Agent", icon: Code2, risk: "High", owner: "Platform Engineering", tools: "GitHub · Kubernetes" },
-  { id: "support", label: "Support Agent", icon: Headphones, risk: "Low", owner: "Customer Operations", tools: "Zendesk · CRM" },
-  { id: "hr", label: "HR Agent", icon: Users, risk: "Medium", owner: "People Operations", tools: "HRIS · Documents" },
-  { id: "research", label: "Research Agent", icon: Search, risk: "Low", owner: "Strategy", tools: "Web · Documents" },
-  { id: "data", label: "Data Agent", icon: Database, risk: "Medium", owner: "Finance Operations", tools: "Snowflake · S3" },
+  { id: "support", label: "Support Agent", icon: Headphones, risk: "Low", owner: "Customer Support", tools: "Zendesk · Knowledge base" },
+  { id: "data-analyst", label: "Analytics Agent", icon: Search, risk: "Low", owner: "BI Team", tools: "BigQuery · Looker" },
+  { id: "lead-qual", label: "SDR Agent", icon: Users, risk: "Low", owner: "Revenue Ops", tools: "HubSpot · Gmail" },
+  { id: "security", label: "SecOps Agent", icon: ShieldCheck, risk: "Medium", owner: "InfoSec", tools: "SIEM · AWS CloudTrail" },
+  { id: "data", label: "Data Pipeline", icon: Database, risk: "Medium", owner: "Data Platform", tools: "Snowflake · S3" },
+  { id: "release", label: "Release Agent", icon: Code2, risk: "High", owner: "DevOps", tools: "GitHub · Terraform" },
+  { id: "infra", label: "Infra Agent", icon: Wrench, risk: "High", owner: "SRE", tools: "Kubernetes · Datadog" },
 ] as const;
 
 type AgentId = (typeof agents)[number]["id"];
 
 export function AgentTopology() {
   const [selectedId, setSelectedId] = useState<AgentId>("data");
+  const asideRef = useRef<HTMLElement>(null);
   const selected = agents.find((agent) => agent.id === selectedId) ?? agents[5];
   const SelectedIcon = selected.icon;
+
+  function handleSelectAgent(id: AgentId) {
+    setSelectedId(id);
+    if (window.innerWidth < 1024 && asideRef.current) {
+      asideRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }
 
   return (
     <TechnicalCard className="relative mt-[54px] min-h-[610px] overflow-hidden p-[38px] shadow-[0_30px_90px_rgba(0,0,0,0.28)] max-lg:grid max-lg:min-h-0 max-lg:grid-cols-1 max-lg:gap-6 max-lg:p-7 max-[760px]:mt-9 max-[760px]:p-3.5">
@@ -46,7 +56,7 @@ export function AgentTopology() {
                 ? "translate-x-1 border-emerald-600 dark:border-sentinel-lime bg-emerald-500/10 dark:bg-sentinel-lime/10"
                 : "border-sentinel-line"
             }`}
-            onClick={() => setSelectedId(id)}
+            onClick={() => handleSelectAgent(id)}
           >
             <Icon aria-hidden="true" />
             <span>{label}</span>
@@ -75,7 +85,10 @@ export function AgentTopology() {
         <DiagramNode icon={<Braces />} label="Enterprise APIs" />
         <DiagramNode icon={<Database />} label="Data stores" active />
       </div>
-      <aside className="absolute right-[2.7%] top-[120px] z-[3] min-h-[370px] w-[20%] overflow-hidden rounded-2xl border border-sentinel-line bg-sentinel-surface p-0 shadow-xl backdrop-blur-lg max-lg:static max-lg:w-auto max-lg:min-h-0">
+      <aside
+        ref={asideRef}
+        className="absolute right-[2.7%] top-[120px] z-[3] min-h-[370px] w-[20%] overflow-hidden rounded-2xl border border-sentinel-line bg-sentinel-surface p-0 shadow-xl backdrop-blur-lg max-lg:static max-lg:w-auto max-lg:min-h-0 scroll-mt-24"
+      >
         <header className="flex items-center gap-[13px] border-b border-sentinel-line p-5">
           <span className="grid h-12 w-12 place-items-center rounded-xl border border-emerald-500/50 dark:border-sentinel-lime text-emerald-600 dark:text-sentinel-lime bg-emerald-500/10 dark:bg-sentinel-lime/10 [&_svg]:w-6"><SelectedIcon /></span>
           <div className="grid gap-[7px]"><h3 className="m-0 text-base font-medium text-sentinel-text">{selected.label}</h3><RiskBadge level={selected.risk} /></div>

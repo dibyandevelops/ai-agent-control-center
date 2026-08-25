@@ -14,7 +14,7 @@ import {
   Terminal,
   Zap,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 
 interface Scenario {
   id: string;
@@ -96,11 +96,18 @@ export function InteractiveSandbox() {
   const [selectedScenario, setSelectedScenario] = useState<Scenario>(scenarios[0]);
   const [evaluating, setEvaluating] = useState(false);
   const [evaluated, setEvaluated] = useState<Scenario | null>(scenarios[0]);
+  const sandboxContainerRef = useRef<HTMLDivElement>(null);
 
   async function handleSimulate(scenario: Scenario) {
     setSelectedScenario(scenario);
     setEvaluating(true);
     setEvaluated(null);
+    if (sandboxContainerRef.current) {
+      const rect = sandboxContainerRef.current.getBoundingClientRect();
+      if (rect.top < 80 || rect.bottom > window.innerHeight) {
+        sandboxContainerRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
     await new Promise((r) => setTimeout(r, 450));
     setEvaluating(false);
     setEvaluated(scenario);
@@ -126,7 +133,10 @@ export function InteractiveSandbox() {
       </div>
 
       {/* Interactive Terminal Sandbox Card */}
-      <div className="rounded-3xl border border-sentinel-line bg-sentinel-surface/90 shadow-2xl backdrop-blur-xl overflow-hidden">
+      <div
+        ref={sandboxContainerRef}
+        className="rounded-3xl border border-sentinel-line bg-sentinel-surface/90 shadow-2xl backdrop-blur-xl overflow-hidden scroll-mt-24 transition-all"
+      >
         {/* Card Header with Scenario Selector */}
         <div className="border-b border-sentinel-line bg-sentinel-canvas/60 px-5 py-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2">

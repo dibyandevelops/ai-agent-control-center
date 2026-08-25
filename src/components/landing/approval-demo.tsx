@@ -13,7 +13,7 @@ import {
   ShieldAlert,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { RiskBadge } from "./ui";
 
 type Decision = "pending" | "approved" | "denied";
@@ -89,9 +89,17 @@ export function ApprovalDemo() {
     [scenario.automatic],
   );
 
+  const demoContainerRef = useRef<HTMLDivElement>(null);
+
   function selectScenario(id: ScenarioId) {
     setActiveId(id);
     setDecision("pending");
+    if (demoContainerRef.current) {
+      const rect = demoContainerRef.current.getBoundingClientRect();
+      if (rect.top < 80 || rect.bottom > window.innerHeight) {
+        demoContainerRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
   }
 
   function downloadEvidence() {
@@ -117,7 +125,10 @@ export function ApprovalDemo() {
 
   return (
     <div className="mt-[54px] max-[760px]:mt-9">
-      <div className="grid min-h-[600px] grid-cols-[0.86fr_1.28fr_0.96fr] overflow-hidden rounded-3xl border border-sentinel-line-strong bg-sentinel-surface shadow-[0_32px_90px_rgba(0,0,0,0.32)] max-lg:grid-cols-[0.75fr_1.25fr] max-[760px]:grid-cols-1 [&>section]:min-w-0 [&>section]:border-r [&>section]:border-sentinel-line [&>section:last-child]:border-r-0 max-[760px]:[&>section]:border-b max-[760px]:[&>section]:border-r-0">
+      <div
+        ref={demoContainerRef}
+        className="grid min-h-[600px] grid-cols-[0.86fr_1.28fr_0.96fr] overflow-hidden rounded-3xl border border-sentinel-line-strong bg-sentinel-surface shadow-[0_32px_90px_rgba(0,0,0,0.32)] max-lg:grid-cols-[0.75fr_1.25fr] max-[760px]:grid-cols-1 [&>section]:min-w-0 [&>section]:border-r [&>section]:border-sentinel-line [&>section:last-child]:border-r-0 max-[760px]:[&>section]:border-b max-[760px]:[&>section]:border-r-0 scroll-mt-24 transition-all"
+      >
         <section aria-label="Enforcement timeline">
           <header className={panelHeader}>Event timeline <span className="text-[8px] text-sentinel-lime">Live evaluation</span></header>
           <ol className="m-0 list-none py-3">
