@@ -271,10 +271,12 @@ function TopBar({
   onOpenCommandPalette,
   onToggleNotifications,
   notificationsOpen,
-  pendingApprovalsCount,
-  quarantinedAgentsCount,
+  approvals = [],
+  quarantinedAgents = [],
+  onDecision,
   integrityVerified,
   onSelectView,
+  canDecide = true,
 }: {
   view: DashboardView;
   onMenu: () => void;
@@ -284,10 +286,12 @@ function TopBar({
   onOpenCommandPalette: () => void;
   onToggleNotifications: () => void;
   notificationsOpen: boolean;
-  pendingApprovalsCount: number;
-  quarantinedAgentsCount: number;
+  approvals?: Approval[];
+  quarantinedAgents?: Agent[];
+  onDecision?: (approval: Approval, decision: "approved" | "denied") => Promise<void>;
   integrityVerified: boolean;
   onSelectView: (view: DashboardView) => void;
+  canDecide?: boolean;
 }) {
   const initials = operator?.displayName
     .split(" ")
@@ -331,15 +335,17 @@ function TopBar({
             aria-expanded={notificationsOpen}
           >
             <Bell />
-            {(pendingApprovalsCount > 0 || quarantinedAgentsCount > 0) ? <span /> : null}
+            {(approvals.filter((a) => a.status === "pending").length > 0 || quarantinedAgents.length > 0) ? <span /> : null}
           </button>
           <NotificationPopover
             open={notificationsOpen}
             onClose={onToggleNotifications}
-            pendingApprovalsCount={pendingApprovalsCount}
-            quarantinedAgentsCount={quarantinedAgentsCount}
+            approvals={approvals}
+            onDecision={onDecision}
+            quarantinedAgents={quarantinedAgents}
             integrityVerified={integrityVerified}
             onSelectView={onSelectView}
+            canDecide={canDecide}
           />
         </div>
         <button
@@ -3742,18 +3748,12 @@ export function ControlCenter({
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           onToggleNotifications={() => setNotificationsOpen((prev) => !prev)}
           notificationsOpen={notificationsOpen}
-          pendingApprovalsCount={pendingApprovals.length}
-          quarantinedAgentsCount={agentList.filter((a) => a.status === "quarantined").length}
+          approvals={approvalList}
+          quarantinedAgents={agentList.filter((a) => a.status === "quarantined")}
+          onDecision={decide}
           integrityVerified={true}
           onSelectView={handleSelectView}
-        />
-        <NotificationPopover
-          open={notificationsOpen}
-          onClose={() => setNotificationsOpen(false)}
-          pendingApprovalsCount={pendingApprovals.length}
-          quarantinedAgentsCount={agentList.filter((a) => a.status === "quarantined").length}
-          integrityVerified={true}
-          onSelectView={handleSelectView}
+          canDecide={canApprove}
         />
         <CommandPalette
           open={commandPaletteOpen}
