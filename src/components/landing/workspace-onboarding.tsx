@@ -158,227 +158,241 @@ export function WorkspaceOnboarding() {
       : undefined;
 
   return (
-    <main className="min-h-screen bg-sentinel-canvas px-4 py-14 font-sentinel text-sentinel-text sm:px-6">
+    <main className="min-h-screen bg-sentinel-canvas px-4 py-12 font-sentinel text-sentinel-text sm:px-6">
       <div className="mx-auto max-w-5xl">
         <div className="flex items-center justify-between pb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-sentinel-lime">
-            <ShieldCheck className="h-5 w-5" /> SentinelOps
+          <Link href="/" className="inline-flex items-center gap-2 text-base font-bold text-sentinel-text hover:text-emerald-600 dark:hover:text-sentinel-lime transition">
+            <span className="grid h-8 w-8 place-items-center rounded-lg border border-emerald-500/40 dark:border-sentinel-lime/40 bg-emerald-500/10 dark:bg-sentinel-lime/10 text-emerald-600 dark:text-sentinel-lime">
+              <ShieldCheck className="h-5 w-5" />
+            </span>
+            <span>SentinelOps</span>
           </Link>
           <ThemeToggle />
         </div>
-        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
-        <section>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sentinel-lime">
-            {invitationToken ? "Team invitation" : "Start your workspace"}
-          </p>
-          <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
-            {invitationToken ? "Join your organization on SentinelOps." : "Put your first agent under control."}
-          </h1>
-          <p className="mt-5 max-w-md text-base leading-7 text-sentinel-muted">
-            {invitationToken
-              ? "Accept your invitation to begin governing consequential AI agent actions under enterprise safety policies."
-              : "Create an organization, secure its first administrator, and begin with the release-agent safety path. Your workspace starts isolated from every other customer."}
-          </p>
-          <div className="mt-8 space-y-3 text-sm text-sentinel-muted">
-            <p className="flex gap-3">
-              <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-lime" /> Organization-scoped records, credentials, and audit chain
-            </p>
-            <p className="flex gap-3">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-lime" /> Production release policy enabled from day one
-            </p>
-          </div>
-        </section>
+        <div className="grid gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-center">
+          <section className="space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 dark:border-sentinel-lime/30 bg-emerald-500/10 dark:bg-sentinel-lime/10 px-3.5 py-1 text-xs font-semibold text-emerald-700 dark:text-sentinel-lime">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 dark:bg-sentinel-lime animate-ping" />
+              <span>{invitationToken ? "Team invitation" : "Enterprise Workspace Setup"}</span>
+            </div>
 
-        <section className="rounded-3xl border border-sentinel-line bg-sentinel-surface p-6 shadow-app-2 sm:p-8">
-          {invitationToken ? (
-            invitationLoading ? (
-              <div className="py-12 text-center text-sm text-sentinel-muted">
-                <LoaderCircle className="mx-auto h-6 w-6 animate-spin text-sentinel-lime" />
-                <p className="mt-3">Validating your invitation…</p>
+            <h1 className="text-4xl font-black tracking-tight sm:text-5xl leading-[1.08]">
+              {invitationToken ? "Join your organization on SentinelOps." : "Put your first agent under control."}
+            </h1>
+            <p className="text-base leading-relaxed text-sentinel-muted">
+              {invitationToken
+                ? "Accept your invitation to begin governing consequential AI agent actions under enterprise safety policies."
+                : "Create an organization, secure your first administrator credentials, and deploy zero-trust agent governance in under two minutes."}
+            </p>
+
+            <div className="space-y-3 pt-2">
+              <div className="flex items-start gap-3.5 rounded-2xl border border-sentinel-line bg-sentinel-surface p-4 shadow-sm">
+                <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-sentinel-lime" />
+                <div>
+                  <strong className="text-xs font-bold text-sentinel-text">Isolated Multi-Tenant Security</strong>
+                  <p className="text-xs text-sentinel-muted mt-0.5">Organization-scoped records, cryptographic keyrings, and SHA-256 audit chains.</p>
+                </div>
               </div>
-            ) : invitationAccepted ? (
-              <div className="py-8 text-center">
-                <ShieldCheck className="mx-auto h-10 w-10 text-sentinel-lime" />
-                <h2 className="mt-5 text-2xl font-bold">Invitation accepted!</h2>
-                <p className="mt-3 text-sm leading-6 text-sentinel-muted">
-                  Your account is active. You can now sign in to access the control center.
-                </p>
-                <div className="mt-6">
-                  <Link href="/dashboard" className="primary-button inline-flex justify-center">
-                    Sign in to dashboard
+              <div className="flex items-start gap-3.5 rounded-2xl border border-sentinel-line bg-sentinel-surface p-4 shadow-sm">
+                <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-sentinel-lime" />
+                <div>
+                  <strong className="text-xs font-bold text-sentinel-text">Pre-Configured Policy Blueprints</strong>
+                  <p className="text-xs text-sentinel-muted mt-0.5">Production release approval, financial threshold ceilings, and PII egress guards.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-sentinel-line bg-sentinel-surface p-7 sm:p-9 shadow-xl">
+            {invitationToken ? (
+              invitationLoading ? (
+                <div className="py-12 text-center text-sm text-sentinel-muted">
+                  <LoaderCircle className="mx-auto h-6 w-6 animate-spin text-emerald-600 dark:text-sentinel-lime" />
+                  <p className="mt-3">Validating your invitation…</p>
+                </div>
+              ) : invitationAccepted ? (
+                <div className="py-8 text-center">
+                  <ShieldCheck className="mx-auto h-10 w-10 text-emerald-600 dark:text-sentinel-lime" />
+                  <h2 className="mt-5 text-2xl font-bold">Invitation accepted!</h2>
+                  <p className="mt-3 text-sm leading-6 text-sentinel-muted">
+                    Your account is active. You can now sign in to access the control center.
+                  </p>
+                  <div className="mt-6">
+                    <Link href="/dashboard" className="primary-button inline-flex justify-center">
+                      Sign in to dashboard
+                    </Link>
+                  </div>
+                </div>
+              ) : invitationInfo ? (
+                <>
+                  <h2 className="text-2xl font-bold">Join {invitationInfo.organizationName}</h2>
+                  <p className="mt-2 text-sm text-sentinel-muted">
+                    You are accepting an invitation for <strong className="text-sentinel-text">{invitationInfo.email}</strong> as an <strong className="text-emerald-700 dark:text-sentinel-lime uppercase">{invitationInfo.role}</strong>.
+                  </p>
+                  <form className="mt-7 space-y-4" onSubmit={submitAcceptInvitation}>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-sentinel-muted">
+                      Your name
+                      <input
+                        required
+                        value={acceptDisplayName}
+                        onChange={(e) => setAcceptDisplayName(e.target.value)}
+                        className="mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 text-sm text-sentinel-text outline-none focus:border-emerald-500 dark:focus:border-sentinel-lime focus:ring-2 focus:ring-emerald-500/20"
+                        placeholder="Jane Doe"
+                        autoFocus
+                      />
+                    </label>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-sentinel-muted">
+                      Set your password
+                      <input
+                        required
+                        type="password"
+                        minLength={12}
+                        value={acceptPassword}
+                        onChange={(e) => setAcceptPassword(e.target.value)}
+                        className="mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 text-sm text-sentinel-text outline-none focus:border-emerald-500 dark:focus:border-sentinel-lime focus:ring-2 focus:ring-emerald-500/20"
+                        placeholder="At least 12 characters"
+                      />
+                    </label>
+                    {error ? <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs font-semibold text-red-600 dark:text-red-400">{error}</p> : null}
+                    <button className="primary-button mt-2 w-full justify-center text-sm font-bold py-3.5 shadow-md shadow-emerald-500/20 dark:shadow-sentinel-lime/20" disabled={submitting}>
+                      {submitting ? <LoaderCircle className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />}
+                      {submitting ? "Joining workspace…" : "Accept invitation & create account"}
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <div className="py-8 text-center">
+                  <ShieldAlert className="mx-auto h-10 w-10 text-sentinel-red" />
+                  <h2 className="mt-5 text-2xl font-bold">Invalid invitation</h2>
+                  <p className="mt-3 text-sm leading-6 text-sentinel-muted">
+                    {error || "This invitation link is invalid, expired, or has already been accepted."}
+                  </p>
+                  <div className="mt-6">
+                    <Link href="/get-started" className="secondary-button inline-flex">
+                      Create new workspace
+                    </Link>
+                  </div>
+                </div>
+              )
+            ) : isInvalidVerification ? (
+              <div className="py-6">
+                <div className="text-center">
+                  <ShieldAlert className="mx-auto h-10 w-10 text-amber-500 dark:text-sentinel-amber" />
+                  <h2 className="mt-4 text-2xl font-bold">Verification link expired or invalid</h2>
+                  <p className="mt-2 text-sm text-sentinel-muted">
+                    The email verification link has expired or was already used. Enter your work email below to receive a new link.
+                  </p>
+                </div>
+                <form className="mt-6 space-y-4" onSubmit={handleResendVerification}>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-sentinel-muted">
+                    Work email
+                    <input
+                      required
+                      type="email"
+                      value={resendEmail}
+                      onChange={(e) => setResendEmail(e.target.value)}
+                      className="mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 text-sm text-sentinel-text outline-none focus:border-emerald-500 dark:focus:border-sentinel-lime focus:ring-2 focus:ring-emerald-500/20"
+                      placeholder="name@company.com"
+                    />
+                  </label>
+                  {resendStatus ? (
+                    <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs font-semibold text-emerald-700 dark:text-sentinel-lime">
+                      {resendStatus}
+                    </p>
+                  ) : null}
+                  {error ? <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs font-semibold text-red-600 dark:text-red-400">{error}</p> : null}
+                  <button className="primary-button w-full justify-center text-sm font-bold py-3.5 shadow-md shadow-emerald-500/20 dark:shadow-sentinel-lime/20" disabled={resendBusy || !resendEmail}>
+                    {resendBusy ? <LoaderCircle className="animate-spin h-4 w-4" /> : <Mail className="h-4 w-4" />}
+                    {resendBusy ? "Sending link…" : "Resend verification link"}
+                  </button>
+                </form>
+                <div className="mt-6 text-center text-sm">
+                  <Link href="/get-started" className="text-emerald-700 dark:text-sentinel-lime font-semibold hover:underline">
+                    Back to create workspace
                   </Link>
                 </div>
               </div>
-            ) : invitationInfo ? (
-              <>
-                <h2 className="text-2xl font-bold">Join {invitationInfo.organizationName}</h2>
-                <p className="mt-2 text-sm text-sentinel-muted">
-                  You are accepting an invitation for <strong className="text-sentinel-text">{invitationInfo.email}</strong> as an <strong className="text-sentinel-lime uppercase">{invitationInfo.role}</strong>.
+            ) : verificationSent ? (
+              <div className="py-8 text-center">
+                <ShieldCheck className="mx-auto h-10 w-10 text-emerald-600 dark:text-sentinel-lime" />
+                <h2 className="mt-5 text-2xl font-bold">Check your work email</h2>
+                <p className="mt-3 text-sm leading-6 text-sentinel-muted">
+                  We sent a one-time verification link to <strong className="text-sentinel-text">{form.email}</strong>. Open it within 24 hours to activate your workspace, then sign in.
                 </p>
-                <form className="mt-7 space-y-4" onSubmit={submitAcceptInvitation}>
-                  <label className="block text-sm font-medium">
+              </div>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold">Create your organization</h2>
+                <p className="mt-2 text-sm text-sentinel-muted">
+                  Use your work email. It becomes the primary administrator account.
+                </p>
+                <form className="mt-7 space-y-4" onSubmit={submit}>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-sentinel-muted">
+                    Organization name
+                    <input
+                      required
+                      value={form.organizationName}
+                      onChange={(event) => setForm((current) => ({ ...current, organizationName: event.target.value }))}
+                      className="mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 text-sm text-sentinel-text outline-none focus:border-emerald-500 dark:focus:border-sentinel-lime focus:ring-2 focus:ring-emerald-500/20"
+                      placeholder="AtlasPay"
+                    />
+                  </label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-sentinel-muted">
                     Your name
                     <input
                       required
-                      value={acceptDisplayName}
-                      onChange={(e) => setAcceptDisplayName(e.target.value)}
-                      className="mt-2 h-11 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sentinel-text outline-none focus:border-sentinel-lime"
-                      placeholder="Jane Doe"
-                      autoFocus
+                      value={form.displayName}
+                      onChange={(event) => setForm((current) => ({ ...current, displayName: event.target.value }))}
+                      className="mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 text-sm text-sentinel-text outline-none focus:border-emerald-500 dark:focus:border-sentinel-lime focus:ring-2 focus:ring-emerald-500/20"
+                      placeholder="Maya Patel"
                     />
                   </label>
-                  <label className="block text-sm font-medium">
-                    Set your password
+                  <label className="block text-xs font-bold uppercase tracking-wider text-sentinel-muted">
+                    Work email
+                    <input
+                      required
+                      type="email"
+                      value={form.email}
+                      onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                      className="mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 text-sm text-sentinel-text outline-none focus:border-emerald-500 dark:focus:border-sentinel-lime focus:ring-2 focus:ring-emerald-500/20"
+                      placeholder="maya@atlaspay.com"
+                    />
+                  </label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-sentinel-muted">
+                    Password
                     <input
                       required
                       type="password"
                       minLength={12}
-                      value={acceptPassword}
-                      onChange={(e) => setAcceptPassword(e.target.value)}
-                      className="mt-2 h-11 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sentinel-text outline-none focus:border-sentinel-lime"
+                      value={form.password}
+                      onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                      className="mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 text-sm text-sentinel-text outline-none focus:border-emerald-500 dark:focus:border-sentinel-lime focus:ring-2 focus:ring-emerald-500/20"
                       placeholder="At least 12 characters"
                     />
                   </label>
-                  {error ? <p className="rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p> : null}
-                  <button className="primary-button mt-2 w-full justify-center" disabled={submitting}>
-                    {submitting ? <LoaderCircle className="animate-spin" /> : <Check />}
-                    {submitting ? "Joining workspace…" : "Accept invitation & create account"}
+                  {turnstileSiteKey ? (
+                    <div className="rounded-xl border border-sentinel-line bg-sentinel-canvas p-3">
+                      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
+                      <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="auto" data-action="workspace_onboarding" />
+                      <p className="mt-2 text-xs text-sentinel-muted">Human verification protects workspace creation.</p>
+                    </div>
+                  ) : null}
+                  {error ? <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs font-semibold text-red-600 dark:text-red-400">{error}</p> : null}
+                  <button className="primary-button mt-2 w-full justify-center text-sm font-bold py-3.5 shadow-md shadow-emerald-500/20 dark:shadow-sentinel-lime/20" disabled={submitting}>
+                    {submitting ? <LoaderCircle className="animate-spin h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+                    {submitting ? "Creating secure workspace…" : "Create workspace"}
                   </button>
                 </form>
-              </>
-            ) : (
-              <div className="py-8 text-center">
-                <ShieldAlert className="mx-auto h-10 w-10 text-sentinel-red" />
-                <h2 className="mt-5 text-2xl font-bold">Invalid invitation</h2>
-                <p className="mt-3 text-sm leading-6 text-sentinel-muted">
-                  {error || "This invitation link is invalid, expired, or has already been accepted."}
-                </p>
-                <div className="mt-6">
-                  <Link href="/get-started" className="secondary-button inline-flex">
-                    Create new workspace
+                <p className="mt-5 text-center text-xs text-sentinel-muted">
+                  Already have an account?{" "}
+                  <Link className="font-bold text-emerald-700 dark:text-sentinel-lime hover:underline" href="/dashboard">
+                    Sign in
                   </Link>
-                </div>
-              </div>
-            )
-          ) : isInvalidVerification ? (
-            <div className="py-6">
-              <div className="text-center">
-                <ShieldAlert className="mx-auto h-10 w-10 text-sentinel-amber" />
-                <h2 className="mt-4 text-2xl font-bold">Verification link expired or invalid</h2>
-                <p className="mt-2 text-sm text-sentinel-muted">
-                  The email verification link has expired or was already used. Enter your work email below to receive a new link.
                 </p>
-              </div>
-              <form className="mt-6 space-y-4" onSubmit={handleResendVerification}>
-                <label className="block text-sm font-medium">
-                  Work email
-                  <input
-                    required
-                    type="email"
-                    value={resendEmail}
-                    onChange={(e) => setResendEmail(e.target.value)}
-                    className="mt-2 h-11 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sentinel-text outline-none focus:border-sentinel-lime"
-                    placeholder="name@company.com"
-                  />
-                </label>
-                {resendStatus ? (
-                  <p className="rounded-lg border border-sentinel-lime/30 bg-sentinel-lime/10 p-3 text-xs text-sentinel-text">
-                    {resendStatus}
-                  </p>
-                ) : null}
-                {error ? <p className="rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p> : null}
-                <button className="primary-button w-full justify-center" disabled={resendBusy || !resendEmail}>
-                  {resendBusy ? <LoaderCircle className="animate-spin" /> : <Mail className="h-4 w-4" />}
-                  {resendBusy ? "Sending link…" : "Resend verification link"}
-                </button>
-              </form>
-              <div className="mt-6 text-center text-sm">
-                <Link href="/get-started" className="text-sentinel-lime hover:underline">
-                  Back to create workspace
-                </Link>
-              </div>
-            </div>
-          ) : verificationSent ? (
-            <div className="py-8 text-center">
-              <ShieldCheck className="mx-auto h-10 w-10 text-sentinel-lime" />
-              <h2 className="mt-5 text-2xl font-bold">Check your work email</h2>
-              <p className="mt-3 text-sm leading-6 text-sentinel-muted">
-                We sent a one-time verification link to {form.email}. Open it within 24 hours to activate your workspace, then sign in.
-              </p>
-            </div>
-          ) : (
-            <>
-              <h2 className="text-2xl font-bold">Create your organization</h2>
-              <p className="mt-2 text-sm text-sentinel-muted">
-                Use your work email. It becomes the first administrator account.
-              </p>
-              <form className="mt-7 space-y-4" onSubmit={submit}>
-                <label className="block text-sm font-medium">
-                  Organization name
-                  <input
-                    required
-                    value={form.organizationName}
-                    onChange={(event) => setForm((current) => ({ ...current, organizationName: event.target.value }))}
-                    className="mt-2 h-11 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sentinel-text outline-none focus:border-sentinel-lime"
-                    placeholder="AtlasPay"
-                  />
-                </label>
-                <label className="block text-sm font-medium">
-                  Your name
-                  <input
-                    required
-                    value={form.displayName}
-                    onChange={(event) => setForm((current) => ({ ...current, displayName: event.target.value }))}
-                    className="mt-2 h-11 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sentinel-text outline-none focus:border-sentinel-lime"
-                    placeholder="Maya Patel"
-                  />
-                </label>
-                <label className="block text-sm font-medium">
-                  Work email
-                  <input
-                    required
-                    type="email"
-                    value={form.email}
-                    onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-                    className="mt-2 h-11 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sentinel-text outline-none focus:border-sentinel-lime"
-                    placeholder="maya@atlaspay.com"
-                  />
-                </label>
-                <label className="block text-sm font-medium">
-                  Password
-                  <input
-                    required
-                    type="password"
-                    minLength={12}
-                    value={form.password}
-                    onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                    className="mt-2 h-11 w-full rounded-lg border border-sentinel-line bg-sentinel-canvas px-3 text-sentinel-text outline-none focus:border-sentinel-lime"
-                    placeholder="At least 12 characters"
-                  />
-                </label>
-                {turnstileSiteKey ? (
-                  <div className="rounded-lg border border-sentinel-line bg-sentinel-canvas p-3">
-                    <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
-                    <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="dark" data-action="workspace_onboarding" />
-                    <p className="mt-2 text-xs text-sentinel-muted">Human verification protects workspace creation.</p>
-                  </div>
-                ) : null}
-                {error ? <p className="rounded-lg border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-200">{error}</p> : null}
-                <button className="primary-button mt-2 w-full justify-center" disabled={submitting}>
-                  {submitting ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}
-                  {submitting ? "Creating secure workspace…" : "Create workspace"}
-                </button>
-              </form>
-              <p className="mt-5 text-center text-sm text-sentinel-muted">
-                Already have an account?{" "}
-                <Link className="font-semibold text-sentinel-lime" href="/dashboard">
-                  Sign in
-                </Link>
-              </p>
-            </>
-          )}
-        </section>
-      </div>
+              </>
+            )}
+          </section>
+        </div>
       </div>
     </main>
   );
