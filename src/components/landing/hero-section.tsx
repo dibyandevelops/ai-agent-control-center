@@ -54,7 +54,7 @@ export function HeroSection() {
             Explore control center <ArrowUpRight aria-hidden="true" />
           </Link>
         </div>
-        <div className="mt-10 flex flex-wrap text-[#a9b1ba] max-[760px]:mt-[30px] max-[760px]:grid max-[760px]:grid-cols-2 max-[760px]:gap-y-4 [&_span]:inline-flex [&_span]:items-center [&_span]:gap-2 [&_span]:whitespace-nowrap [&_span]:border-r [&_span]:border-sentinel-line [&_span]:px-3 [&_span]:text-xs [&_span:first-child]:pl-0 [&_span:last-child]:border-0 [&_svg]:h-[17px] [&_svg]:w-[17px] [&_svg]:text-sentinel-lime [&_svg]:[stroke-width:1.5] max-[760px]:[&_span]:border-0 max-[760px]:[&_span]:p-0" aria-label="Built for enterprise teams">
+        <div className="mt-10 flex flex-wrap text-sentinel-muted max-[760px]:mt-[30px] max-[760px]:grid max-[760px]:grid-cols-2 max-[760px]:gap-y-4 [&_span]:inline-flex [&_span]:items-center [&_span]:gap-2 [&_span]:whitespace-nowrap [&_span]:border-r [&_span]:border-sentinel-line [&_span]:px-3 [&_span]:text-xs [&_span:first-child]:pl-0 [&_span:last-child]:border-0 [&_svg]:h-[17px] [&_svg]:w-[17px] [&_svg]:text-sentinel-lime [&_svg]:[stroke-width:1.5] max-[760px]:[&_span]:border-0 max-[760px]:[&_span]:p-0" aria-label="Built for enterprise teams">
           {audiences.map(({ label, icon: Icon }) => (
             <span key={label}>
               <Icon aria-hidden="true" /> {label}

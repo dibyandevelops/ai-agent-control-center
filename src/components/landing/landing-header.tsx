@@ -34,7 +34,7 @@ export function LandingHeader() {
       }`}
     >
       <Brand />
-      <nav className="flex items-center gap-[34px] text-[13px] font-medium text-[#c7cdd3] max-lg:hidden [&_a]:transition-colors [&_a:hover]:text-sentinel-lime" aria-label="Marketing navigation">
+      <nav className="flex items-center gap-[34px] text-[13px] font-medium text-sentinel-muted max-lg:hidden [&_a]:transition-colors [&_a:hover]:text-sentinel-lime" aria-label="Marketing navigation">
         {navItems.map((item) => (
           <a href={item.href} key={item.href}>
             {item.label}
@@ -43,10 +43,10 @@ export function LandingHeader() {
       </nav>
       <div className="flex items-center justify-end gap-[18px] text-[13px] font-semibold max-lg:hidden">
         <ThemeToggle />
-        <Link href="/dashboard" className="transition-colors hover:text-sentinel-lime">
+        <Link href="/dashboard" className="text-sentinel-text transition-colors hover:text-sentinel-lime">
           Sign in
         </Link>
-        <Link href="/get-started" className="inline-flex min-h-[42px] items-center justify-center rounded-full border border-sentinel-lime/70 bg-sentinel-lime/[0.03] px-[22px] font-semibold transition hover:-translate-y-px hover:bg-sentinel-lime hover:text-[#081004]">Create workspace</Link>
+        <Link href="/get-started" className="inline-flex min-h-[42px] items-center justify-center rounded-full border border-sentinel-lime/70 bg-sentinel-lime/[0.06] px-[22px] font-semibold text-sentinel-text transition hover:-translate-y-px hover:bg-sentinel-lime hover:text-sentinel-canvas">Create workspace</Link>
       </div>
       <button
         type="button"

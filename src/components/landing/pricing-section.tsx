@@ -128,7 +128,7 @@ export function PricingSection() {
         </div>
 
         {/* Tier 2: Team Pro (Featured) */}
-        <div className="relative flex flex-col justify-between rounded-3xl border-2 border-sentinel-lime bg-sentinel-surface p-8 shadow-xl shadow-sentinel-lime/10 scale-100 lg:scale-105 z-10">
+        <div className="relative flex flex-col justify-between rounded-3xl border-2 border-sentinel-lime bg-sentinel-surface p-8 shadow-xl shadow-sentinel-lime/10 lg:-translate-y-2 z-10">
           <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-sentinel-lime px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-sentinel-canvas shadow-sm">
             Most Popular
           </div>

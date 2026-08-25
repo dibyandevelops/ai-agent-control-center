@@ -36,8 +36,17 @@ function resolveThemeValue(theme: Theme): "dark" | "light" {
   return theme;
 }
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+export function ThemeProvider({
+  children,
+  initialTheme,
+}: {
+  children: React.ReactNode;
+  initialTheme?: Theme;
+}) {
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (initialTheme) return initialTheme;
+    return getInitialTheme();
+  });
   const [systemIsDark, setSystemIsDark] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -55,6 +64,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.style.colorScheme = resolvedTheme;
     try {
       localStorage.setItem("sentinel-theme", theme);
+      document.cookie = `sentinel-theme=${resolvedTheme};path=/;max-age=31536000;SameSite=Lax`;
     } catch {
       // ignore
     }

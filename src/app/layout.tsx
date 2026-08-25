@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Space_Grotesk } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -9,7 +11,10 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#070a0e",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#06090e" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -69,24 +74,35 @@ export const metadata: Metadata = {
   },
 };
 
-import { ThemeProvider } from "@/components/theme-provider";
-
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const cookieStore = await cookies();
+  const themeCookie = cookieStore.get("sentinel-theme")?.value;
+  const initialTheme = themeCookie === "light" ? "light" : "dark";
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={themeCookie ? initialTheme : undefined}
+      data-theme={themeCookie ? initialTheme : undefined}
+      style={themeCookie ? { colorScheme: initialTheme } : undefined}
+      suppressHydrationWarning
+    >
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <script
+          id="theme-initializer"
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("sentinel-theme")||"dark";var d=t==="dark"||(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=d?"dark":"light";document.documentElement.className=r;document.documentElement.setAttribute("data-theme",r);document.documentElement.style.colorScheme=r;}catch(e){}})();`,
+            __html: `!function(){try{var d=document.documentElement,t=localStorage.getItem("sentinel-theme")||localStorage.getItem("theme");if(!t||t==="system"){t=window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}d.className=t;d.setAttribute("data-theme",t);d.style.colorScheme=t;}catch(e){}}();`,
           }}
         />
       </head>
       <body className={spaceGrotesk.variable}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider initialTheme={themeCookie as "dark" | "light" | undefined}>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
