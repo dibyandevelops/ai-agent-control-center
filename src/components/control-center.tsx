@@ -1461,14 +1461,14 @@ function PoliciesView({
             </div>
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-sentinel-border/50 text-xs">
+          {/* Filter Pills Bar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto px-5 py-2.5 border-b border-sentinel-border bg-sentinel-surface-raised/20 text-xs">
             <button
               type="button"
               onClick={() => setModeFilter("all")}
               className={`rounded-lg px-2.5 py-1 font-semibold transition ${
                 modeFilter === "all"
-                  ? "bg-sentinel-surface-raised text-sentinel-text border border-sentinel-border-strong"
+                  ? "bg-sentinel-surface text-sentinel-text border border-sentinel-border-strong shadow-xs"
                   : "text-sentinel-muted hover:text-sentinel-text"
               }`}
             >
@@ -1479,7 +1479,7 @@ function PoliciesView({
               onClick={() => setModeFilter("active")}
               className={`rounded-lg px-2.5 py-1 font-semibold transition ${
                 modeFilter === "active"
-                  ? "bg-sentinel-success-soft text-sentinel-success border border-sentinel-success/30"
+                  ? "bg-sentinel-success-soft text-sentinel-success border border-sentinel-success/30 shadow-xs"
                   : "text-sentinel-muted hover:text-sentinel-text"
               }`}
             >
@@ -1490,7 +1490,7 @@ function PoliciesView({
               onClick={() => setModeFilter("Block")}
               className={`rounded-lg px-2.5 py-1 font-semibold transition ${
                 modeFilter === "Block"
-                  ? "bg-sentinel-danger-soft text-sentinel-danger border border-sentinel-danger/30"
+                  ? "bg-sentinel-danger-soft text-sentinel-danger border border-sentinel-danger/30 shadow-xs"
                   : "text-sentinel-muted hover:text-sentinel-text"
               }`}
             >
@@ -1501,7 +1501,7 @@ function PoliciesView({
               onClick={() => setModeFilter("Approval")}
               className={`rounded-lg px-2.5 py-1 font-semibold transition ${
                 modeFilter === "Approval"
-                  ? "bg-sentinel-amber-soft text-sentinel-amber border border-sentinel-amber/30"
+                  ? "bg-sentinel-amber-soft text-sentinel-amber border border-sentinel-amber/30 shadow-xs"
                   : "text-sentinel-muted hover:text-sentinel-text"
               }`}
             >
@@ -1513,7 +1513,7 @@ function PoliciesView({
                 onClick={() => setModeFilter("pending")}
                 className={`rounded-lg px-2.5 py-1 font-semibold transition ${
                   modeFilter === "pending"
-                    ? "bg-sentinel-accent-soft text-sentinel-accent border border-sentinel-accent/30"
+                    ? "bg-sentinel-accent-soft text-sentinel-accent border border-sentinel-accent/30 shadow-xs"
                     : "text-sentinel-muted hover:text-sentinel-text"
                 }`}
               >
@@ -1522,102 +1522,90 @@ function PoliciesView({
             ) : null}
           </div>
 
-          <div className="space-y-3 pt-2">
+          <div className="divide-y divide-sentinel-border">
             {filteredPolicies.map((policy) => {
               const isExpanded = Boolean(expandedConditions[policy.id]);
               return (
-                <article
-                  className="rounded-2xl border border-sentinel-border bg-sentinel-surface p-4 transition hover:border-sentinel-border-strong space-y-3"
-                  key={policy.id}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className={`policy-icon policy-${policy.mode.toLowerCase()} mt-0.5 shrink-0`}>
-                        {policy.mode === "Block" ? <LockKeyhole /> : policy.mode === "Approval" ? <ClipboardCheck /> : <Activity />}
-                      </div>
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-sm font-bold text-sentinel-text">{policy.name}</h3>
-                          <span className={`mode mode-${policy.mode.toLowerCase()}`}>{policy.mode}</span>
-                          {policy.activationStatus === "pending" ? (
-                            <span className="mode mode-approval">Awaiting approval</span>
-                          ) : policy.activationStatus === "draft" ? (
-                            <span className="mode mode-block">Draft v{policy.latestVersionNumber}</span>
-                          ) : null}
-                        </div>
-                        <p className="text-xs text-sentinel-muted leading-relaxed">{policy.description}</p>
-                        <div className="flex items-center gap-2 font-mono text-[11px] text-sentinel-muted flex-wrap">
-                          <span>{policy.scope}</span>
-                          <span>•</span>
-                          <span>active v{policy.activeVersionNumber ?? 1}</span>
-                          <span>•</span>
-                          <span>{policy.matches} matches (7d)</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        className="rounded-lg border border-sentinel-border px-2.5 py-1.5 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-border-strong hover:text-sentinel-text"
-                        onClick={() => setHistoryPolicy(policy)}
-                        title="View version audit history"
-                      >
-                        History
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-lg border border-sentinel-border px-2.5 py-1.5 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-border-strong hover:text-sentinel-text disabled:opacity-40"
-                        onClick={() => openEditor(policy)}
-                        disabled={!canManage}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        role="switch"
-                        aria-checked={policy.enabled}
-                        aria-label={`${policy.enabled ? "Disable" : "Request activation for"} ${policy.name}`}
-                        className={`toggle ${policy.enabled ? "toggle-on" : ""}`}
-                        disabled={!canManage || policy.activationStatus === "pending"}
-                        onClick={() => onToggle(policy.id)}
-                      >
-                        <span />
-                      </button>
-                    </div>
+                <article className="policy-row" key={policy.id}>
+                  <div className={`policy-icon policy-${policy.mode.toLowerCase()}`}>
+                    {policy.mode === "Block" ? <LockKeyhole /> : policy.mode === "Approval" ? <ClipboardCheck /> : <Activity />}
                   </div>
-
-                  {/* Condition preview toggle */}
-                  {policy.conditions && policy.conditions.length > 0 && (
-                    <div className="border-t border-sentinel-border/40 pt-2.5">
-                      <button
-                        type="button"
-                        onClick={() => toggleConditionExpand(policy.id)}
-                        className="flex items-center gap-1 text-[11px] font-semibold text-sentinel-accent hover:underline"
-                      >
-                        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                        <span>{isExpanded ? "Hide rule logic" : `Inspect rule logic (${policy.conditions.length} condition${policy.conditions.length === 1 ? "" : "s"})`}</span>
-                      </button>
-
-                      {isExpanded && (
-                        <div className="mt-2 rounded-xl border border-sentinel-border bg-sentinel-canvas/60 p-3 space-y-1.5 font-mono text-[11px] animate-dialog-in">
-                          <div className="text-[10px] text-sentinel-muted font-bold uppercase tracking-wider">
-                            Match Predicates (ALL)
-                          </div>
-                          {policy.conditions.map((cond, idx) => (
-                            <div key={idx} className="flex items-center gap-2 text-xs flex-wrap">
-                              <span className="rounded bg-sentinel-surface-raised px-1.5 py-0.5 text-sentinel-text font-semibold">
-                                {cond.field}
-                              </span>
-                              <span className="text-sentinel-muted">{cond.operator}</span>
-                              <span className="rounded bg-sentinel-accent-soft px-1.5 py-0.5 text-sentinel-accent font-semibold">
-                                {Array.isArray(cond.value) ? cond.value.join(", ") : String(cond.value)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                  <div className="policy-copy space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-bold text-sentinel-text">{policy.name}</h3>
+                      <span className={`mode mode-${policy.mode.toLowerCase()}`}>{policy.mode}</span>
+                      {policy.activationStatus === "pending" ? (
+                        <span className="mode mode-approval">Awaiting Approval</span>
+                      ) : policy.activationStatus === "draft" ? (
+                        <span className="mode mode-block">Draft v{policy.latestVersionNumber}</span>
+                      ) : null}
                     </div>
-                  )}
+                    <p className="text-xs text-sentinel-muted">{policy.description}</p>
+                    <small className="font-mono text-[11px] text-sentinel-muted">
+                      {policy.scope} · active v{policy.activeVersionNumber ?? 1} · {policy.matches} matches (7d)
+                    </small>
+
+                    {/* Collapsible condition inspector */}
+                    {policy.conditions && policy.conditions.length > 0 && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleConditionExpand(policy.id)}
+                          className="flex items-center gap-1 text-[11px] font-semibold text-sentinel-accent hover:underline"
+                        >
+                          <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                          <span>{isExpanded ? "Hide rule predicates" : `Inspect rule logic (${policy.conditions.length} condition${policy.conditions.length === 1 ? "" : "s"})`}</span>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="mt-2 rounded-xl border border-sentinel-border bg-sentinel-canvas/80 p-3 space-y-1.5 font-mono text-[11px] animate-dialog-in">
+                            <div className="text-[10px] text-sentinel-muted font-bold uppercase tracking-wider">
+                              Match Predicates (ALL)
+                            </div>
+                            {policy.conditions.map((cond, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-xs flex-wrap">
+                                <span className="rounded bg-sentinel-surface-raised px-1.5 py-0.5 text-sentinel-text font-semibold">
+                                  {cond.field}
+                                </span>
+                                <span className="text-sentinel-muted">{cond.operator}</span>
+                                <span className="rounded bg-sentinel-accent-soft px-1.5 py-0.5 text-sentinel-accent font-semibold">
+                                  {Array.isArray(cond.value) ? cond.value.join(", ") : String(cond.value)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="policy-actions">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-sentinel-border px-2.5 py-1.5 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-border-strong hover:text-sentinel-text"
+                      onClick={() => setHistoryPolicy(policy)}
+                      title="View version audit history"
+                    >
+                      History
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-sentinel-border px-2.5 py-1.5 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-border-strong hover:text-sentinel-text disabled:opacity-40"
+                      onClick={() => openEditor(policy)}
+                      disabled={!canManage}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      role="switch"
+                      aria-checked={policy.enabled}
+                      aria-label={`${policy.enabled ? "Disable" : "Request activation for"} ${policy.name}`}
+                      className={`toggle ${policy.enabled ? "toggle-on" : ""}`}
+                      disabled={!canManage || policy.activationStatus === "pending"}
+                      onClick={() => onToggle(policy.id)}
+                    >
+                      <span />
+                    </button>
+                  </div>
                 </article>
               );
             })}
@@ -3925,89 +3913,109 @@ export function ControlCenter({
             setConnectOpen(true);
           }}
         />
-        {view === "overview" && (
-          <Overview
-            agents={agentList}
-            approvals={pendingApprovals}
-            audit={auditList}
-            operator={operatorIdentity}
-            live={workspaceMode === "live"}
-            onRegister={openRegisterDialog}
-            onDecision={decide}
-            onViewApprovals={() => handleSelectView("approvals")}
-            onOpenCredentials={() => handleSelectView("credentials")}
-            onOpenIntegrations={() => handleSelectView("integrations")}
-            onOpenPolicies={() => handleSelectView("policies")}
-            canDecide={canApprove}
-          />
-        )}
-        {view === "agents" && (
-          <AgentsView
-            agents={agentList}
-            audit={auditList}
-            onRegister={openRegisterDialog}
-            onQuarantine={canManagePolicies || canApprove ? handleQuarantineAgent : undefined}
-            onLiftQuarantine={canManagePolicies || canApprove ? handleUnquarantineAgent : undefined}
-          />
-        )}
-        {view === "approvals" && (
-          <ApprovalsView
-            approvals={pendingApprovals}
-            releaseGovernance={releaseGovernanceList}
-            operatorId={operatorIdentity?.id ?? null}
-            onDecision={decide}
-            onReleaseDecision={decideReleaseGovernance}
-            onReleaseRetry={retryReleaseGovernance}
-            onViewEvidence={setSelectedRequestId}
-            canDecide={canApprove}
-            canGovernReleases={canGovernReleases}
-          />
-        )}
-        {view === "policies" && (
-          <PoliciesView
-            policies={policyList}
-            activations={policyActivationList}
-            audit={auditList}
-            operatorId={operatorIdentity?.id ?? "demo-operator"}
-            onToggle={togglePolicy}
-            onSaved={savePolicy}
-            onActivationDecision={decidePolicyActivation}
-            onRefresh={refreshLiveWorkspace}
-            canManage={canManagePolicies}
-          />
-        )}
-        {view === "audit" && (
-          <AuditView
-            audit={auditList}
-            onOpenDetails={setSelectedRequestId}
-            initialEventId={initialAuditEventId}
-          />
-        )}
-        {view === "integrations" && (
-          <IntegrationsView
-            items={integrationList}
-            live={workspaceMode === "live"}
-            canRetryDeadLetters={canManagePolicies}
-            onRetryDeadLetters={retryDeadNotifications}
-            canAcknowledgeDrift={canGovernReleases}
-            onAcknowledgeDrift={acknowledgeGitHubDrift}
-            onResolveDrift={resolveGitHubDrift}
-            onViewEvidence={setSelectedRequestId}
-            onRefresh={refreshLiveWorkspace}
-            onNotify={setToast}
-          />
-        )}
-        {view === "credentials" && operatorIdentity?.role === "admin" && (
-          <ApiKeyManagement
-            organizationName={operatorIdentity.organizationName}
-            onNotify={setToast}
-          />
-        )}
-        {view === "team" && operatorIdentity?.role === "admin" && (
-          <OperatorManagement
-            currentOperator={operatorIdentity}
-            onNotify={setToast}
-          />
+        {workspaceMode === "connecting" ? (
+          <main className="page animate-pulse space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-8 w-48 rounded-xl bg-sentinel-border/50" />
+                <div className="h-4 w-96 rounded-lg bg-sentinel-border/30" />
+              </div>
+              <div className="h-10 w-36 rounded-full bg-sentinel-border/50" />
+            </div>
+            <div className="rounded-2xl border border-sentinel-border bg-sentinel-surface p-6 space-y-4">
+              <div className="h-6 w-52 rounded bg-sentinel-border/50" />
+              <div className="h-16 w-full rounded-xl bg-sentinel-border/20" />
+              <div className="h-16 w-full rounded-xl bg-sentinel-border/20" />
+              <div className="h-16 w-full rounded-xl bg-sentinel-border/20" />
+            </div>
+          </main>
+        ) : (
+          <>
+            {view === "overview" && (
+              <Overview
+                agents={agentList}
+                approvals={pendingApprovals}
+                audit={auditList}
+                operator={operatorIdentity}
+                live={workspaceMode === "live"}
+                onRegister={openRegisterDialog}
+                onDecision={decide}
+                onViewApprovals={() => handleSelectView("approvals")}
+                onOpenCredentials={() => handleSelectView("credentials")}
+                onOpenIntegrations={() => handleSelectView("integrations")}
+                onOpenPolicies={() => handleSelectView("policies")}
+                canDecide={canApprove}
+              />
+            )}
+            {view === "agents" && (
+              <AgentsView
+                agents={agentList}
+                audit={auditList}
+                onRegister={openRegisterDialog}
+                onQuarantine={canManagePolicies || canApprove ? handleQuarantineAgent : undefined}
+                onLiftQuarantine={canManagePolicies || canApprove ? handleUnquarantineAgent : undefined}
+              />
+            )}
+            {view === "approvals" && (
+              <ApprovalsView
+                approvals={pendingApprovals}
+                releaseGovernance={releaseGovernanceList}
+                operatorId={operatorIdentity?.id ?? null}
+                onDecision={decide}
+                onReleaseDecision={decideReleaseGovernance}
+                onReleaseRetry={retryReleaseGovernance}
+                onViewEvidence={setSelectedRequestId}
+                canDecide={canApprove}
+                canGovernReleases={canGovernReleases}
+              />
+            )}
+            {view === "policies" && (
+              <PoliciesView
+                policies={policyList}
+                activations={policyActivationList}
+                audit={auditList}
+                operatorId={operatorIdentity?.id ?? "demo-operator"}
+                onToggle={togglePolicy}
+                onSaved={savePolicy}
+                onActivationDecision={decidePolicyActivation}
+                onRefresh={refreshLiveWorkspace}
+                canManage={canManagePolicies}
+              />
+            )}
+            {view === "audit" && (
+              <AuditView
+                audit={auditList}
+                onOpenDetails={setSelectedRequestId}
+                initialEventId={initialAuditEventId}
+              />
+            )}
+            {view === "integrations" && (
+              <IntegrationsView
+                items={integrationList}
+                live={workspaceMode === "live"}
+                canRetryDeadLetters={canManagePolicies}
+                onRetryDeadLetters={retryDeadNotifications}
+                canAcknowledgeDrift={canGovernReleases}
+                onAcknowledgeDrift={acknowledgeGitHubDrift}
+                onResolveDrift={resolveGitHubDrift}
+                onViewEvidence={setSelectedRequestId}
+                onRefresh={refreshLiveWorkspace}
+                onNotify={setToast}
+              />
+            )}
+            {view === "credentials" && operatorIdentity?.role === "admin" && (
+              <ApiKeyManagement
+                organizationName={operatorIdentity.organizationName}
+                onNotify={setToast}
+              />
+            )}
+            {view === "team" && operatorIdentity?.role === "admin" && (
+              <OperatorManagement
+                currentOperator={operatorIdentity}
+                onNotify={setToast}
+              />
+            )}
+          </>
         )}
       </div>
       <RegisterDialog open={registerOpen} onClose={() => setRegisterOpen(false)} onRegister={register} />
