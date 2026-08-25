@@ -2,9 +2,13 @@
 
 import {
   ArrowRight,
+  Building2,
   Check,
   ChevronDown,
+  CreditCard,
+  Lock,
   Minus,
+  ShieldCheck,
   Sparkles,
   Zap,
 } from "lucide-react";
@@ -32,26 +36,26 @@ export function PricingSection() {
       a: "Our distributed in-memory evaluation cache evaluates pre-compiled deterministic rules and velocity boundaries in sub-20ms before requests reach downstream tool APIs.",
     },
     {
-      q: "Can I cancel or switch plans at any time?",
-      a: "Yes. You can upgrade, downgrade, or cancel your subscription anytime directly from the Control Center with automatic prorated credits via Stripe.",
+      q: "How does Chargebee subscription billing and invoicing work?",
+      a: "All subscriptions, prorated upgrades, and automated tax invoices are processed securely via Chargebee. We support credit/debit cards, SEPA, ACH wire transfers, and Net-30 purchase orders for Enterprise.",
     },
   ];
 
   return (
     <section className="relative mx-auto max-w-[1380px] px-6 py-20 lg:py-28" id="pricing">
       {/* Background ambient lighting */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-sentinel-lime/10 blur-[140px] rounded-full pointer-events-none -z-10" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-emerald-500/10 dark:bg-sentinel-lime/10 blur-[140px] rounded-full pointer-events-none -z-10" />
 
       {/* Header */}
       <div className="text-center max-w-3xl mx-auto mb-12">
-        <div className="inline-flex items-center gap-2 rounded-full border border-sentinel-lime/30 bg-sentinel-lime/10 px-3.5 py-1 text-xs font-semibold text-sentinel-lime mb-4">
+        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 dark:border-sentinel-lime/30 bg-emerald-500/10 dark:bg-sentinel-lime/10 px-3.5 py-1 text-xs font-semibold text-emerald-700 dark:text-sentinel-lime mb-4">
           <Sparkles className="h-3.5 w-3.5" /> Transparent Enterprise Pricing
         </div>
         <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-sentinel-text">
           Predictable Control. Zero Risk.
         </h2>
         <p className="mt-4 text-base sm:text-lg text-sentinel-muted leading-relaxed">
-          Start for free with your first 5 AI agents, then scale securely with automated Stripe billing or tailored enterprise agreements.
+          Start for free with your first 5 AI agents, then scale securely with automated Chargebee billing or tailored enterprise agreements.
         </p>
 
         {/* Billing Cycle Switcher */}
@@ -71,7 +75,7 @@ export function PricingSection() {
             type="button"
             className={`rounded-xl px-5 py-2 text-xs font-bold transition flex items-center gap-2 ${
               billingInterval === "year"
-                ? "bg-sentinel-lime text-sentinel-canvas shadow-sm"
+                ? "bg-emerald-600 dark:bg-sentinel-lime text-white dark:text-sentinel-canvas shadow-sm"
                 : "text-sentinel-muted hover:text-sentinel-text"
             }`}
             onClick={() => setBillingInterval("year")}
@@ -80,8 +84,8 @@ export function PricingSection() {
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
                 billingInterval === "year"
-                  ? "bg-sentinel-canvas text-sentinel-lime"
-                  : "bg-sentinel-lime/20 text-sentinel-lime"
+                  ? "bg-white/20 dark:bg-sentinel-canvas/80 text-white dark:text-sentinel-lime"
+                  : "bg-emerald-500/20 text-emerald-700 dark:text-sentinel-lime"
               }`}
             >
               SAVE 20%
@@ -93,7 +97,7 @@ export function PricingSection() {
       {/* 3 Pricing Tier Cards */}
       <div className="grid gap-6 lg:grid-cols-3 lg:items-stretch mb-20">
         {/* Tier 1: Pilot / Developer */}
-        <div className="flex flex-col justify-between rounded-3xl border border-sentinel-line bg-sentinel-surface p-8 shadow-sm transition hover:border-sentinel-line-strong">
+        <div className="flex flex-col justify-between rounded-3xl border border-sentinel-line bg-sentinel-surface p-8 shadow-sm transition hover:border-sentinel-line-strong hover:shadow-md">
           <div>
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-sentinel-text">Pilot</h3>
@@ -112,7 +116,7 @@ export function PricingSection() {
             <ul className="mt-8 space-y-3.5 text-xs text-sentinel-muted">
               {planCatalog.pilot.features.map((feat) => (
                 <li key={feat} className="flex items-start gap-2.5">
-                  <Check className="h-4 w-4 text-sentinel-lime shrink-0 mt-0.5" />
+                  <Check className="h-4 w-4 text-emerald-600 dark:text-sentinel-lime shrink-0 mt-0.5" />
                   <span>{feat}</span>
                 </li>
               ))}
@@ -128,15 +132,15 @@ export function PricingSection() {
         </div>
 
         {/* Tier 2: Team Pro (Featured) */}
-        <div className="relative flex flex-col justify-between rounded-3xl border-2 border-sentinel-lime bg-sentinel-surface p-8 shadow-xl shadow-sentinel-lime/10 lg:-translate-y-2 z-10">
-          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-sentinel-lime px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-sentinel-canvas shadow-sm">
+        <div className="relative flex flex-col justify-between rounded-3xl border-2 border-emerald-600 dark:border-sentinel-lime bg-sentinel-surface p-8 shadow-xl shadow-emerald-500/10 dark:shadow-sentinel-lime/10 lg:-translate-y-2 z-10">
+          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-600 dark:bg-sentinel-lime px-3.5 py-1 text-[10px] font-black uppercase tracking-wider text-white dark:text-sentinel-canvas shadow-sm">
             Most Popular
           </div>
           <div>
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-sentinel-text">Team Pro</h3>
-              <span className="rounded-full border border-sentinel-lime/40 bg-sentinel-lime/10 px-2.5 py-0.5 text-[11px] font-semibold text-sentinel-lime">
-                Stripe Direct
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 dark:border-sentinel-lime/40 dark:bg-sentinel-lime/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-sentinel-lime">
+                Chargebee Direct
               </span>
             </div>
             <p className="mt-2 text-xs text-sentinel-muted leading-relaxed">
@@ -148,7 +152,7 @@ export function PricingSection() {
               </span>
               <span className="text-xs text-sentinel-muted">/ month</span>
               {billingInterval === "year" && (
-                <span className="ml-2 text-[11px] font-semibold text-sentinel-lime">
+                <span className="ml-2 text-[11px] font-semibold text-emerald-700 dark:text-sentinel-lime">
                   billed annually
                 </span>
               )}
@@ -157,7 +161,7 @@ export function PricingSection() {
             <ul className="mt-8 space-y-3.5 text-xs text-sentinel-text font-medium">
               {planCatalog.pro.features.map((feat) => (
                 <li key={feat} className="flex items-start gap-2.5">
-                  <Check className="h-4 w-4 text-sentinel-lime shrink-0 mt-0.5" />
+                  <Check className="h-4 w-4 text-emerald-600 dark:text-sentinel-lime shrink-0 mt-0.5" />
                   <span>{feat}</span>
                 </li>
               ))}
@@ -166,19 +170,19 @@ export function PricingSection() {
 
           <button
             type="button"
-            className="primary-button mt-8 w-full justify-center py-3.5 text-xs font-bold shadow-lg shadow-sentinel-lime/25"
+            className="primary-button mt-8 w-full justify-center py-3.5 text-xs font-bold shadow-lg shadow-emerald-500/25 dark:shadow-sentinel-lime/25"
             onClick={() => setCheckoutPlan("pro")}
           >
-            <Zap className="h-4 w-4" /> Subscribe with Stripe
+            <Zap className="h-4 w-4" /> Subscribe with Chargebee
           </button>
         </div>
 
         {/* Tier 3: Enterprise Security */}
-        <div className="flex flex-col justify-between rounded-3xl border border-sentinel-line bg-sentinel-surface p-8 shadow-sm transition hover:border-sentinel-line-strong">
+        <div className="flex flex-col justify-between rounded-3xl border border-sentinel-line bg-sentinel-surface p-8 shadow-sm transition hover:border-sentinel-line-strong hover:shadow-md">
           <div>
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-sentinel-text">Enterprise</h3>
-              <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-cyan-400">
+              <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-cyan-500 dark:text-cyan-400">
                 Full Sovereignty
               </span>
             </div>
@@ -195,7 +199,7 @@ export function PricingSection() {
             <ul className="mt-8 space-y-3.5 text-xs text-sentinel-muted">
               {planCatalog.enterprise.features.map((feat) => (
                 <li key={feat} className="flex items-start gap-2.5">
-                  <Check className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+                  <Check className="h-4 w-4 text-cyan-500 dark:text-cyan-400 shrink-0 mt-0.5" />
                   <span>{feat}</span>
                 </li>
               ))}
@@ -207,8 +211,40 @@ export function PricingSection() {
             className="secondary-button mt-8 w-full justify-center py-3 text-xs font-bold hover:border-cyan-500/60"
             onClick={() => setCheckoutPlan("enterprise")}
           >
-            Upgrade with Stripe <ArrowRight className="h-3.5 w-3.5" />
+            Upgrade via Chargebee <ArrowRight className="h-3.5 w-3.5" />
           </button>
+        </div>
+      </div>
+
+      {/* Trust & Compliance Badge Strip */}
+      <div className="mb-20 grid grid-cols-2 md:grid-cols-4 gap-4 p-6 rounded-2xl border border-sentinel-line bg-sentinel-surface/60 backdrop-blur-sm text-center">
+        <div className="space-y-1">
+          <div className="flex items-center justify-center gap-1.5 text-emerald-600 dark:text-sentinel-lime">
+            <Lock className="h-4 w-4" />
+            <strong className="text-xs font-bold text-sentinel-text">PCI-DSS Level 1</strong>
+          </div>
+          <p className="text-[10px] text-sentinel-muted">Direct Chargebee Tokenization</p>
+        </div>
+        <div className="space-y-1">
+          <div className="flex items-center justify-center gap-1.5 text-emerald-600 dark:text-sentinel-lime">
+            <CreditCard className="h-4 w-4" />
+            <strong className="text-xs font-bold text-sentinel-text">Global Payments</strong>
+          </div>
+          <p className="text-[10px] text-sentinel-muted">Cards, SEPA, ACH, Apple Pay</p>
+        </div>
+        <div className="space-y-1">
+          <div className="flex items-center justify-center gap-1.5 text-cyan-500">
+            <Building2 className="h-4 w-4" />
+            <strong className="text-xs font-bold text-sentinel-text">Net-30 Invoicing</strong>
+          </div>
+          <p className="text-[10px] text-sentinel-muted">Enterprise Purchase Orders</p>
+        </div>
+        <div className="space-y-1">
+          <div className="flex items-center justify-center gap-1.5 text-amber-500">
+            <ShieldCheck className="h-4 w-4" />
+            <strong className="text-xs font-bold text-sentinel-text">SOC 2 Type II</strong>
+          </div>
+          <p className="text-[10px] text-sentinel-muted">Continuous Compliance Audit</p>
         </div>
       </div>
 
@@ -220,8 +256,8 @@ export function PricingSection() {
             <tr className="border-b border-sentinel-line text-sentinel-muted">
               <th className="pb-3 font-semibold">Governance Capability</th>
               <th className="pb-3 font-semibold text-center w-36">Pilot</th>
-              <th className="pb-3 font-semibold text-center w-36 text-sentinel-lime">Team Pro</th>
-              <th className="pb-3 font-semibold text-center w-36 text-cyan-400">Enterprise</th>
+              <th className="pb-3 font-semibold text-center w-36 text-emerald-700 dark:text-sentinel-lime">Team Pro</th>
+              <th className="pb-3 font-semibold text-center w-36 text-cyan-500 dark:text-cyan-400">Enterprise</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-sentinel-line/60">
@@ -229,37 +265,37 @@ export function PricingSection() {
               <td className="py-3.5 font-medium text-sentinel-text">Active Agent Registrations</td>
               <td className="py-3.5 text-center text-sentinel-muted">5</td>
               <td className="py-3.5 text-center font-bold text-sentinel-text">25</td>
-              <td className="py-3.5 text-center font-bold text-sentinel-lime">Unlimited</td>
+              <td className="py-3.5 text-center font-bold text-emerald-600 dark:text-sentinel-lime">Unlimited</td>
             </tr>
             <tr>
               <td className="py-3.5 font-medium text-sentinel-text">Sub-20ms Policy Engine</td>
-              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
-              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
-              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-emerald-600 dark:text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-emerald-600 dark:text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-emerald-600 dark:text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
             </tr>
             <tr>
               <td className="py-3.5 font-medium text-sentinel-text">Dual-Custody Quorum Sign-offs</td>
               <td className="py-3.5 text-center text-sentinel-dim"><Minus className="h-4 w-4 mx-auto" /></td>
-              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
-              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-emerald-600 dark:text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-emerald-600 dark:text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
             </tr>
             <tr>
               <td className="py-3.5 font-medium text-sentinel-text">Cryptographic Audit Immutability</td>
               <td className="py-3.5 text-center text-sentinel-muted">90 Days</td>
               <td className="py-3.5 text-center font-semibold text-sentinel-text">1 Year</td>
-              <td className="py-3.5 text-center font-bold text-sentinel-lime">10 Years</td>
+              <td className="py-3.5 text-center font-bold text-emerald-600 dark:text-sentinel-lime">10 Years</td>
             </tr>
             <tr>
               <td className="py-3.5 font-medium text-sentinel-text">SAML 2.0 & SCIM User Provisioning</td>
               <td className="py-3.5 text-center text-sentinel-dim"><Minus className="h-4 w-4 mx-auto" /></td>
               <td className="py-3.5 text-center text-sentinel-dim"><Minus className="h-4 w-4 mx-auto" /></td>
-              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-emerald-600 dark:text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
             </tr>
             <tr>
               <td className="py-3.5 font-medium text-sentinel-text">Private VPC / Air-Gapped Gateway</td>
               <td className="py-3.5 text-center text-sentinel-dim"><Minus className="h-4 w-4 mx-auto" /></td>
               <td className="py-3.5 text-center text-sentinel-dim"><Minus className="h-4 w-4 mx-auto" /></td>
-              <td className="py-3.5 text-center text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
+              <td className="py-3.5 text-center text-emerald-600 dark:text-sentinel-lime"><Check className="h-4 w-4 mx-auto" /></td>
             </tr>
           </tbody>
         </table>
@@ -280,13 +316,13 @@ export function PricingSection() {
               >
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between p-5 text-left text-sm font-semibold text-sentinel-text hover:text-sentinel-lime"
+                  className="flex w-full items-center justify-between p-5 text-left text-sm font-semibold text-sentinel-text hover:text-emerald-600 dark:hover:text-sentinel-lime"
                   onClick={() => setOpenFaq(isOpen ? null : index)}
                 >
                   <span>{faq.q}</span>
                   <ChevronDown
                     className={`h-4 w-4 text-sentinel-muted transition-transform duration-200 ${
-                      isOpen ? "rotate-180 text-sentinel-lime" : ""
+                      isOpen ? "rotate-180 text-emerald-600 dark:text-sentinel-lime" : ""
                     }`}
                   />
                 </button>

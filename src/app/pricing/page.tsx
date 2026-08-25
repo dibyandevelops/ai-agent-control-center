@@ -6,7 +6,7 @@ import { PricingSection } from "@/components/landing/pricing-section";
 export const metadata: Metadata = {
   title: "Pricing & Plans — SentinelOps",
   description:
-    "Predictable enterprise pricing for AI agent governance. Free pilot, team pro with Stripe billing, and sovereign enterprise deployments.",
+    "Predictable enterprise pricing for AI agent governance. Free pilot, team pro with Chargebee enterprise billing, and sovereign enterprise deployments.",
 };
 
 export default function PricingPage() {
