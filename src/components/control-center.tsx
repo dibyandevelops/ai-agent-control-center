@@ -94,6 +94,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { AgentDetailDrawer } from "@/components/agent-detail-drawer";
 import { ShortcutsDialog } from "@/components/shortcuts-dialog";
 import { PolicySimulationPanel } from "@/components/policy-simulation-panel";
+import { ToastNotification, type ToastData } from "@/components/toast-notification";
 
 export type DashboardView =
   | "overview"
@@ -2939,26 +2940,6 @@ function LiveConnectionDialog({
   );
 }
 
-function Toast({
-  message,
-  onClose,
-}: {
-  message: string;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const timer = window.setTimeout(onClose, 3200);
-    return () => window.clearTimeout(timer);
-  }, [onClose]);
-  return (
-    <div className="toast" role="status">
-      <CheckCircle2 />
-      <span>{message}</span>
-      <button onClick={onClose} aria-label="Dismiss"><X /></button>
-    </div>
-  );
-}
-
 export function ControlCenter({
   initialView = "overview",
   initialAuditEventId,
@@ -2989,7 +2970,7 @@ export function ControlCenter({
   const [auditList, setAuditList] = useState(initialAuditEvents);
   const [integrationList, setIntegrationList] = useState(integrations);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState<ToastData | string | null>(null);
   const [pendingMfaAction, setPendingMfaAction] = useState<null | { label: string; retry: () => Promise<void> }>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -3398,7 +3379,13 @@ export function ControlCenter({
       );
       setApprovalList((cur) => cur.filter((app) => app.agentId !== agent.id));
       await refreshLiveWorkspace();
-      setToast(`Agent ${agent.name} quarantined under emergency killswitch.`);
+      setToast({
+        message: `Agent ${agent.name} quarantined under emergency killswitch.`,
+        type: "warning",
+        actionLabel: "Undo",
+        onAction: () => void handleUnquarantineAgent(agent, "Quarantine cancelled by operator"),
+        durationMs: 8000,
+      });
     } catch (err) {
       setToast(err instanceof Error ? err.message : "Quarantine failed.");
     }
@@ -3537,7 +3524,13 @@ export function ControlCenter({
       detail: `${approval.risk} risk request ${decision}`,
     };
     setAuditList((current) => [event, ...current]);
-    setToast(`${approval.request} was ${decision}.`);
+    setToast({
+      message: `${approval.request} was ${decision}.`,
+      type: decision === "approved" ? "success" : "warning",
+      actionLabel: "View in Audit",
+      onAction: () => handleSelectView("audit"),
+      durationMs: 6000,
+    });
   }
 
   async function decideReleaseGovernance(
@@ -3656,7 +3649,15 @@ export function ControlCenter({
         item.id === id ? { ...item, enabled: !item.enabled } : item,
       ),
     );
-    if (policy) setToast(`${policy.name} ${policy.enabled ? "disabled" : "enabled"}.`);
+    if (policy) {
+      setToast({
+        message: `${policy.name} ${policy.enabled ? "disabled" : "enabled"}.`,
+        type: "info",
+        actionLabel: "Undo",
+        onAction: () => void togglePolicy(policy.id),
+        durationMs: 7000,
+      });
+    }
   }
 
   function savePolicy(policy: Policy) {
@@ -3891,7 +3892,7 @@ export function ControlCenter({
         operatorId={operatorIdentity?.id ?? null}
         canGovernReleases={workspaceMode === "live" && operatorIdentity?.role === "admin"}
       />
-      {toast && <Toast message={toast} onClose={() => setToast("")} />}
+      {toast && <ToastNotification toast={toast} onClose={() => setToast(null)} />}
       {pendingMfaAction ? <MfaVerificationDialog actionLabel={pendingMfaAction.label} onClose={() => setPendingMfaAction(null)} onVerified={pendingMfaAction.retry} /> : null}
       {resetToken ? (
         <ResetPasswordFromTokenDialog
