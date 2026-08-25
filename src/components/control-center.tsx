@@ -88,6 +88,7 @@ import { TablePagination } from "@/components/table-pagination";
 import { CommandPalette } from "@/components/command-palette";
 import { NotificationPopover } from "@/components/notification-popover";
 import { RequestIntegrationDialog } from "@/components/request-integration-dialog";
+import { SentinelLogo } from "@/components/brand-logo";
 import { AwsConnection } from "@/components/aws-connection";
 import { MicrosoftConnection } from "@/components/microsoft-connection";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -239,8 +240,8 @@ function Risk({ risk }: { risk: RiskLevel }) {
 
 function BrandMark({ small = false }: { small?: boolean }) {
   return (
-    <span className={`brand-mark ${small ? "brand-mark-small" : ""}`}>
-      <ShieldCheck aria-hidden="true" />
+    <span className={`brand-mark ${small ? "brand-mark-small" : ""} flex items-center justify-center`}>
+      <SentinelLogo size={small ? 20 : 26} />
     </span>
   );
 }
@@ -3915,18 +3916,38 @@ export function ControlCenter({
         />
         {workspaceMode === "connecting" ? (
           <main className="page animate-pulse space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-2">
-                <div className="h-8 w-48 rounded-xl bg-sentinel-border/50" />
-                <div className="h-4 w-96 rounded-lg bg-sentinel-border/30" />
+                <div className="h-8 w-60 rounded-xl bg-sentinel-line" />
+                <div className="h-4 w-96 rounded-lg bg-sentinel-line/60" />
               </div>
-              <div className="h-10 w-36 rounded-full bg-sentinel-border/50" />
+              <div className="flex gap-3">
+                <div className="h-10 w-36 rounded-xl bg-sentinel-line" />
+                <div className="h-10 w-36 rounded-xl bg-emerald-500/20 dark:bg-sentinel-lime/20" />
+              </div>
             </div>
-            <div className="rounded-2xl border border-sentinel-border bg-sentinel-surface p-6 space-y-4">
-              <div className="h-6 w-52 rounded bg-sentinel-border/50" />
-              <div className="h-16 w-full rounded-xl bg-sentinel-border/20" />
-              <div className="h-16 w-full rounded-xl bg-sentinel-border/20" />
-              <div className="h-16 w-full rounded-xl bg-sentinel-border/20" />
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="h-4 w-24 rounded bg-sentinel-line/70" />
+                    <div className="h-8 w-8 rounded-lg bg-sentinel-line/50" />
+                  </div>
+                  <div className="h-8 w-20 rounded bg-sentinel-line" />
+                  <div className="h-3 w-32 rounded bg-sentinel-line/50" />
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-3xl border border-sentinel-line bg-sentinel-surface p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-sentinel-line/60 pb-4">
+                <div className="h-6 w-52 rounded bg-sentinel-line" />
+                <div className="h-8 w-32 rounded-xl bg-sentinel-line/50" />
+              </div>
+              <div className="h-14 w-full rounded-xl bg-sentinel-line/30" />
+              <div className="h-14 w-full rounded-xl bg-sentinel-line/30" />
+              <div className="h-14 w-full rounded-xl bg-sentinel-line/30" />
             </div>
           </main>
         ) : (
