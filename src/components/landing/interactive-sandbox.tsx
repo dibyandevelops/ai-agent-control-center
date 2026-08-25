@@ -148,7 +148,7 @@ export function InteractiveSandbox() {
                 type="button"
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                   selectedScenario.id === sc.id
-                    ? "bg-sentinel-lime text-sentinel-canvas shadow-sm"
+                    ? "bg-emerald-600 dark:bg-sentinel-lime text-white dark:text-sentinel-canvas shadow-sm"
                     : "border border-sentinel-line bg-sentinel-surface text-sentinel-muted hover:text-sentinel-text hover:border-sentinel-line-strong"
                 }`}
                 onClick={() => void handleSimulate(sc)}
@@ -166,7 +166,7 @@ export function InteractiveSandbox() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-sentinel-lime" />
+                  <Bot className="h-4 w-4 text-emerald-600 dark:text-sentinel-lime" />
                   <strong className="text-xs font-semibold text-sentinel-text uppercase tracking-wider">
                     Agent Action Payload
                   </strong>
@@ -193,9 +193,9 @@ export function InteractiveSandbox() {
 
             <button
               type="button"
-              className="primary-button w-full justify-center text-sm py-3.5 font-bold shadow-lg shadow-sentinel-lime/10"
-              onClick={() => void handleSimulate(selectedScenario)}
               disabled={evaluating}
+              onClick={() => void handleSimulate(selectedScenario)}
+              className="primary-button w-full justify-center py-3.5 text-xs font-bold shadow-md shadow-emerald-500/20 dark:shadow-sentinel-lime/20"
             >
               {evaluating ? (
                 <RotateCcw className="animate-spin h-4 w-4" />
@@ -207,17 +207,17 @@ export function InteractiveSandbox() {
           </div>
 
           {/* Right Column: Gateway Decision Engine Result */}
-          <div className="p-6 lg:p-8 bg-sentinel-canvas/40 flex flex-col justify-between space-y-6">
+          <div className="p-6 lg:p-8 bg-sentinel-surface-raised/40 flex flex-col justify-between space-y-6">
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-sentinel-lime" />
+                  <Shield className="h-4 w-4 text-emerald-600 dark:text-sentinel-lime" />
                   <strong className="text-xs font-semibold text-sentinel-text uppercase tracking-wider">
                     Governance Decision Output
                   </strong>
                 </div>
                 {evaluated && (
-                  <span className="inline-flex items-center gap-1 font-mono text-[11px] text-sentinel-lime">
+                  <span className="inline-flex items-center gap-1 font-mono text-[11px] text-emerald-700 dark:text-sentinel-lime font-bold">
                     <Activity className="h-3 w-3" /> {evaluated.latencyMs}ms latency
                   </span>
                 )}
@@ -226,7 +226,7 @@ export function InteractiveSandbox() {
               {evaluating ? (
                 <div className="h-64 grid place-items-center rounded-2xl border border-sentinel-line bg-sentinel-canvas p-6 text-center">
                   <div className="space-y-3">
-                    <div className="inline-grid h-12 w-12 place-items-center rounded-full bg-sentinel-lime/10 text-sentinel-lime animate-pulse mx-auto">
+                    <div className="inline-grid h-12 w-12 place-items-center rounded-full bg-emerald-500/10 dark:bg-sentinel-lime/10 text-emerald-600 dark:text-sentinel-lime animate-pulse mx-auto">
                       <ShieldCheck className="h-6 w-6" />
                     </div>
                     <p className="text-xs font-semibold text-sentinel-text">Evaluating 12 active security rules…</p>

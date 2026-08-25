@@ -40,9 +40,9 @@ export function AgentTopology() {
           <button
             type="button"
             key={id}
-            className={`grid min-h-[58px] grid-cols-[28px_1fr_19px] items-center gap-2.5 rounded border bg-gradient-to-r from-sentinel-soft to-[#0c1116] px-3 text-left transition hover:translate-x-1 hover:border-sentinel-lime max-[760px]:min-h-[54px] max-[760px]:grid-cols-[24px_1fr] max-[760px]:px-2 [&_svg]:w-[19px] [&_svg]:text-sentinel-lime [&_svg:last-child]:w-4 [&_svg:last-child]:text-sentinel-muted max-[760px]:[&_svg:last-child]:hidden [&_span]:text-[11px] ${
+            className={`grid min-h-[58px] grid-cols-[28px_1fr_19px] items-center gap-2.5 rounded-xl border bg-sentinel-surface px-3 text-left transition hover:translate-x-1 hover:border-emerald-500 dark:hover:border-sentinel-lime shadow-xs max-[760px]:min-h-[54px] max-[760px]:grid-cols-[24px_1fr] max-[760px]:px-2 [&_svg]:w-[19px] [&_svg]:text-emerald-600 dark:[&_svg]:text-sentinel-lime [&_svg:last-child]:w-4 [&_svg:last-child]:text-sentinel-muted max-[760px]:[&_svg:last-child]:hidden [&_span]:text-[11px] [&_span]:text-sentinel-text ${
               selectedId === id
-                ? "translate-x-1 border-sentinel-lime bg-gradient-to-r from-sentinel-lime/10 to-[#0c1116]"
+                ? "translate-x-1 border-emerald-600 dark:border-sentinel-lime bg-emerald-500/10 dark:bg-sentinel-lime/10"
                 : "border-sentinel-line"
             }`}
             onClick={() => setSelectedId(id)}
@@ -53,7 +53,7 @@ export function AgentTopology() {
           </button>
         ))}
       </div>
-      <svg className="pointer-events-none absolute inset-0 z-[1] h-full w-full max-lg:hidden [&_path]:animate-dash-flow [&_path]:fill-none [&_path]:stroke-sentinel-lime/70 [&_path]:[stroke-dasharray:5_7] [&_path]:[stroke-width:1.5]" viewBox="0 0 1400 610" preserveAspectRatio="none" aria-hidden="true">
+      <svg className="pointer-events-none absolute inset-0 z-[1] h-full w-full max-lg:hidden [&_path]:animate-dash-flow [&_path]:fill-none [&_path]:stroke-emerald-600/50 dark:[&_path]:stroke-sentinel-lime/70 [&_path]:[stroke-dasharray:5_7] [&_path]:[stroke-width:1.5]" viewBox="0 0 1400 610" preserveAspectRatio="none" aria-hidden="true">
         <path d="M253.4 109 C370 109 390 236 519 236" />
         <path d="M253.4 177 C375 177 385 250 496 250" />
         <path d="M253.4 245 C380 245 380 264 487 264" />
@@ -64,20 +64,20 @@ export function AgentTopology() {
         <path d="M643 271 C745 271 748 222 826 222" />
         <path d="M643 292 C735 292 748 318 826 318" />
       </svg>
-      <div className="absolute left-[34%] top-[208px] z-[3] grid h-[194px] w-[12.7%] min-w-[150px] place-items-center content-center gap-2 border border-sentinel-lime bg-[radial-gradient(circle,rgba(183,243,74,0.12),transparent_55%)] bg-[#10171d] drop-shadow-[0_20px_24px_rgba(0,0,0,0.4)] [clip-path:polygon(50%_0,94%_25%,94%_75%,50%_100%,6%_75%,6%_25%)] max-lg:static max-lg:mx-auto max-lg:h-[170px] max-lg:w-[156px] max-lg:min-w-0 max-[760px]:my-[18px] max-[760px]:h-[148px] max-[760px]:w-[135px]">
-        <ShieldCheck className="h-[42px] w-[42px] text-sentinel-lime" aria-hidden="true" />
-        <strong className="text-base">SentinelOps</strong>
-        <small className="font-mono text-[8px] uppercase text-sentinel-lime">Control plane</small>
+      <div className="absolute left-[34%] top-[208px] z-[3] grid h-[194px] w-[12.7%] min-w-[150px] place-items-center content-center gap-2 border border-emerald-500/50 dark:border-sentinel-lime bg-sentinel-surface shadow-xl [clip-path:polygon(50%_0,94%_25%,94%_75%,50%_100%,6%_75%,6%_25%)] max-lg:static max-lg:mx-auto max-lg:h-[170px] max-lg:w-[156px] max-lg:min-w-0 max-[760px]:my-[18px] max-[760px]:h-[148px] max-[760px]:w-[135px]">
+        <ShieldCheck className="h-[42px] w-[42px] text-emerald-600 dark:text-sentinel-lime" aria-hidden="true" />
+        <strong className="text-base text-sentinel-text">SentinelOps</strong>
+        <small className="font-mono text-[8px] uppercase text-emerald-700 dark:text-sentinel-lime">Control plane</small>
       </div>
       <div className="absolute left-[59%] top-[94px] z-[3] grid w-[13.6%] gap-8 max-lg:static max-lg:grid-cols-3 max-lg:w-auto max-lg:gap-2">
         <DiagramNode icon={<ServerCog />} label="MCP servers" />
         <DiagramNode icon={<Braces />} label="Enterprise APIs" />
         <DiagramNode icon={<Database />} label="Data stores" active />
       </div>
-      <aside className="absolute right-[2.7%] top-[120px] z-[3] min-h-[370px] w-[20%] overflow-hidden rounded-2xl border border-[#53606b] bg-sentinel-raised/95 shadow-[-20px_28px_60px_rgba(0,0,0,0.28)] backdrop-blur-lg max-lg:static max-lg:w-auto max-lg:min-h-0">
+      <aside className="absolute right-[2.7%] top-[120px] z-[3] min-h-[370px] w-[20%] overflow-hidden rounded-2xl border border-sentinel-line bg-sentinel-surface p-0 shadow-xl backdrop-blur-lg max-lg:static max-lg:w-auto max-lg:min-h-0">
         <header className="flex items-center gap-[13px] border-b border-sentinel-line p-5">
-          <span className="grid h-12 w-12 place-items-center rounded-[5px] border border-sentinel-lime text-sentinel-lime [&_svg]:w-6"><SelectedIcon /></span>
-          <div className="grid gap-[7px]"><h3 className="m-0 text-base font-medium">{selected.label}</h3><RiskBadge level={selected.risk} /></div>
+          <span className="grid h-12 w-12 place-items-center rounded-xl border border-emerald-500/50 dark:border-sentinel-lime text-emerald-600 dark:text-sentinel-lime bg-emerald-500/10 dark:bg-sentinel-lime/10 [&_svg]:w-6"><SelectedIcon /></span>
+          <div className="grid gap-[7px]"><h3 className="m-0 text-base font-medium text-sentinel-text">{selected.label}</h3><RiskBadge level={selected.risk} /></div>
         </header>
         <dl className="m-0 px-5 py-2 max-lg:grid max-lg:grid-cols-2 max-[760px]:grid-cols-1">
           <div className="grid min-h-16 grid-cols-[95px_1fr] items-center border-b border-sentinel-line"><dt className="flex items-center gap-[7px] font-mono text-[9px] text-sentinel-muted [&_svg]:w-3.5"><Bot /> Owner</dt><dd className="m-0 text-right text-[10px]">{selected.owner}</dd></div>

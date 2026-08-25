@@ -67,20 +67,20 @@ export function SecuritySection() {
             </div>
           </div>
           <div className="grid content-center p-[45px] max-[760px]:p-[28px_18px]">
-            <span className="mb-[18px] font-mono text-[11px] uppercase tracking-[0.1em] text-sentinel-lime">Enforcement boundary</span>
-            <div className="mx-auto flex min-h-[54px] w-[58%] items-center justify-center gap-2.5 rounded border border-sentinel-line-strong bg-sentinel-raised text-xs max-[760px]:w-full [&_svg]:w-[18px]"><Bot /> Agent request</div>
+            <span className="mb-[18px] font-mono text-[11px] uppercase tracking-[0.1em] text-emerald-700 dark:text-sentinel-lime font-bold">Enforcement boundary</span>
+            <div className="mx-auto flex min-h-[54px] w-[58%] items-center justify-center gap-2.5 rounded-xl border border-sentinel-line bg-sentinel-surface text-xs text-sentinel-text shadow-sm max-[760px]:w-full [&_svg]:w-[18px]"><Bot /> Agent request</div>
             <ArrowDown className="mx-auto my-[7px] w-4 text-sentinel-muted" />
-            <div className="flex min-h-[54px] items-center justify-center gap-2.5 rounded border border-sentinel-lime bg-sentinel-raised text-xs text-sentinel-lime [&_svg]:w-[18px]"><ShieldCheck /> SentinelOps gateway</div>
-            <div className="mt-[17px] grid grid-cols-3 gap-2.5 max-[760px]:grid-cols-1 [&>span]:flex [&>span]:min-h-12 [&>span]:items-center [&>span]:justify-center [&>span]:gap-2 [&>span]:rounded [&>span]:border [&>span]:text-[10px] [&_svg]:w-4">
-              <span className="border-sentinel-lime/40 bg-sentinel-lime/10 text-sentinel-lime"><Check /> Allow</span>
-              <span className="border-sentinel-amber/40 bg-sentinel-amber/10 text-sentinel-amber"><UserRoundCheck /> Human approval</span>
-              <span className="border-sentinel-red/40 bg-sentinel-red/10 text-sentinel-red"><X /> Block</span>
+            <div className="flex min-h-[54px] items-center justify-center gap-2.5 rounded-xl border border-emerald-500/50 dark:border-sentinel-lime bg-emerald-500/10 dark:bg-sentinel-lime/10 text-xs font-semibold text-emerald-700 dark:text-sentinel-lime shadow-sm [&_svg]:w-[18px]"><ShieldCheck /> SentinelOps gateway</div>
+            <div className="mt-[17px] grid grid-cols-3 gap-2.5 max-[760px]:grid-cols-1 [&>span]:flex [&>span]:min-h-12 [&>span]:items-center [&>span]:justify-center [&>span]:gap-2 [&>span]:rounded-xl [&>span]:border [&>span]:text-[10px] [&>span]:font-bold [&_svg]:w-4">
+              <span className="border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-sentinel-lime"><Check /> Allow</span>
+              <span className="border-sentinel-amber/40 bg-sentinel-amber/10 text-amber-700 dark:text-sentinel-amber"><UserRoundCheck /> Human approval</span>
+              <span className="border-sentinel-red/40 bg-sentinel-red/10 text-red-700 dark:text-sentinel-red"><X /> Block</span>
             </div>
             <div className="mt-7 grid">
               {layers.map(({ label, detail, icon: Icon }) => (
                 <div className="grid min-h-12 grid-cols-[26px_95px_1fr] items-center border-t border-sentinel-line max-[760px]:grid-cols-[25px_78px_1fr]" key={label}>
-                  <Icon className="w-4 text-sentinel-lime" aria-hidden="true" />
-                  <strong className="text-[10px]">{label}</strong>
+                  <Icon className="w-4 text-emerald-600 dark:text-sentinel-lime" aria-hidden="true" />
+                  <strong className="text-[10px] text-sentinel-text">{label}</strong>
                   <span className="text-[9px] text-sentinel-muted">{detail}</span>
                 </div>
               ))}

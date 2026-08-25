@@ -30,20 +30,20 @@ const workflow = [
 export function WorkflowSection() {
   return (
     <>
-      <section className="relative border-t border-[#38434e]/45 px-[max(28px,calc((100vw-1420px)/2))] py-[clamp(90px,10vw,150px)] max-[760px]:px-3.5 max-[760px]:py-[78px]" id="product">
+      <section className="relative border-t border-sentinel-line px-[max(28px,calc((100vw-1420px)/2))] py-[clamp(90px,10vw,150px)] max-[760px]:px-3.5 max-[760px]:py-[78px]" id="product">
         <Reveal>
           <SectionHeader
             title="The control plane for autonomous work."
             description="SentinelOps sits between AI agents and critical systems—turning organizational policy into an execution decision."
           />
-          <ol className="relative mt-[74px] grid list-none grid-cols-3 gap-0 p-0 before:absolute before:left-[4%] before:right-[4%] before:top-[31px] before:h-px before:bg-gradient-to-r before:from-sentinel-lime before:to-sentinel-lime/20 before:content-[''] max-lg:gap-8 max-[760px]:mt-[50px] max-[760px]:grid-cols-1 max-[760px]:gap-0 max-[760px]:before:bottom-0 max-[760px]:before:left-[27px] max-[760px]:before:right-auto max-[760px]:before:top-0 max-[760px]:before:h-auto max-[760px]:before:w-px">
+          <ol className="relative mt-[74px] grid list-none grid-cols-3 gap-0 p-0 before:absolute before:left-[4%] before:right-[4%] before:top-[31px] before:h-px before:bg-gradient-to-r before:from-emerald-500/50 dark:before:from-sentinel-lime before:to-emerald-500/10 dark:before:to-sentinel-lime/20 before:content-[''] max-lg:gap-8 max-[760px]:mt-[50px] max-[760px]:grid-cols-1 max-[760px]:gap-0 max-[760px]:before:bottom-0 max-[760px]:before:left-[27px] max-[760px]:before:right-auto max-[760px]:before:top-0 max-[760px]:before:h-auto max-[760px]:before:w-px">
             {workflow.map(({ index, label, title, body, icon: Icon }) => (
               <li className="relative grid grid-cols-[66px_1fr] gap-[18px] pr-[42px] max-lg:grid-cols-[56px_1fr] max-lg:pr-0 max-[760px]:min-h-[170px]" key={label}>
-                <span className="absolute -top-[27px] left-[78px] font-mono text-[10px] text-sentinel-dim max-[760px]:-top-4 max-[760px]:left-[74px]">{index}</span>
-                <Icon className="z-[2] h-[62px] w-[62px] rounded-full border border-sentinel-lime/70 bg-sentinel-canvas p-[17px] text-sentinel-lime [stroke-width:1.35] max-lg:h-[54px] max-lg:w-[54px] max-lg:p-[15px]" aria-hidden="true" />
+                <span className="absolute -top-[27px] left-[78px] font-mono text-[10px] text-sentinel-muted max-[760px]:-top-4 max-[760px]:left-[74px]">{index}</span>
+                <Icon className="z-[2] h-[62px] w-[62px] rounded-full border border-emerald-500/40 dark:border-sentinel-lime/70 bg-sentinel-surface p-[17px] text-emerald-600 dark:text-sentinel-lime shadow-sm [stroke-width:1.35] max-lg:h-[54px] max-lg:w-[54px] max-lg:p-[15px]" aria-hidden="true" />
                 <div>
-                  <strong className="mt-[9px] block text-[13px] uppercase tracking-[0.12em] text-sentinel-lime">{label}</strong>
-                  <h3 className="mt-[13px] text-[clamp(20px,1.8vw,27px)] font-bold tracking-[-0.035em]">{title}</h3>
+                  <strong className="mt-[9px] block text-[13px] uppercase tracking-[0.12em] text-emerald-700 dark:text-sentinel-lime font-mono">{label}</strong>
+                  <h3 className="mt-[13px] text-[clamp(20px,1.8vw,27px)] font-bold tracking-[-0.035em] text-sentinel-text">{title}</h3>
                   <p className="mt-3 max-w-[330px] text-[13px] leading-[1.7] text-sentinel-muted">{body}</p>
                 </div>
               </li>
@@ -51,7 +51,7 @@ export function WorkflowSection() {
           </ol>
         </Reveal>
       </section>
-      <section className="relative border-t border-[#38434e]/45 bg-[radial-gradient(circle_at_85%_50%,rgba(183,243,74,0.035),transparent_28%)] bg-sentinel-deep px-[max(22px,calc((100vw-1480px)/2))] py-[clamp(90px,9vw,140px)] max-[760px]:px-2.5 max-[760px]:py-[78px]" id="workflow">
+      <section className="relative border-t border-sentinel-line bg-[radial-gradient(circle_at_85%_50%,rgba(16,185,129,0.03),transparent_28%)] bg-sentinel-surface px-[max(22px,calc((100vw-1480px)/2))] py-[clamp(90px,9vw,140px)] max-[760px]:px-2.5 max-[760px]:py-[78px]" id="workflow">
         <Reveal>
           <SectionHeader
             title="A decision boundary for every consequential action."

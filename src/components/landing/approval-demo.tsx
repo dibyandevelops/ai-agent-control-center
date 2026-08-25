@@ -67,7 +67,7 @@ const baseSteps = [
 ] as const;
 
 const panelHeader =
-  "flex min-h-[52px] items-center justify-between border-b border-sentinel-line bg-gradient-to-b from-sentinel-soft to-[#10171d] px-5 font-mono text-[10px] uppercase tracking-[0.13em] text-[#d9dee2]";
+  "flex min-h-[52px] items-center justify-between border-b border-sentinel-line bg-sentinel-surface-raised/80 px-5 font-mono text-[10px] uppercase tracking-[0.13em] text-sentinel-muted";
 const factRow =
   "grid min-h-12 grid-cols-[1fr_1.2fr] items-center border-b border-sentinel-line/75";
 const evidenceRow =
@@ -179,21 +179,21 @@ export function ApprovalDemo() {
         <section className="max-lg:col-span-full max-lg:grid max-lg:grid-cols-2 max-lg:border-t max-lg:border-sentinel-line max-lg:pb-[22px] max-[760px]:col-auto max-[760px]:block">
           <header className={`${panelHeader} max-lg:col-span-full`}>{scenario.automatic ? "Policy enforcement" : "Human approval"}</header>
           <div className="mx-[22px] mb-[18px] mt-6 flex items-center gap-3.5 border-b border-sentinel-line pb-5 max-lg:col-start-1">
-            <span className="grid h-12 w-12 place-items-center rounded-full border border-sentinel-lime font-mono text-sm text-sentinel-lime [&_svg]:w-[22px]">{scenario.automatic ? <ShieldAlert /> : "FL"}</span>
+            <span className="grid h-12 w-12 place-items-center rounded-full border border-emerald-500/50 dark:border-sentinel-lime font-mono text-sm text-emerald-600 dark:text-sentinel-lime bg-emerald-500/10 dark:bg-sentinel-lime/10 [&_svg]:w-[22px]">{scenario.automatic ? <ShieldAlert /> : "FL"}</span>
             <div className="grid gap-1">
-              <strong className="text-[15px]">{scenario.automatic ? "SentinelOps" : "Finance Lead"}</strong>
+              <strong className="text-[15px] text-sentinel-text">{scenario.automatic ? "SentinelOps" : "Finance Lead"}</strong>
               <small className="text-[10px] text-sentinel-muted">{scenario.automatic ? "Deterministic policy" : "Required approver"}</small>
             </div>
           </div>
           {scenario.automatic ? (
             <div className="mx-[22px] flex items-center gap-3 rounded border border-sentinel-red/50 bg-sentinel-red/10 p-[13px] text-sentinel-red max-lg:col-start-1">
               <X aria-hidden="true" />
-              <div className="grid gap-1"><strong className="text-xs">Execution blocked</strong><span className="text-[9px] text-[#d6aaa6]">Production deployment window is closed.</span></div>
+              <div className="grid gap-1"><strong className="text-xs">Execution blocked</strong><span className="text-[9px] text-sentinel-muted">Production deployment window is closed.</span></div>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2.5 px-[22px] max-lg:col-start-1">
-              <button className="flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-sentinel-lime bg-sentinel-lime text-xs font-bold text-[#081004] transition hover:-translate-y-px [&_svg]:w-4" type="button" onClick={() => setDecision("approved")}><Check /> Approve</button>
-              <button className="flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-sentinel-line-strong bg-sentinel-raised text-xs font-bold transition hover:-translate-y-px hover:border-sentinel-red hover:bg-sentinel-red/10 [&_svg]:w-4" type="button" onClick={() => setDecision("denied")}><X /> Deny</button>
+              <button className="flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-emerald-500 dark:border-sentinel-lime bg-emerald-500 dark:bg-sentinel-lime text-xs font-bold text-white dark:text-[#081004] shadow-sm transition hover:-translate-y-px [&_svg]:w-4" type="button" onClick={() => setDecision("approved")}><Check /> Approve</button>
+              <button className="flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-sentinel-line bg-sentinel-surface text-xs font-bold text-sentinel-text transition hover:-translate-y-px hover:border-sentinel-red hover:bg-sentinel-red/10 [&_svg]:w-4" type="button" onClick={() => setDecision("denied")}><X /> Deny</button>
             </div>
           )}
           <p className="mx-[22px] mb-[18px] mt-[11px] text-[10px] leading-normal text-sentinel-muted max-lg:col-start-1">

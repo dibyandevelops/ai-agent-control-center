@@ -29,7 +29,7 @@ const deploymentOptions = [
 export function IntelligenceSection() {
   return (
     <>
-      <section className="relative border-t border-[#38434e]/45 bg-[radial-gradient(circle_at_42%_55%,rgba(50,73,89,0.13),transparent_40%)] bg-sentinel-canvas px-[max(28px,calc((100vw-1420px)/2))] py-[clamp(90px,10vw,150px)] max-[760px]:px-3.5 max-[760px]:py-[78px]">
+      <section className="relative border-t border-sentinel-line bg-sentinel-canvas px-[max(28px,calc((100vw-1420px)/2))] py-[clamp(90px,10vw,150px)] max-[760px]:px-3.5 max-[760px]:py-[78px]">
         <Reveal>
           <SectionHeader
             title="See every agent. Understand every connection."
@@ -45,12 +45,12 @@ export function IntelligenceSection() {
             title="Policy becomes an execution decision."
             description="Evaluate the complete business context at the moment an agent attempts to act."
           />
-          <div className="relative mt-[60px] grid grid-cols-4 before:absolute before:left-[5%] before:right-[5%] before:top-[29px] before:h-px before:bg-sentinel-lime before:content-[''] max-[760px]:mt-10 max-[760px]:grid-cols-1 max-[760px]:gap-3.5 max-[760px]:before:bottom-[5%] max-[760px]:before:left-[29px] max-[760px]:before:right-auto max-[760px]:before:top-[5%] max-[760px]:before:h-auto max-[760px]:before:w-px">
+          <div className="relative mt-[60px] grid grid-cols-4 before:absolute before:left-[5%] before:right-[5%] before:top-[29px] before:h-px before:bg-emerald-500/40 dark:before:bg-sentinel-lime before:content-[''] max-[760px]:mt-10 max-[760px]:grid-cols-1 max-[760px]:gap-3.5 max-[760px]:before:bottom-[5%] max-[760px]:before:left-[29px] max-[760px]:before:right-auto max-[760px]:before:top-[5%] max-[760px]:before:h-auto max-[760px]:before:w-px">
             {policyStages.map(({ label, detail, icon: Icon }, index) => (
               <div className="relative z-[2] grid grid-cols-[60px_1fr_20px] items-center gap-3.5 pr-5 max-[760px]:pr-0" key={label}>
-                <span className="grid h-[60px] w-[60px] place-items-center rounded-full border border-sentinel-lime bg-sentinel-canvas text-sentinel-lime [&_svg]:w-6"><Icon aria-hidden="true" /></span>
-                <div className="grid gap-1.5"><strong className="font-mono text-xs text-sentinel-lime">{label}</strong><small className="text-[11px] text-sentinel-muted">{detail}</small></div>
-                {index < policyStages.length - 1 ? <ArrowRight className="w-4 text-sentinel-lime max-[760px]:rotate-90" aria-hidden="true" /> : null}
+                <span className="grid h-[60px] w-[60px] place-items-center rounded-full border border-emerald-500/40 dark:border-sentinel-lime bg-sentinel-surface text-emerald-600 dark:text-sentinel-lime shadow-sm [&_svg]:w-6"><Icon aria-hidden="true" /></span>
+                <div className="grid gap-1.5"><strong className="font-mono text-xs text-emerald-700 dark:text-sentinel-lime">{label}</strong><small className="text-[11px] text-sentinel-muted">{detail}</small></div>
+                {index < policyStages.length - 1 ? <ArrowRight className="w-4 text-emerald-600 dark:text-sentinel-lime max-[760px]:rotate-90" aria-hidden="true" /> : null}
               </div>
             ))}
           </div>
