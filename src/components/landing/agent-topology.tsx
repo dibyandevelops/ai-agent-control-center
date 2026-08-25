@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { DiagramNode, RiskBadge, TechnicalCard } from "./ui";
+import { SentinelLogo } from "@/components/brand-logo";
 
 const agents = [
   { id: "finance", label: "Finance Agent", icon: Landmark, risk: "High", owner: "Finance Operations", tools: "ERP · Payments" },
@@ -65,7 +66,7 @@ export function AgentTopology() {
         <path d="M643 292 C735 292 748 318 826 318" />
       </svg>
       <div className="absolute left-[34%] top-[208px] z-[3] grid h-[194px] w-[12.7%] min-w-[150px] place-items-center content-center gap-2 border border-emerald-500/50 dark:border-sentinel-lime bg-sentinel-surface shadow-xl [clip-path:polygon(50%_0,94%_25%,94%_75%,50%_100%,6%_75%,6%_25%)] max-lg:static max-lg:mx-auto max-lg:h-[170px] max-lg:w-[156px] max-lg:min-w-0 max-[760px]:my-[18px] max-[760px]:h-[148px] max-[760px]:w-[135px]">
-        <ShieldCheck className="h-[42px] w-[42px] text-emerald-600 dark:text-sentinel-lime" aria-hidden="true" />
+        <SentinelLogo size={42} />
         <strong className="text-base text-sentinel-text">SentinelOps</strong>
         <small className="font-mono text-[8px] uppercase text-emerald-700 dark:text-sentinel-lime">Control plane</small>
       </div>
