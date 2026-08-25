@@ -166,7 +166,7 @@ export function ApprovalDemo() {
             <div className={factRow}><dt>Policy</dt><dd>{scenario.policy}<ChevronRight /></dd></div>
             <div className={factRow}><dt>Risk classification</dt><dd>{scenario.risk} risk</dd></div>
           </dl>
-          <div className="mx-[25px] mt-2 rounded border border-sentinel-line bg-[#0b1015] px-3.5 py-[13px]">
+          <div className="mx-[25px] mt-2 rounded border border-sentinel-line bg-sentinel-canvas px-3.5 py-[13px]">
             <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-sentinel-muted">Request context</span>
             <dl className="mt-2.5 font-mono text-[9px] [&>div]:grid [&>div]:grid-cols-[115px_1fr] [&>div]:gap-2.5 [&>div]:py-[3px] [&_dt]:text-sentinel-muted [&_dd]:m-0 [&_dd]:overflow-hidden [&_dd]:text-ellipsis [&_dd]:whitespace-nowrap">
               <div><dt>Request ID</dt><dd>REQ-7f2b1c9e</dd></div>
@@ -193,14 +193,14 @@ export function ApprovalDemo() {
           ) : (
             <div className="grid grid-cols-2 gap-2.5 px-[22px] max-lg:col-start-1">
               <button className="flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-sentinel-lime bg-sentinel-lime text-xs font-bold text-[#081004] transition hover:-translate-y-px [&_svg]:w-4" type="button" onClick={() => setDecision("approved")}><Check /> Approve</button>
-              <button className="flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-sentinel-line-strong bg-[#121920] text-xs font-bold transition hover:-translate-y-px hover:border-sentinel-red hover:bg-sentinel-red/10 [&_svg]:w-4" type="button" onClick={() => setDecision("denied")}><X /> Deny</button>
+              <button className="flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-sentinel-line-strong bg-sentinel-raised text-xs font-bold transition hover:-translate-y-px hover:border-sentinel-red hover:bg-sentinel-red/10 [&_svg]:w-4" type="button" onClick={() => setDecision("denied")}><X /> Deny</button>
             </div>
           )}
           <p className="mx-[22px] mb-[18px] mt-[11px] text-[10px] leading-normal text-sentinel-muted max-lg:col-start-1">
             The decision is enforced before the requested action can run.
           </p>
           <div
-            className={`mx-[22px] rounded-[5px] border bg-[#0a0f13] p-[15px] max-lg:col-start-2 max-lg:row-[2/6] max-lg:mt-6 max-[760px]:mt-[18px] ${
+            className={`mx-[22px] rounded-[5px] border bg-sentinel-surface p-[15px] max-lg:col-start-2 max-lg:row-[2/6] max-lg:mt-6 max-[760px]:mt-[18px] ${
               finalDecision !== "pending" ? "border-sentinel-lime/40" : "border-sentinel-line"
             }`}
             aria-live="polite"
