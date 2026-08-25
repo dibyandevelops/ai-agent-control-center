@@ -41,7 +41,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   agents as initialAgents,
   approvals as initialApprovals,
@@ -91,6 +91,8 @@ import { RequestIntegrationDialog } from "@/components/request-integration-dialo
 import { AwsConnection } from "@/components/aws-connection";
 import { MicrosoftConnection } from "@/components/microsoft-connection";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AgentDetailDrawer } from "@/components/agent-detail-drawer";
+import { ShortcutsDialog } from "@/components/shortcuts-dialog";
 
 export type DashboardView =
   | "overview"
@@ -638,16 +640,19 @@ function AgentTable({
   compact = false,
   onQuarantine,
   onLiftQuarantine,
+  auditLogs = [],
 }: {
   agents: Agent[];
   compact?: boolean;
   onQuarantine?: (agent: Agent, reason: string) => Promise<void>;
   onLiftQuarantine?: (agent: Agent, reason: string) => Promise<void>;
+  auditLogs?: AuditEvent[];
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | AgentStatus>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [quarantineTarget, setQuarantineTarget] = useState<Agent | null>(null);
   const [quarantineMode, setQuarantineMode] = useState<"quarantine" | "unquarantine">("quarantine");
   const [quarantineReason, setQuarantineReason] = useState("");
@@ -775,7 +780,19 @@ function AgentTable({
           </thead>
           <tbody>
             {paginatedAgents.map((agent) => (
-              <tr key={agent.id}>
+              <tr
+                key={agent.id}
+                onClick={() => setSelectedAgent(agent)}
+                className="cursor-pointer transition hover:bg-sentinel-surface-raised"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedAgent(agent);
+                  }
+                }}
+                title="Click to view detailed agent profile and telemetry"
+              >
                 <td>
                   <div className="agent-name-cell">
                     <span className="agent-icon"><Bot /></span>
@@ -815,7 +832,7 @@ function AgentTable({
                 </td>
                 <td className="mono">{agent.actions.toLocaleString()}</td>
                 <td className="mono">{money(agent.cost)}</td>
-                <td>
+                <td onClick={(e) => e.stopPropagation()}>
                   {(onQuarantine || onLiftQuarantine) ? (
                     <div className="flex items-center justify-end gap-1.5">
                       {agent.status === "quarantined" ? (
@@ -964,6 +981,28 @@ function AgentTable({
           </div>
         </div>
       ) : null}
+
+      <AgentDetailDrawer
+        agent={selectedAgent}
+        open={Boolean(selectedAgent)}
+        onClose={() => setSelectedAgent(null)}
+        onQuarantine={(a) => {
+          setQuarantineTarget(a);
+          setQuarantineMode("quarantine");
+          setQuarantineReason("");
+          setQuarantineError("");
+          setSelectedAgent(null);
+        }}
+        onLiftQuarantine={(a) => {
+          setQuarantineTarget(a);
+          setQuarantineMode("unquarantine");
+          setQuarantineReason("");
+          setQuarantineError("");
+          setSelectedAgent(null);
+        }}
+        onExportAudit={handleExportCsv}
+        auditLogs={auditLogs}
+      />
     </section>
   );
 }
@@ -1104,7 +1143,7 @@ function Overview({
             <ActivityChart events={audit} live={live} fallbackData={chartData} />
             <RiskPosture events={audit} />
           </div>
-          <AgentTable agents={agents} compact />
+          <AgentTable agents={agents} compact auditLogs={audit} />
         </div>
         <ApprovalRail approvals={approvals} onDecision={onDecision} onViewAll={onViewApprovals} canDecide={canDecide} />
       </div>
@@ -1147,11 +1186,13 @@ function PilotReadiness({
 
 function AgentsView({
   agents,
+  audit = [],
   onRegister,
   onQuarantine,
   onLiftQuarantine,
 }: {
   agents: Agent[];
+  audit?: AuditEvent[];
   onRegister: () => void;
   onQuarantine?: (agent: Agent, reason: string) => Promise<void>;
   onLiftQuarantine?: (agent: Agent, reason: string) => Promise<void>;
@@ -1169,7 +1210,12 @@ function AgentsView({
         <span><strong>{agents.filter((a) => a.status !== "healthy" && a.status !== "quarantined").length}</strong> Need attention</span>
         <span><strong>{new Set(agents.map((a) => a.team)).size}</strong> Teams</span>
       </div>
-      <AgentTable agents={agents} onQuarantine={onQuarantine} onLiftQuarantine={onLiftQuarantine} />
+      <AgentTable
+        agents={agents}
+        onQuarantine={onQuarantine}
+        onLiftQuarantine={onLiftQuarantine}
+        auditLogs={audit}
+      />
     </main>
   );
 }
@@ -2938,6 +2984,9 @@ export function ControlCenter({
   const [hydrated, setHydrated] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const pendingKeySeqRef = useRef<string | null>(null);
+  const keySeqTimerRef = useRef<number | null>(null);
 
   const handleSelectView = useCallback((nextView: DashboardView) => {
     setView(nextView);
@@ -2947,6 +2996,50 @@ export function ControlCenter({
       window.history.pushState({ view: nextView }, "", url.toString());
     }
   }, []);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      if (
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "SELECT" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.key === "?" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShortcutsOpen((prev) => !prev);
+        return;
+      }
+
+      if (e.key.toLowerCase() === "g" && !e.metaKey && !e.ctrlKey) {
+        pendingKeySeqRef.current = "g";
+        if (keySeqTimerRef.current) window.clearTimeout(keySeqTimerRef.current);
+        keySeqTimerRef.current = window.setTimeout(() => {
+          pendingKeySeqRef.current = null;
+        }, 1200);
+        return;
+      }
+
+      if (pendingKeySeqRef.current === "g") {
+        const key = e.key.toLowerCase();
+        pendingKeySeqRef.current = null;
+        if (key === "o") { e.preventDefault(); handleSelectView("overview"); }
+        else if (key === "a") { e.preventDefault(); handleSelectView("agents"); }
+        else if (key === "p") { e.preventDefault(); handleSelectView("policies"); }
+        else if (key === "i") { e.preventDefault(); handleSelectView("integrations"); }
+        else if (key === "u") { e.preventDefault(); handleSelectView("audit"); }
+        else if (key === "c") { e.preventDefault(); handleSelectView("credentials"); }
+        else if (key === "t") { e.preventDefault(); handleSelectView("team"); }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleSelectView]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -3649,6 +3742,14 @@ export function ControlCenter({
           integrityVerified={true}
           onSelectView={handleSelectView}
         />
+        <NotificationPopover
+          open={notificationsOpen}
+          onClose={() => setNotificationsOpen(false)}
+          pendingApprovalsCount={pendingApprovals.length}
+          quarantinedAgentsCount={agentList.filter((a) => a.status === "quarantined").length}
+          integrityVerified={true}
+          onSelectView={handleSelectView}
+        />
         <CommandPalette
           open={commandPaletteOpen}
           onClose={() => setCommandPaletteOpen(false)}
@@ -3684,6 +3785,7 @@ export function ControlCenter({
         {view === "agents" && (
           <AgentsView
             agents={agentList}
+            audit={auditList}
             onRegister={openRegisterDialog}
             onQuarantine={canManagePolicies || canApprove ? handleQuarantineAgent : undefined}
             onLiftQuarantine={canManagePolicies || canApprove ? handleUnquarantineAgent : undefined}
@@ -3770,6 +3872,10 @@ export function ControlCenter({
           onSubmit={changePassword}
         />
       ) : null}
+      <ShortcutsDialog
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
       <ActionDetailDrawer
         key={selectedRequestId ?? "closed"}
         requestId={selectedRequestId}
