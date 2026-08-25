@@ -6,6 +6,7 @@ import { ArrowRight, Building2, Check, LoaderCircle, Mail, ShieldAlert, ShieldCh
 import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 import { shouldBypassTurnstile } from "@/lib/turnstile-host";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { BrandLogo } from "@/components/brand-logo";
 
 const subscribeToClient = () => () => undefined;
 const getClientSnapshot = () => true;
@@ -161,11 +162,8 @@ export function WorkspaceOnboarding() {
     <main className="min-h-screen bg-sentinel-canvas px-4 py-12 font-sentinel text-sentinel-text sm:px-6">
       <div className="mx-auto max-w-5xl">
         <div className="flex items-center justify-between pb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-base font-bold text-sentinel-text hover:text-emerald-600 dark:hover:text-sentinel-lime transition">
-            <span className="grid h-8 w-8 place-items-center rounded-lg border border-emerald-500/40 dark:border-sentinel-lime/40 bg-emerald-500/10 dark:bg-sentinel-lime/10 text-emerald-600 dark:text-sentinel-lime">
-              <ShieldCheck className="h-5 w-5" />
-            </span>
-            <span>SentinelOps</span>
+          <Link href="/" className="transition hover:opacity-90">
+            <BrandLogo size={32} />
           </Link>
           <ThemeToggle />
         </div>

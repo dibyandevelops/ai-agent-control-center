@@ -11,42 +11,41 @@ interface BrandLogoProps {
 export function SentinelLogo({ className = "", size = 28 }: { className?: string; size?: number }) {
   return (
     <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 32 32"
+      viewBox="0 0 44 48"
       width={size}
-      height={size}
-      fill="none"
-      className={className}
+      height={(size * 48) / 44}
       aria-hidden="true"
+      className={`shrink-0 drop-shadow-[0_0_12px_rgba(183,243,74,0.25)] ${className}`}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        <linearGradient id="sentinel-logo-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#06090e" />
-          <stop offset="100%" stopColor="#0f1722" />
-        </linearGradient>
-        <linearGradient id="sentinel-logo-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="sentinel-s-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#b7f34a" />
+          <stop offset="60%" stopColor="#2dd4bf" />
           <stop offset="100%" stopColor="#38bdf8" />
+        </linearGradient>
+        <linearGradient id="sentinel-hex-stroke" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#b7f34a" />
+          <stop offset="100%" stopColor="#10b981" />
         </linearGradient>
       </defs>
 
-      {/* Hexagonal Shield Container */}
-      <rect width="32" height="32" rx="8" fill="url(#sentinel-logo-bg)" stroke="#23354a" strokeWidth="1" />
-
-      {/* Zero-Trust Shield Boundary */}
+      {/* Hexagonal Outer Frame */}
       <path
-        d="M16 5.5 L24 9.5 V15.5 C24 20.8 20.5 25.2 16 26.5 C11.5 25.2 8 20.8 8 15.5 V9.5 Z"
-        fill="none"
-        stroke="url(#sentinel-logo-glow)"
-        strokeWidth="1.75"
+        d="M22 2.5 L41.5 12.5 V35.5 L22 45.5 L2.5 35.5 V12.5 Z"
+        stroke="url(#sentinel-hex-stroke)"
+        strokeWidth="3.2"
         strokeLinejoin="round"
+        className="text-emerald-500 dark:text-sentinel-lime"
       />
 
-      {/* Quantum Prism Core */}
-      <circle cx="16" cy="15" r="2.5" fill="#b7f34a" />
-
-      {/* Quorum Gate Arcs */}
-      <path d="M16 11.5 V12.5 M16 17.5 V18.5 M12.5 15 H13.5 M18.5 15 H19.5" stroke="#38bdf8" strokeWidth="1.2" strokeLinecap="round" />
+      {/* Isometric Ribbon "S" */}
+      <path
+        d="M12 17 L22 11 L32 17 L22 23 L32 29 L22 36 L12 30 L17 27 L22 30 L26 28 L12 20 V17 Z"
+        fill="url(#sentinel-s-gradient)"
+        className="text-emerald-600 dark:text-sentinel-lime"
+      />
     </svg>
   );
 }
