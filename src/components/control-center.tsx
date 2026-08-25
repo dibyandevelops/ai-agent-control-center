@@ -1368,7 +1368,8 @@ function PoliciesView({
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [historyPolicy, setHistoryPolicy] = useState<Policy | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [modeFilter, setModeFilter] = useState<"all" | "Block" | "Approval" | "Monitor">("all");
+  const [modeFilter, setModeFilter] = useState<"all" | "active" | "Block" | "Approval" | "pending">("all");
+  const [expandedConditions, setExpandedConditions] = useState<Record<string, boolean>>({});
 
   const policySummary = useMemo(() => summarizePolicyDecisions(audit), [audit]);
   const compliance = policySummary.compliancePercent === null
@@ -1381,6 +1382,8 @@ function PoliciesView({
         .toLowerCase()
         .includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
+      if (modeFilter === "active") return policy.enabled;
+      if (modeFilter === "pending") return policy.activationStatus === "pending" || policy.activationStatus === "draft";
       if (modeFilter !== "all" && policy.mode !== modeFilter) return false;
       return true;
     });
@@ -1394,18 +1397,56 @@ function PoliciesView({
     setEditorOpen(true);
   }
 
+  function toggleConditionExpand(policyId: string) {
+    setExpandedConditions((prev) => ({
+      ...prev,
+      [policyId]: !prev[policyId],
+    }));
+  }
+
+  function scrollToSandbox() {
+    const el = document.getElementById("policy-sandbox");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  }
+
+  const activeCount = policies.filter((p) => p.enabled).length;
+  const blockCount = policies.filter((p) => p.mode === "Block").length;
+  const approvalCount = policies.filter((p) => p.mode === "Approval").length;
+  const pendingCount = policies.filter((p) => p.activationStatus === "pending" || p.activationStatus === "draft").length;
+
   return (
     <main className="page">
       <div className="page-title-row">
-        <div><h2>Policy engine</h2><p>Turn governance requirements into controls that execute on every agent action.</p></div>
-        <button className="primary-button primary-large" onClick={() => openEditor(null)} disabled={!canManage}><Plus /> Create policy</button>
+        <div>
+          <h2>Policy engine</h2>
+          <p>Turn governance requirements into deterministic guardrails executed across every agent action.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={scrollToSandbox}
+          >
+            <Zap className="h-4 w-4 text-sentinel-accent" /> Test in Sandbox
+          </button>
+          <button
+            className="primary-button primary-large"
+            onClick={() => openEditor(null)}
+            disabled={!canManage}
+          >
+            <Plus /> Create policy
+          </button>
+        </div>
       </div>
+
       <div className="policy-layout">
         <section className="panel policy-list">
           <div className="section-heading flex-wrap gap-3">
             <div>
               <h2>Enforcement policies</h2>
-              <p>{policies.filter((p) => p.enabled).length} of {policies.length} policies active</p>
+              <p>{activeCount} of {policies.length} policies actively enforced</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <label className="search-field">
@@ -1413,63 +1454,175 @@ function PoliciesView({
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search policies…"
+                  placeholder="Search rules or scopes…"
                   aria-label="Search policies"
                 />
               </label>
-              <label className="select-field secondary-button flex items-center gap-1.5 cursor-pointer">
-                <Filter className="h-3.5 w-3.5 text-sentinel-muted shrink-0" />
-                <select
-                  className="bg-transparent text-xs text-sentinel-text outline-none cursor-pointer pr-1 font-medium"
-                  value={modeFilter}
-                  onChange={(e) => setModeFilter(e.target.value as "all" | "Block" | "Approval" | "Monitor")}
-                  aria-label="Filter policies by enforcement mode"
-                >
-                  <option value="all">All modes</option>
-                  <option value="Block">Block</option>
-                  <option value="Approval">Approval</option>
-                  <option value="Monitor">Monitor</option>
-                </select>
-              </label>
             </div>
           </div>
-          {filteredPolicies.map((policy) => (
-            <article className="policy-row" key={policy.id}>
-              <div className={`policy-icon policy-${policy.mode.toLowerCase()}`}>
-                {policy.mode === "Block" ? <LockKeyhole /> : policy.mode === "Approval" ? <ClipboardCheck /> : <Activity />}
-              </div>
-              <div className="policy-copy">
-                <div><h3>{policy.name}</h3><span className={`mode mode-${policy.mode.toLowerCase()}`}>{policy.mode}</span>{policy.activationStatus === "pending" ? <span className="mode mode-approval">Awaiting approval</span> : policy.activationStatus === "draft" ? <span className="mode mode-block">Draft v{policy.latestVersionNumber}</span> : null}</div>
-                <p>{policy.description}</p>
-                <small>{policy.scope} · active v{policy.activeVersionNumber ?? "none"} · latest v{policy.latestVersionNumber ?? 1} · {policy.matches} matches in 7 days</small>
-              </div>
-              <div className="policy-actions">
-                <button
-                  className="rounded-lg border border-sentinel-line px-3 py-2 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text"
-                  onClick={() => setHistoryPolicy(policy)}
+
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-sentinel-border/50 text-xs">
+            <button
+              type="button"
+              onClick={() => setModeFilter("all")}
+              className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                modeFilter === "all"
+                  ? "bg-sentinel-surface-raised text-sentinel-text border border-sentinel-border-strong"
+                  : "text-sentinel-muted hover:text-sentinel-text"
+              }`}
+            >
+              All ({policies.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setModeFilter("active")}
+              className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                modeFilter === "active"
+                  ? "bg-sentinel-success-soft text-sentinel-success border border-sentinel-success/30"
+                  : "text-sentinel-muted hover:text-sentinel-text"
+              }`}
+            >
+              Active ({activeCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setModeFilter("Block")}
+              className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                modeFilter === "Block"
+                  ? "bg-sentinel-danger-soft text-sentinel-danger border border-sentinel-danger/30"
+                  : "text-sentinel-muted hover:text-sentinel-text"
+              }`}
+            >
+              Block ({blockCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setModeFilter("Approval")}
+              className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                modeFilter === "Approval"
+                  ? "bg-sentinel-amber-soft text-sentinel-amber border border-sentinel-amber/30"
+                  : "text-sentinel-muted hover:text-sentinel-text"
+              }`}
+            >
+              Approval ({approvalCount})
+            </button>
+            {pendingCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => setModeFilter("pending")}
+                className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                  modeFilter === "pending"
+                    ? "bg-sentinel-accent-soft text-sentinel-accent border border-sentinel-accent/30"
+                    : "text-sentinel-muted hover:text-sentinel-text"
+                }`}
+              >
+                Review ({pendingCount})
+              </button>
+            ) : null}
+          </div>
+
+          <div className="space-y-3 pt-2">
+            {filteredPolicies.map((policy) => {
+              const isExpanded = Boolean(expandedConditions[policy.id]);
+              return (
+                <article
+                  className="rounded-2xl border border-sentinel-border bg-sentinel-surface p-4 transition hover:border-sentinel-border-strong space-y-3"
+                  key={policy.id}
                 >
-                  History
-                </button>
-                <button
-                  className="rounded-lg border border-sentinel-line px-3 py-2 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text disabled:opacity-40"
-                  onClick={() => openEditor(policy)}
-                  disabled={!canManage}
-                >
-                  Edit
-                </button>
-                <button
-                  role="switch"
-                  aria-checked={policy.enabled}
-                  aria-label={`${policy.enabled ? "Disable" : "Request activation for"} ${policy.name}`}
-                  className={`toggle ${policy.enabled ? "toggle-on" : ""}`}
-                  disabled={!canManage || policy.activationStatus === "pending"}
-                  onClick={() => onToggle(policy.id)}
-                >
-                  <span />
-                </button>
-              </div>
-            </article>
-          ))}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className={`policy-icon policy-${policy.mode.toLowerCase()} mt-0.5 shrink-0`}>
+                        {policy.mode === "Block" ? <LockKeyhole /> : policy.mode === "Approval" ? <ClipboardCheck /> : <Activity />}
+                      </div>
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-sm font-bold text-sentinel-text">{policy.name}</h3>
+                          <span className={`mode mode-${policy.mode.toLowerCase()}`}>{policy.mode}</span>
+                          {policy.activationStatus === "pending" ? (
+                            <span className="mode mode-approval">Awaiting approval</span>
+                          ) : policy.activationStatus === "draft" ? (
+                            <span className="mode mode-block">Draft v{policy.latestVersionNumber}</span>
+                          ) : null}
+                        </div>
+                        <p className="text-xs text-sentinel-muted leading-relaxed">{policy.description}</p>
+                        <div className="flex items-center gap-2 font-mono text-[11px] text-sentinel-muted flex-wrap">
+                          <span>{policy.scope}</span>
+                          <span>•</span>
+                          <span>active v{policy.activeVersionNumber ?? 1}</span>
+                          <span>•</span>
+                          <span>{policy.matches} matches (7d)</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        className="rounded-lg border border-sentinel-border px-2.5 py-1.5 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-border-strong hover:text-sentinel-text"
+                        onClick={() => setHistoryPolicy(policy)}
+                        title="View version audit history"
+                      >
+                        History
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-lg border border-sentinel-border px-2.5 py-1.5 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-border-strong hover:text-sentinel-text disabled:opacity-40"
+                        onClick={() => openEditor(policy)}
+                        disabled={!canManage}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        role="switch"
+                        aria-checked={policy.enabled}
+                        aria-label={`${policy.enabled ? "Disable" : "Request activation for"} ${policy.name}`}
+                        className={`toggle ${policy.enabled ? "toggle-on" : ""}`}
+                        disabled={!canManage || policy.activationStatus === "pending"}
+                        onClick={() => onToggle(policy.id)}
+                      >
+                        <span />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Condition preview toggle */}
+                  {policy.conditions && policy.conditions.length > 0 && (
+                    <div className="border-t border-sentinel-border/40 pt-2.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleConditionExpand(policy.id)}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-sentinel-accent hover:underline"
+                      >
+                        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                        <span>{isExpanded ? "Hide rule logic" : `Inspect rule logic (${policy.conditions.length} condition${policy.conditions.length === 1 ? "" : "s"})`}</span>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="mt-2 rounded-xl border border-sentinel-border bg-sentinel-canvas/60 p-3 space-y-1.5 font-mono text-[11px] animate-dialog-in">
+                          <div className="text-[10px] text-sentinel-muted font-bold uppercase tracking-wider">
+                            Match Predicates (ALL)
+                          </div>
+                          {policy.conditions.map((cond, idx) => (
+                            <div key={idx} className="flex items-center gap-2 text-xs flex-wrap">
+                              <span className="rounded bg-sentinel-surface-raised px-1.5 py-0.5 text-sentinel-text font-semibold">
+                                {cond.field}
+                              </span>
+                              <span className="text-sentinel-muted">{cond.operator}</span>
+                              <span className="rounded bg-sentinel-accent-soft px-1.5 py-0.5 text-sentinel-accent font-semibold">
+                                {Array.isArray(cond.value) ? cond.value.join(", ") : String(cond.value)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+
           {filteredPolicies.length === 0 && (
             <EmptyState
               icon={Search}
@@ -1498,7 +1651,7 @@ function PoliciesView({
         </aside>
       </div>
 
-      <div className="mt-5">
+      <div id="policy-sandbox" className="mt-5 scroll-mt-6">
         <PolicySimulationPanel policies={policies} />
       </div>
       {editorOpen ? (
