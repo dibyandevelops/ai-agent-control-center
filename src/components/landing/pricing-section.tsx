@@ -11,7 +11,7 @@ import {
 import Link from "next/link";
 import React, { useState } from "react";
 import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
-import { StripeCheckoutDialog } from "@/components/pricing/stripe-checkout-dialog";
+import { ChargebeeCheckoutDialog } from "@/components/pricing/chargebee-checkout-dialog";
 
 export function PricingSection() {
   const [billingInterval, setBillingInterval] = useState<"month" | "year">("year");
@@ -301,15 +301,15 @@ export function PricingSection() {
         </div>
       </div>
 
-      {/* Stripe Checkout Modal */}
+      {/* Chargebee Checkout Modal */}
       {checkoutPlan && (
-        <StripeCheckoutDialog
+        <ChargebeeCheckoutDialog
           open={Boolean(checkoutPlan)}
-          planCode={checkoutPlan}
-          billingInterval={billingInterval}
+          initialPlan={checkoutPlan}
+          initialInterval={billingInterval}
           onClose={() => setCheckoutPlan(null)}
           onSuccess={() => {
-            // Notification or redirect handled inside dialog
+            setCheckoutPlan(null);
           }}
         />
       )}
