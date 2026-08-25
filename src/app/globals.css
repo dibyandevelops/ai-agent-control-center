@@ -477,14 +477,16 @@ kbd svg {
   background: var(--surface-soft);
 }
 
-.icon-button svg {
-  width: 18px;
-  height: 18px;
-}
-
 .bordered {
   border: 1px solid var(--border);
-  background: #0d1116;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.bordered:hover {
+  background: var(--surface-raised);
+  border-color: var(--accent);
+  color: var(--text);
 }
 
 .notification-button {
@@ -512,9 +514,10 @@ kbd svg {
   width: 30px;
   height: 30px;
   place-items: center;
-  border: 1px solid #464d56;
+  border: 1px solid var(--border);
   border-radius: 50%;
-  background: #252b32;
+  background: var(--surface-soft);
+  color: var(--text);
   font-family: var(--font-geist-mono);
   font-size: 11px;
 }
@@ -1713,6 +1716,11 @@ tbody tr:hover {
 
 .integration-card.integration-card-expanded {
   grid-column: 1 / -1;
+}
+
+.integration-card > *:not(.integration-logo):not(.integration-copy) {
+  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .integration-logo {

@@ -43,7 +43,10 @@ export function AwsConnection({ onNotify }: AwsConnectionProps) {
   }
 
   return (
-    <div className="mt-4 border-t border-sentinel-line pt-4 space-y-4 animate-dialog-in text-xs">
+    <div
+      className="col-span-full w-full mt-4 border-t border-sentinel-line pt-4 space-y-4 animate-dialog-in text-xs"
+      style={{ gridColumn: "1 / -1" }}
+    >
       <div className="rounded-xl border border-sentinel-lime/30 bg-sentinel-lime/10 p-3 flex items-start gap-3">
         <ShieldCheck className="h-5 w-5 text-sentinel-lime shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
