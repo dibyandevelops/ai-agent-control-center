@@ -71,8 +71,8 @@
 
 html {
   background: var(--canvas);
+  color: var(--text);
   scrollbar-gutter: stable;
-  transition: background-color 200ms ease, color 200ms ease;
 }
 
 body {
