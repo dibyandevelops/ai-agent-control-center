@@ -1834,7 +1834,7 @@ tbody tr:hover {
   display: grid;
   padding: 20px;
   place-items: center;
-  background: rgba(3, 5, 7, 0.78);
+  background: rgba(3, 5, 7, 0.65);
   backdrop-filter: blur(7px);
   animation: fade-in 160ms ease-out;
 }
@@ -1842,10 +1842,10 @@ tbody tr:hover {
 .dialog {
   width: min(510px, 100%);
   overflow: hidden;
-  border: 1px solid #343b45;
+  border: 1px solid var(--border);
   border-radius: 24px;
-  background: #10151b;
-  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55);
+  background: var(--surface);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.35);
   animation: dialog-in 180ms ease-out;
 }
 
@@ -1865,7 +1865,8 @@ tbody tr:hover {
 .dialog-title h2 {
   margin: 0;
   font-size: 16px;
-  font-weight: 580;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .dialog-title p {
@@ -1885,7 +1886,7 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  color: #c9ced5;
+  color: var(--text);
   font-size: 10px;
   font-weight: 520;
 }
@@ -1894,7 +1895,7 @@ tbody tr:hover {
 .dialog select {
   height: 44px;
   padding: 0 11px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: 12px;
   outline: 0;
   background: var(--canvas);
