@@ -13,7 +13,7 @@ import {
   ShieldAlert,
   Sparkles,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Policy } from "@/lib/types";
 
 type PolicyEffect = "block" | "approval" | "allow";
@@ -72,10 +72,13 @@ function effectBadgeClass(effect: PolicyEffect) {
 }
 
 export function PolicySimulationPanel({
-  draft,
+  draft: propDraft,
+  policies = [],
 }: {
-  draft: PolicySimulationDraft | null;
+  draft?: PolicySimulationDraft | null;
+  policies?: Policy[];
 }) {
+  const [selectedPolicyId, setSelectedPolicyId] = useState<string>(policies[0]?.id || "");
   const [result, setResult] = useState<PolicySimulationResult | null>(null);
   const [testedFingerprint, setTestedFingerprint] = useState("");
   const [loading, setLoading] = useState(false);
@@ -91,6 +94,26 @@ export function PolicySimulationPanel({
   const [synthEnv, setSynthEnv] = useState<"production" | "staging" | "development">("production");
   const [synthRisk, setSynthRisk] = useState<"low" | "medium" | "high">("high");
   const [synthRecordCount, setSynthRecordCount] = useState("100");
+
+  const draft = useMemo<PolicySimulationDraft | null>(() => {
+    if (propDraft) return propDraft;
+    const selected = policies.find((p) => p.id === selectedPolicyId) || policies[0];
+    if (!selected) {
+      return {
+        name: "Synthetic Ad-Hoc Evaluation",
+        priority: 100,
+        effect: "block",
+        conditions: { all: [] },
+      };
+    }
+    return {
+      policyId: selected.id,
+      name: selected.name,
+      priority: selected.priority ?? 100,
+      effect: (selected.effect || selected.mode.toLowerCase()) as PolicyEffect,
+      conditions: { all: selected.conditions || [] },
+    };
+  }, [propDraft, policies, selectedPolicyId]);
 
   const fingerprint = draft ? `${JSON.stringify(draft)}-${limit}-${environment}` : "";
   const stale = Boolean(result && fingerprint !== testedFingerprint);
@@ -192,6 +215,21 @@ export function PolicySimulationPanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {!propDraft && policies.length > 0 ? (
+            <select
+              className="h-8 rounded-lg border border-sentinel-line bg-sentinel-canvas px-2.5 text-[11px] text-sentinel-text outline-none max-w-[210px] truncate"
+              value={selectedPolicyId}
+              onChange={(e) => setSelectedPolicyId(e.target.value)}
+              aria-label="Select target policy to simulate"
+            >
+              {policies.map((p) => (
+                <option key={p.id} value={p.id}>
+                  Rule: {p.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
+
           <select
             className="h-8 rounded-lg border border-sentinel-line bg-sentinel-canvas px-2.5 text-[11px] text-sentinel-text outline-none"
             value={limit}

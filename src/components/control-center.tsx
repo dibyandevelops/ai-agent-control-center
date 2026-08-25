@@ -93,6 +93,7 @@ import { MicrosoftConnection } from "@/components/microsoft-connection";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AgentDetailDrawer } from "@/components/agent-detail-drawer";
 import { ShortcutsDialog } from "@/components/shortcuts-dialog";
+import { PolicySimulationPanel } from "@/components/policy-simulation-panel";
 
 export type DashboardView =
   | "overview"
@@ -1488,6 +1489,10 @@ function PoliciesView({
             </div>
           </section>
         </aside>
+      </div>
+
+      <div className="mt-5">
+        <PolicySimulationPanel policies={policies} />
       </div>
       {editorOpen ? (
         <PolicyEditorDialog
