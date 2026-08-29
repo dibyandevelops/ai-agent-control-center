@@ -407,7 +407,7 @@ export function PolicySimulationPanel({
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               ["Evaluated", result.actionsEvaluated, "text-sentinel-text"],
-              ["Matched Rules", result.matchedCount, "text-sky-400"],
+              ["Matched Rules", result.matchedCount, "text-sentinel-cyan"],
               ["Candidate Determines", result.determiningCount, "text-sentinel-lime"],
               ["Decisions Changed", result.changedDecisionCount, result.changedDecisionCount > 0 ? "text-sentinel-amber" : "text-sentinel-muted"],
             ].map(([label, value, colorClass]) => (

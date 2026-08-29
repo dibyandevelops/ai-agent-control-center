@@ -17,13 +17,16 @@
   --text: #f1f5f9;
   --muted: #94a3b8;
   --muted-2: #64748b;
-  --accent: #38bdf8;
-  --accent-soft: #082f49;
+  --accent: #b7f34a;
+  --accent-cyan: #2dd4bf;
+  --accent-sky: #38bdf8;
+  --accent-soft: rgba(183, 243, 74, 0.12);
   --amber: #f59e0b;
   --amber-soft: #451a03;
   --danger: #f43f5e;
   --danger-soft: #4c0519;
   --success: #10b981;
+  --success-soft: rgba(16, 185, 129, 0.14);
   --radius: 16px;
   --sidebar-width: 184px;
 }
@@ -40,13 +43,16 @@
   --text: #0f172a;
   --muted: #64748b;
   --muted-2: #94a3b8;
-  --accent: #0284c7;
-  --accent-soft: #e0f2fe;
+  --accent: #15803d;
+  --accent-cyan: #0d9488;
+  --accent-sky: #0284c7;
+  --accent-soft: #ecfccb;
   --amber: #d97706;
   --amber-soft: #fef3c7;
   --danger: #dc2626;
   --danger-soft: #fee2e2;
   --success: #059669;
+  --success-soft: #d1fae5;
 }
 
 * {
@@ -79,8 +85,8 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at 80% -10%, rgba(56, 189, 248, 0.05), transparent 40%),
-    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.03), transparent 35%),
+    radial-gradient(circle at 80% -10%, rgba(183, 243, 74, 0.08), transparent 40%),
+    radial-gradient(circle at 10% 20%, rgba(45, 212, 191, 0.05), transparent 35%),
     var(--canvas);
   color: var(--text);
   font-family: var(--font-app), Arial, Helvetica, sans-serif;
@@ -92,8 +98,8 @@ body {
 .light body,
 [data-theme="light"] body {
   background:
-    radial-gradient(circle at 80% -10%, rgba(2, 132, 199, 0.04), transparent 40%),
-    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.025), transparent 35%),
+    radial-gradient(circle at 80% -10%, rgba(21, 128, 61, 0.05), transparent 40%),
+    radial-gradient(circle at 10% 20%, rgba(13, 148, 136, 0.035), transparent 35%),
     var(--canvas);
 }
 
@@ -267,7 +273,7 @@ button:disabled {
   margin-top: 5px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+  box-shadow: 0 0 0 4px rgba(183, 243, 74, 0.2);
 }
 
 .system-state div {
@@ -573,17 +579,34 @@ kbd svg {
 }
 
 .primary-button {
-  border: 1px solid #38bdf8;
-  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
+  border: 1px solid #b7f34a;
+  background: linear-gradient(135deg, #b7f34a 0%, #2dd4bf 55%, #38bdf8 100%);
+  color: #06090e;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(183, 243, 74, 0.28);
 }
 
 .primary-button:hover {
-  border-color: #7dd3fc;
-  background: linear-gradient(135deg, #7dd3fc 0%, #0369a1 100%);
-  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.35);
+  border-color: #c8f76d;
+  background: linear-gradient(135deg, #c8f76d 0%, #42dec9 55%, #56cbfd 100%);
+  box-shadow: 0 6px 22px rgba(183, 243, 74, 0.42);
   transform: translateY(-1px);
+}
+
+.light .primary-button,
+[data-theme="light"] .primary-button {
+  border: 1px solid #16a34a;
+  background: linear-gradient(135deg, #16a34a 0%, #0d9488 55%, #0284c7 100%);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.25);
+}
+
+.light .primary-button:hover,
+[data-theme="light"] .primary-button:hover {
+  border-color: #15803d;
+  background: linear-gradient(135deg, #15803d 0%, #0f766e 55%, #0369a1 100%);
+  box-shadow: 0 6px 20px rgba(22, 163, 74, 0.35);
 }
 
 .secondary-button {
@@ -849,7 +872,7 @@ kbd svg {
   height: 6px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+  box-shadow: 0 0 0 4px rgba(183, 243, 74, 0.2);
 }
 
 .risk-timeline {
@@ -1233,10 +1256,17 @@ tbody tr:hover {
 }
 
 .pagination .page-active {
-  border-color: var(--accent);
-  background: var(--accent);
+  border-color: #b7f34a;
+  background: linear-gradient(135deg, #b7f34a 0%, #2dd4bf 100%);
+  color: #06090e;
+  font-weight: 700;
+}
+
+.light .pagination .page-active,
+[data-theme="light"] .pagination .page-active {
+  border-color: #16a34a;
+  background: linear-gradient(135deg, #16a34a 0%, #0d9488 100%);
   color: #ffffff;
-  font-weight: 600;
 }
 
 .approval-rail {
@@ -1508,9 +1538,9 @@ tbody tr:hover {
 }
 
 .policy-monitor {
-  border-color: rgba(56, 189, 248, 0.35);
-  background: var(--accent-soft);
-  color: var(--accent);
+  border-color: rgba(45, 212, 191, 0.35);
+  background: rgba(45, 212, 191, 0.12);
+  color: #2dd4bf;
 }
 
 .policy-copy > div {
@@ -1556,9 +1586,9 @@ tbody tr:hover {
 }
 
 .mode-monitor {
-  border-color: rgba(56, 189, 248, 0.35);
-  color: var(--accent);
-  background: var(--accent-soft);
+  border-color: rgba(45, 212, 191, 0.35);
+  color: #2dd4bf;
+  background: rgba(45, 212, 191, 0.12);
 }
 
 .toggle {

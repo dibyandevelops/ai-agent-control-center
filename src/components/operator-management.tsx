@@ -353,7 +353,7 @@ export function OperatorManagement({
                             inv.status === "accepted"
                               ? "bg-sentinel-lime/10 text-sentinel-lime"
                               : inv.status === "pending"
-                              ? "bg-sky-500/10 text-sky-400"
+                              ? "bg-sentinel-cyan/10 text-sentinel-cyan"
                               : inv.status === "expired"
                               ? "bg-sentinel-amber/10 text-sentinel-amber"
                               : "bg-sentinel-dim/20 text-sentinel-dim"
@@ -594,7 +594,7 @@ export function OperatorManagement({
                     statusLabel === "Active"
                       ? "bg-sentinel-lime/10 text-sentinel-lime border-sentinel-lime/30"
                       : statusLabel === "Scheduled"
-                        ? "bg-sky-500/10 text-sky-400 border-sky-500/30"
+                        ? "bg-sentinel-cyan/10 text-sentinel-cyan border-sentinel-cyan/30"
                         : "bg-sentinel-canvas text-sentinel-muted border-sentinel-line";
 
                   return (

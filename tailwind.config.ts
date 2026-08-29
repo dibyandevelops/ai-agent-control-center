@@ -18,11 +18,12 @@ const config: Config = {
           text: "var(--text)",
           muted: "var(--muted)",
           dim: "var(--muted-2)",
-          lime: "var(--accent)", // Primary accent
-          cyan: "var(--accent)",
-          azure: "var(--accent)",
+          lime: "#b7f34a", // Primary electric lime from logo
+          cyan: "#2dd4bf", // Cyber teal/mint from logo stop 60%
+          azure: "#38bdf8", // Sky cyan from logo stop 100%
           indigo: "#6366f1",
-          emerald: "var(--success)",
+          emerald: "#10b981", // Emerald from logo hex frame
+          accent: "var(--accent)",
           amber: "var(--amber)",
           red: "var(--danger)",
         },
