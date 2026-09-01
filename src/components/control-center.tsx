@@ -406,7 +406,7 @@ function Sidebar({
       <aside className={`sidebar ${open ? "sidebar-open" : ""} ${collapsed ? "sidebar-collapsed" : ""}`}>
         <div className="brand">
           <BrandMark />
-          {!collapsed ? (
+          {!collapsed || open ? (
             <span>
               Sentinel<strong>Ops</strong>
             </span>
@@ -427,11 +427,11 @@ function Sidebar({
                   onSelect(item.id);
                   onClose();
                 }}
-                title={collapsed ? item.label : undefined}
+                title={collapsed && !open ? item.label : undefined}
                 aria-current={selected ? "page" : undefined}
               >
                 <Icon />
-                {!collapsed ? <span>{item.label}</span> : null}
+                {!collapsed || open ? <span>{item.label}</span> : null}
                 {item.id === "approvals" && pendingCount > 0 && (
                   <span className="nav-count">{pendingCount}</span>
                 )}
@@ -440,7 +440,7 @@ function Sidebar({
           })}
         </nav>
         <div className="sidebar-footer">
-          {!collapsed ? (
+          {!collapsed || open ? (
             <div className="system-state">
               <span className="online-dot" />
               <div>

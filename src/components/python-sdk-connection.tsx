@@ -3,133 +3,77 @@
 import { Check, Copy, ShieldCheck, Terminal } from "lucide-react";
 import { useState } from "react";
 
-const clientCode = `import json
-import os
-import time
-import urllib.request
-import urllib.error
-from typing import Dict, Any, Optional, Callable
+const quickstartCode = `# 1. Install SDK
+# pip install sentinelops-ai
 
-class SentinelOpsError(Exception):
-    pass
+from sentinelops import SentinelOps
 
-class SentinelOpsClient:
-    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("SENTINELOPS_AGENT_API_KEY")
-        self.base_url = (base_url or os.environ.get("SENTINELOPS_BASE_URL", "http://localhost:3000")).rstrip("/")
-        if not self.api_key:
-            raise SentinelOpsError("SentinelOps API Key must be provided or set in SENTINELOPS_AGENT_API_KEY.")
+# Initialize client (reads SENTINELOPS_API_KEY from environment)
+sentinel = SentinelOps()
 
-    def evaluate(self, action: str, resource: str, environment: str = "development", context: Optional[dict] = None) -> dict:
-        payload = {
-            "action": action,
-            "resource": resource,
-            "environment": environment,
-            "context": context or {},
-            "agent": {
-                "externalId": "python-agent-client",
-                "name": "Python Agent Client"
-            }
-        }
-        url = f"{self.base_url}/api/v1/actions/evaluate"
-        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"),
-                                     headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-                                     method="POST")
-        try:
-            with urllib.request.urlopen(req) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except Exception as e:
-            raise SentinelOpsError(f"Failed to communicate with SentinelOps: {str(e)}")
-
-    def wait_for_decision(self, request_id: str, timeout_seconds: int = 60, poll_interval: float = 1.0) -> dict:
-        url = f"{self.base_url}/api/v1/actions/{request_id}"
-        headers = {"Authorization": f"Bearer {self.api_key}"}
-        start_time = time.time()
-        while time.time() - start_time < timeout_seconds:
-            req = urllib.request.Request(url, headers=headers, method="GET")
-            try:
-                with urllib.request.urlopen(req) as response:
-                    data = json.loads(response.read().decode("utf-8"))
-                    if data.get("status") in ("approved", "denied"):
-                        return data
-            except Exception:
-                pass
-            time.sleep(poll_interval)
-        raise SentinelOpsError("Decision polling timed out.")
-
-    def guard(self, action: str, get_resource: Callable[..., str], get_context: Optional[Callable[..., dict]] = None):
-        def decorator(func):
-            def wrapper(*args, **kwargs):
-                resource = get_resource(*args, **kwargs)
-                context = get_context(*args, **kwargs) if get_context else {}
-                decision = self.evaluate(action=action, resource=resource, context=context)
-                status = decision.get("status")
-                if status == "approved":
-                    return func(*args, **kwargs)
-                elif status == "pending":
-                    print(f"Action '{action}' is pending approval. Waiting...")
-                    details = self.wait_for_decision(decision.get("requestId"))
-                    if details.get("status") == "approved":
-                        return func(*args, **kwargs)
-                    else:
-                        raise SentinelOpsError(f"Action '{action}' was denied by operator.")
-                else:
-                    raise SentinelOpsError(f"Action '{action}' was denied immediately by Policy Engine.")
-            return wrapper
-        return decorator`;
-
-const decoratorCode = `from sentinelops_client import SentinelOpsClient, SentinelOpsError
-
-# Initialize client
-client = SentinelOpsClient()
-
-# Guard any critical python function
-@client.guard(
+# Submit an action for policy evaluation
+decision = sentinel.evaluate(
+    agent_id="payment-agent",
+    agent_name="Payment Processing Agent",
     action="invoice.payment.prepare",
-    get_resource=lambda inv_id, amount: f"invoice/{inv_id}",
-    get_context=lambda inv_id, amount: {"amount": amount}
-)
-def process_payment(invoice_id: str, amount: float):
-    # This block runs ONLY if SentinelOps approves the action
-    print(f"Executing transfer for {invoice_id} of amount \${amount}.")
-
-try:
-    process_payment("INV-1042", 4250.0)
-except SentinelOpsError as e:
-    print(f"Action Blocked: {e}")`;
-
-const manualCode = `from sentinelops_client import SentinelOpsClient, SentinelOpsError
-
-# Initialize client
-client = SentinelOpsClient()
-
-# Evaluate action manually
-decision = client.evaluate(
-    action="deploy.release",
-    resource="sentinelops/platform@v1.2.0",
-    context={"changeTicket": "PROD-102"}
+    resource="invoice/INV-1042",
+    context={"amount": 4250.0, "currency": "USD"},
 )
 
-status = decision.get("status")
-
-if status == "approved":
-    execute_deployment()
-elif status == "pending":
-    print("Action requires operator approval. Waiting...")
-    details = client.wait_for_decision(decision["requestId"], timeout_seconds=120)
-    if details.get("status") == "approved":
-        execute_deployment()
-    else:
-        print("Denied by operator.")
+if decision.approved:
+    print("✅ Action approved by policy engine. Executing...")
+    # Execute your action here
+    sentinel.report_outcome(
+        decision.request_id,
+        status="succeeded",
+        summary="Payment processed successfully",
+    )
+elif decision.pending:
+    print("⏳ Action requires human approval. Waiting for operator...")
+    decision = sentinel.poll(decision.request_id, timeout=300)
+    if decision.approved:
+        print("✅ Approved by operator! Executing...")
+        sentinel.report_outcome(
+            decision.request_id,
+            status="succeeded",
+            summary="Payment processed after operator sign-off",
+        )
 else:
-    print("Denied immediately by Policy Engine.")`;
+    print(f"⛔ Action blocked by policy: {decision.reason}")`;
+
+const decoratorCode = `# 1. Install SDK
+# pip install sentinelops-ai
+
+from sentinelops import SentinelOps
+
+sentinel = SentinelOps()
+
+# Guard any critical agent tool or function
+@sentinel.guard(
+    agent_id="sales-bot",
+    agent_name="Sales Outreach Agent",
+    action="send_email",
+)
+def send_outreach_email(prospect_email: str, subject: str, body: str):
+    # This block executes ONLY if SentinelOps allows or operator approves
+    print(f"Sending email to {prospect_email}...")
+    return {"sent": True}
+
+# Call function as usual — evaluation, approval polling & outcome reporting happen automatically
+send_outreach_email("sarah.chen@techcorp.io", "Partnership Inquiry", "Hi Sarah...")`;
+
+const testScriptCode = `# Verify your API key and live connection
+export SENTINELOPS_API_KEY="sop_live_your_api_key_here"
+
+# From the sdk/python directory:
+python examples/test_connection.py`;
 
 export function PythonSDKConnection() {
-  const [activeTab, setActiveTab] = useState<"client" | "decorator" | "manual">("client");
+  const [activeTab, setActiveTab] = useState<"quickstart" | "decorator" | "test">("quickstart");
   const [copied, setCopied] = useState(false);
 
   const activeSnippet =
-    activeTab === "client" ? clientCode : activeTab === "decorator" ? decoratorCode : manualCode;
+    activeTab === "quickstart" ? quickstartCode : activeTab === "decorator" ? decoratorCode : testScriptCode;
 
   async function copyToClipboard() {
     await navigator.clipboard.writeText(activeSnippet);
@@ -152,14 +96,14 @@ export function PythonSDKConnection() {
       <div className="mt-4 flex items-center justify-between border-b border-sentinel-border bg-sentinel-canvas/20 px-1 py-1 rounded">
         <div className="flex items-center gap-1">
           {[
-            { id: "client", label: "1. Client Class" },
-            { id: "decorator", label: "2. Decorator" },
-            { id: "manual", label: "3. Manual Loop" },
+            { id: "quickstart", label: "1. Quickstart" },
+            { id: "decorator", label: "2. @guard Decorator" },
+            { id: "test", label: "3. Connection Test" },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => {
-                setActiveTab(tab.id as "client" | "decorator" | "manual");
+                setActiveTab(tab.id as "quickstart" | "decorator" | "test");
                 setCopied(false);
               }}
               className={`rounded px-2.5 py-1.5 text-[10px] font-semibold transition ${

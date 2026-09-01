@@ -27,3 +27,15 @@ yarn-error.log*
 next-env.d.ts
 .vercel
 commands.md
+
+# Python
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/*.egg-info/
+**/dist/
+**/build/
+**/.pytest_cache/
+**/.coverage
+**/htmlcov/
