@@ -63,7 +63,7 @@ function SlackDestinationCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-semibold text-white">{connection.teamName} · #{connection.channelName.replace(/^#/, "")}</p>
+            <p className="truncate text-sm font-semibold text-sentinel-text">{connection.teamName} · #{connection.channelName.replace(/^#/, "")}</p>
             {connection.isDefault ? (
               <span className="rounded-full border border-sentinel-lime/30 bg-sentinel-lime/10 px-2 py-0.5 text-[9px] font-semibold uppercase text-sentinel-lime">Safe default</span>
             ) : null}
@@ -71,7 +71,7 @@ function SlackDestinationCard({
           <p className="mt-1 break-words text-[11px] text-sentinel-muted">
             {connection.status}{connection.lastDeliveryAt ? ` · last delivery ${new Date(connection.lastDeliveryAt).toLocaleString()}` : ""}
           </p>
-          {connection.lastError ? <p className="mt-1 break-words text-[11px] text-red-300">{connection.lastError}</p> : null}
+          {connection.lastError ? <p className="mt-1 break-words text-[11px] text-red-600 dark:text-red-300">{connection.lastError}</p> : null}
         </div>
         <div className="flex flex-wrap gap-2">
           <button className="secondary-button" disabled={!canManage || busy !== null} onClick={() => void request("POST", `Test delivered to #${connection.channelName.replace(/^#/, "")}.`)}>
@@ -84,7 +84,7 @@ function SlackDestinationCard({
       </div>
 
       <div className="mt-4 border-t border-sentinel-border pt-3">
-        <label className="flex items-center gap-2 text-xs font-medium text-white">
+        <label className="flex items-center gap-2 text-xs font-medium text-sentinel-text">
           <input type="checkbox" checked={isDefault} disabled={!canManage || connection.isDefault} onChange={(event) => setIsDefault(event.target.checked)} />
           Use as the organization&apos;s safe default
         </label>
@@ -104,7 +104,7 @@ function SlackDestinationCard({
             </div>
             <label className="text-[10px] font-semibold uppercase tracking-wide text-sentinel-muted">
               Minimum severity
-              <select className="mt-2 w-full rounded-md border border-sentinel-border bg-sentinel-panel px-3 py-2 text-xs capitalize text-white" value={minimumSeverity} disabled={!canManage} onChange={(event) => setMinimumSeverity(event.target.value as typeof minimumSeverity)}>
+              <select className="mt-2 w-full rounded-md border border-sentinel-border bg-sentinel-panel px-3 py-2 text-xs capitalize text-sentinel-text" value={minimumSeverity} disabled={!canManage} onChange={(event) => setMinimumSeverity(event.target.value as typeof minimumSeverity)}>
                 {severities.map((severity) => <option key={severity} value={severity}>{severity}</option>)}
               </select>
             </label>
@@ -148,7 +148,7 @@ export function SlackConnection({ integration, canManage, onChanged, onNotify }:
     <section className="col-span-full mt-1 rounded-xl border border-sentinel-border bg-sentinel-panel-soft/60 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-sm font-semibold text-white"><MessageSquare className="h-4 w-4 text-sentinel-lime" /> Organization-scoped Slack routing</div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-sentinel-text"><MessageSquare className="h-4 w-4 text-sentinel-lime" /> Organization-scoped Slack routing</div>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-sentinel-muted">Connect multiple destinations, route specialized security events by severity, and retain a tenant-safe fallback channel.</p>
         </div>
         <span className="rounded-full border border-sentinel-border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sentinel-muted">{connections.length} destination{connections.length === 1 ? "" : "s"}</span>

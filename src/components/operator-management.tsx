@@ -306,7 +306,7 @@ export function OperatorManagement({
       <IdentityProvisioning onNotify={onNotify} />
 
       {error ? (
-        <div className="my-5 flex items-start gap-3 rounded-app border border-sentinel-red/30 bg-sentinel-red/10 px-4 py-3 text-sm text-red-200">
+        <div className="my-5 flex items-start gap-3 rounded-app border border-sentinel-red/30 bg-sentinel-red/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -809,7 +809,7 @@ function CreateDelegationDialog({
           </div>
 
           {error ? (
-            <div className="rounded-lg border border-sentinel-red/30 bg-sentinel-red/10 p-3 text-xs text-red-200">
+            <div className="rounded-lg border border-sentinel-red/30 bg-sentinel-red/10 p-3 text-xs text-red-700 dark:text-red-200">
               {error}
             </div>
           ) : null}
@@ -886,7 +886,7 @@ function InviteOperatorDialog({
             </select>
           </label>
           {error ? (
-            <div className="flex items-start gap-2 rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-200">
+            <div className="flex items-start gap-2 rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-700 dark:text-red-200">
               <ShieldAlert className="h-4 w-4 shrink-0" /> {error}
             </div>
           ) : null}
@@ -979,7 +979,7 @@ function CreateOperatorDialog({
             <span className="mt-2 block text-[11px] font-normal leading-4 text-sentinel-dim">Share it through a secure channel. The operator must replace it before accessing protected workspace data.</span>
           </label>
           {error ? (
-            <div className="flex items-start gap-2 rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-200">
+            <div className="flex items-start gap-2 rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-700 dark:text-red-200">
               <ShieldAlert className="h-4 w-4 shrink-0" /> {error}
             </div>
           ) : null}
@@ -1066,13 +1066,13 @@ function ResetPasswordDialog({
           ) : (
             <>
               <p className="text-sm leading-6 text-sentinel-muted">SentinelOps will generate a high-entropy temporary password. Resetting immediately signs this operator out everywhere and clears any login lock.</p>
-              <div className="flex items-start gap-2.5 rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 px-3.5 py-3 text-xs leading-5 text-amber-100">
+              <div className="flex items-start gap-2.5 rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 px-3.5 py-3 text-xs leading-5 text-amber-800 dark:text-amber-100">
                 <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-amber" />
                 Verify the operator&apos;s identity before sharing the credential through a secure channel.
               </div>
             </>
           )}
-          {error ? <div className="rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-200">{error}</div> : null}
+          {error ? <div className="rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-700 dark:text-red-200">{error}</div> : null}
           <div className="flex justify-end gap-3 border-t border-sentinel-line pt-5">
             {temporaryPassword ? (
               <button className="primary-button" onClick={onClose}>Done</button>

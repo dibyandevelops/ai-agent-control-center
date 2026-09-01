@@ -66,7 +66,7 @@ function decisionLabel(effect: PolicyEffect) {
 }
 
 function effectBadgeClass(effect: PolicyEffect) {
-  if (effect === "block") return "bg-sentinel-red/15 text-red-300 border-sentinel-red/30";
+  if (effect === "block") return "bg-sentinel-red/15 text-red-600 dark:text-red-300 border-sentinel-red/30";
   if (effect === "approval") return "bg-sentinel-amber/15 text-sentinel-amber border-sentinel-amber/30";
   return "bg-sentinel-lime/15 text-sentinel-lime border-sentinel-lime/30";
 }
@@ -390,7 +390,7 @@ export function PolicySimulationPanel({
         </p>
       ) : null}
       {error ? (
-        <p className="border-t border-sentinel-red/30 bg-sentinel-red/10 px-4 py-3 text-xs text-red-200">
+        <p className="border-t border-sentinel-red/30 bg-sentinel-red/10 px-4 py-3 text-xs text-red-700 dark:text-red-200">
           {error}
         </p>
       ) : null}

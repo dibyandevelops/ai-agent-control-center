@@ -233,7 +233,7 @@ export function PolicyEditorDialog({
                   return (
                     <div className="grid gap-2 rounded-xl border border-sentinel-line bg-sentinel-raised/45 p-3 grid-cols-[1fr_auto] sm:grid-cols-[1fr_130px_1fr_36px] items-center" key={`${index}-${condition.field}`}>
                       <select className={`${inputClass} col-span-1`} aria-label={`Field for condition ${index + 1}`} value={condition.field} onChange={(event) => updateCondition(index, { field: event.target.value as PolicyField })}>{fieldOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
-                      <button type="button" className="grid h-10 w-9 place-items-center rounded-xl border border-sentinel-line text-sentinel-muted transition hover:border-sentinel-red/30 hover:text-red-300 disabled:opacity-30 sm:order-last" onClick={() => setConditions((current) => current.filter((_, conditionIndex) => conditionIndex !== index))} disabled={conditions.length === 1} aria-label={`Remove condition ${index + 1}`}><Trash2 className="h-3.5 w-3.5" /></button>
+                      <button type="button" className="grid h-10 w-9 place-items-center rounded-xl border border-sentinel-line text-sentinel-muted transition hover:border-sentinel-red/30 hover:text-red-600 dark:hover:text-red-300 disabled:opacity-30 sm:order-last" onClick={() => setConditions((current) => current.filter((_, conditionIndex) => conditionIndex !== index))} disabled={conditions.length === 1} aria-label={`Remove condition ${index + 1}`}><Trash2 className="h-3.5 w-3.5" /></button>
                       <select className={`${inputClass} col-span-2 sm:col-span-1`} aria-label={`Operator for condition ${index + 1}`} value={condition.operator} onChange={(event) => updateCondition(index, { operator: event.target.value as PolicyOperator })}>{field.operators.map((operator) => <option key={operator} value={operator}>{operatorLabels[operator]}</option>)}</select>
                       {field.valueType === "boolean" ? (
                         <select className={`${inputClass} col-span-2 sm:col-span-1`} aria-label={`Value for condition ${index + 1}`} value={condition.value} onChange={(event) => updateCondition(index, { value: event.target.value })}><option value="false">False</option><option value="true">True</option></select>
@@ -271,7 +271,7 @@ export function PolicyEditorDialog({
             <div className="sticky top-24">
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sentinel-dim">Decision preview</span>
               <div className="mt-3 rounded-xl border border-sentinel-line bg-sentinel-raised/50 p-4">
-                <span className={`grid h-10 w-10 place-items-center rounded-xl border ${effect === "block" ? "border-sentinel-red/30 bg-sentinel-red/10 text-red-300" : effect === "approval" ? "border-sentinel-amber/30 bg-sentinel-amber/10 text-sentinel-amber" : "border-sentinel-lime/25 bg-sentinel-lime/10 text-sentinel-lime"}`}><EffectIcon className="h-5 w-5" /></span>
+                <span className={`grid h-10 w-10 place-items-center rounded-xl border ${effect === "block" ? "border-sentinel-red/30 bg-sentinel-red/10 text-red-600 dark:text-red-300" : effect === "approval" ? "border-sentinel-amber/30 bg-sentinel-amber/10 text-sentinel-amber" : "border-sentinel-lime/25 bg-sentinel-lime/10 text-sentinel-lime"}`}><EffectIcon className="h-5 w-5" /></span>
                 <h3 className="mt-4 text-sm font-semibold text-sentinel-text">{name || "Untitled policy"}</h3>
                 <p className="mt-1 text-xs leading-5 text-sentinel-muted">{description || "Describe the control this policy enforces."}</p>
                 <div className="my-4 h-px bg-sentinel-line" />
@@ -293,7 +293,7 @@ export function PolicyEditorDialog({
             <span className="hidden text-[10px] text-sentinel-muted sm:block">{enabled ? "This version will wait for independent approval." : "This version will be saved as a draft."}</span>
             <div className="ml-auto flex gap-3"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" disabled={submitting}>{submitting ? <LoaderCircle className="animate-spin" /> : <ShieldCheck />}{submitting ? "Saving…" : enabled ? "Save & request approval" : "Save draft"}</button></div>
           </div>
-          {error ? <div className="border-t border-sentinel-red/30 bg-sentinel-red/10 px-6 py-3 text-xs text-red-200 lg:col-span-2">{error}</div> : null}
+          {error ? <div className="border-t border-sentinel-red/30 bg-sentinel-red/10 px-6 py-3 text-xs text-red-700 dark:text-red-200 lg:col-span-2">{error}</div> : null}
         </form>
       </div>
     </div>

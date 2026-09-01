@@ -238,8 +238,8 @@ export function AgentQuickstart({ onCreateKey }: { onCreateKey: () => void }) {
                 </div>
 
                 <div className="rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 p-3 text-xs">
-                  <div className="flex items-center gap-2 font-semibold text-red-300">
-                    <ShieldAlert className="h-4 w-4 text-red-400" /> <code>status: &quot;block&quot;</code>
+                  <div className="flex items-center gap-2 font-semibold text-red-600 dark:text-red-300">
+                    <ShieldAlert className="h-4 w-4 text-red-500" /> <code>status: &quot;block&quot;</code>
                   </div>
                   <p className="mt-1 text-[11px] text-sentinel-text">
                     Action rejected by security policy. Agent must halt execution and report to operator.

@@ -227,7 +227,7 @@ export function ApiKeyManagement({
       </section>
 
       {error ? (
-        <div className="mb-5 flex items-start gap-3 rounded-app border border-sentinel-red/30 bg-sentinel-red/10 px-4 py-3 text-sm text-red-200">
+        <div className="mb-5 flex items-start gap-3 rounded-app border border-sentinel-red/30 bg-sentinel-red/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -296,7 +296,7 @@ export function ApiKeyManagement({
                         {apiKey.status !== "revoked" ? (
                           <div className="flex items-center justify-end gap-2">
                             <button className="rounded-lg border border-sentinel-line px-3 py-2 text-xs font-semibold text-sentinel-muted transition hover:border-sentinel-line-strong hover:text-sentinel-text" onClick={() => setActionTarget({ apiKey, action: "rotate" })}>Rotate</button>
-                            {apiKey.status === "active" ? <button className="rounded-lg border border-sentinel-red/30 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-sentinel-red/10" onClick={() => setActionTarget({ apiKey, action: "revoke" })}>Revoke</button> : null}
+                            {apiKey.status === "active" ? <button className="rounded-lg border border-sentinel-red/30 px-3 py-2 text-xs font-semibold text-red-600 dark:text-red-300 transition hover:bg-sentinel-red/10" onClick={() => setActionTarget({ apiKey, action: "revoke" })}>Revoke</button> : null}
                           </div>
                         ) : (
                           <span className="text-xs text-sentinel-dim">Revoked {formatDate(apiKey.revokedAt)}</span>
@@ -327,7 +327,7 @@ export function ApiKeyManagement({
                   {apiKey.status !== "revoked" ? (
                     <div className={`grid gap-2 ${apiKey.status === "active" ? "grid-cols-2" : "grid-cols-1"}`}>
                       <button className="rounded-lg border border-sentinel-line px-3 py-2.5 text-xs font-semibold text-sentinel-muted" onClick={() => setActionTarget({ apiKey, action: "rotate" })}>Rotate</button>
-                      {apiKey.status === "active" ? <button className="rounded-lg border border-sentinel-red/30 px-3 py-2.5 text-xs font-semibold text-red-300" onClick={() => setActionTarget({ apiKey, action: "revoke" })}>Revoke</button> : null}
+                      {apiKey.status === "active" ? <button className="rounded-lg border border-sentinel-red/30 px-3 py-2.5 text-xs font-semibold text-red-600 dark:text-red-300" onClick={() => setActionTarget({ apiKey, action: "revoke" })}>Revoke</button> : null}
                     </div>
                   ) : null}
                 </article>
@@ -453,11 +453,11 @@ function CreateApiKeyDialog({
             </select>
             <span className="mt-2 block text-[11px] leading-5 text-sentinel-dim">The agent stops authenticating automatically at this deadline unless the key is rotated first.</span>
           </label>
-          <div className="flex items-start gap-2.5 rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 px-3.5 py-3 text-xs leading-5 text-amber-100">
+          <div className="flex items-start gap-2.5 rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 px-3.5 py-3 text-xs leading-5 text-amber-800 dark:text-amber-100">
             <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-amber" />
             The complete key is shown once. Store it in your secret manager, never in source code.
           </div>
-          {error ? <div className="rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-200">{error}</div> : null}
+          {error ? <div className="rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-700 dark:text-red-200">{error}</div> : null}
           <div className="flex justify-end gap-3 border-t border-sentinel-line pt-5">
             <button type="button" className="secondary-button" onClick={onClose}>Cancel</button>
             <button className="primary-button" disabled={submitting}>{submitting ? <LoaderCircle className="animate-spin" /> : <KeyRound />}{submitting ? "Creating…" : "Create key"}</button>
@@ -510,14 +510,14 @@ function ConfirmApiKeyActionDialog({
             : "This credential will stop authenticating immediately. This action cannot be undone."}
         </p>
         {rotating ? <label className="block text-xs font-medium text-sentinel-muted">New credential lifetime<select className={fieldClass} value={expiresInDays} onChange={(event) => setExpiresInDays(event.target.value)}>{expirationOptions.map((days) => <option key={days} value={days}>{days} days{days === 90 ? " · recommended" : ""}</option>)}</select></label> : null}
-        <div className="flex items-start gap-2.5 rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 px-3.5 py-3 text-xs leading-5 text-amber-100">
+        <div className="flex items-start gap-2.5 rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 px-3.5 py-3 text-xs leading-5 text-amber-800 dark:text-amber-100">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-amber" />
           Confirm the workload owner is ready for this interruption.
         </div>
-        {error ? <div className="rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-200">{error}</div> : null}
+        {error ? <div className="rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-700 dark:text-red-200">{error}</div> : null}
         <div className="flex justify-end gap-3 border-t border-sentinel-line pt-5">
           <button className="secondary-button" onClick={onClose}>Cancel</button>
-          <button className={rotating ? "primary-button" : "inline-flex h-10 items-center gap-2 rounded-xl border border-sentinel-red/40 bg-sentinel-red/10 px-4 text-xs font-semibold text-red-200 transition hover:bg-sentinel-red/20"} onClick={() => void confirm()} disabled={loading}>
+          <button className={rotating ? "primary-button" : "inline-flex h-10 items-center gap-2 rounded-xl border border-sentinel-red/40 bg-sentinel-red/10 px-4 text-xs font-semibold text-red-700 dark:text-red-200 transition hover:bg-sentinel-red/20"} onClick={() => void confirm()} disabled={loading}>
             {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : rotating ? <RefreshCw className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
             {loading ? `${rotating ? "Rotating" : "Revoking"}…` : rotating ? "Rotate key" : "Revoke key"}
           </button>
@@ -620,7 +620,7 @@ function SecretRevealDialog({
           </div>
         </div>
         <div className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 ${testState === "verified" ? "border-sentinel-lime/25 bg-sentinel-lime/10" : testState === "failed" ? "border-sentinel-red/30 bg-sentinel-red/10" : "border-sentinel-line bg-sentinel-raised/50"}`}>
-          <Wifi className={`mt-0.5 h-4 w-4 shrink-0 ${testState === "verified" ? "text-sentinel-lime" : testState === "failed" ? "text-red-300" : "text-sentinel-muted"}`} />
+          <Wifi className={`mt-0.5 h-4 w-4 shrink-0 ${testState === "verified" ? "text-sentinel-lime" : testState === "failed" ? "text-red-600 dark:text-red-300" : "text-sentinel-muted"}`} />
           <div className="min-w-0 flex-1">
             <strong className="block text-xs font-semibold text-sentinel-text">Verify before installing</strong>
             <p className="mt-1 text-[11px] leading-5 text-sentinel-muted">
@@ -640,7 +640,7 @@ function SecretRevealDialog({
             <Check className="h-4 w-4 shrink-0 text-sentinel-lime" />
           )}
         </div>
-        {error ? <div className="rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-200">{error}</div> : null}
+        {error ? <div className="rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-700 dark:text-red-200">{error}</div> : null}
         <div className="flex justify-end border-t border-sentinel-line pt-5"><button className="primary-button" onClick={onClose}>I saved this key</button></div>
       </div>
     </DialogShell>

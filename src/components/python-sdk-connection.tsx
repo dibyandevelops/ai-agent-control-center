@@ -83,7 +83,7 @@ export function PythonSDKConnection() {
 
   return (
     <div className="col-span-full mt-4 border-t border-sentinel-border pt-4" style={{ gridColumn: "1 / -1" }}>
-      <div className="flex items-center gap-2 text-xs font-semibold text-white">
+      <div className="flex items-center gap-2 text-xs font-semibold text-sentinel-text">
         <Terminal className="h-4 w-4 text-sentinel-lime" />
         <span>Python SDK Quickstart & Connection Guide</span>
       </div>
@@ -108,7 +108,7 @@ export function PythonSDKConnection() {
               }}
               className={`rounded px-2.5 py-1.5 text-[10px] font-semibold transition ${
                 activeTab === tab.id
-                  ? "bg-sentinel-raised text-white shadow-sm"
+                  ? "bg-sentinel-raised text-sentinel-text shadow-sm"
                   : "text-sentinel-muted hover:text-sentinel-text"
               }`}
             >
@@ -138,7 +138,7 @@ export function PythonSDKConnection() {
         <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sentinel-lime" />
         <div>
           <span>Ensure you have generated an API key on the Credentials page and configured it locally:</span>
-          <pre className="mt-1 font-mono text-[9px] text-white">export SENTINELOPS_AGENT_API_KEY=&quot;your-api-key&quot;</pre>
+          <pre className="mt-1 font-mono text-[9px] text-sentinel-text">export SENTINELOPS_AGENT_API_KEY=&quot;your-api-key&quot;</pre>
         </div>
       </div>
     </div>

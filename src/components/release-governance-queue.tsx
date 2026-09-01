@@ -24,10 +24,10 @@ const urgencyPresentation: Record<
 > = {
   on_track: { label: "On track", className: "border-sentinel-line text-sentinel-muted" },
   urgent: { label: "Urgent", className: "border-sentinel-amber/40 bg-sentinel-amber/5 text-sentinel-amber" },
-  escalated: { label: "Escalated", className: "border-red-400/40 bg-red-400/5 text-red-300" },
-  overdue: { label: "Overdue", className: "border-red-400/40 bg-red-400/5 text-red-300" },
+  escalated: { label: "Escalated", className: "border-red-400/40 bg-red-400/5 text-red-600 dark:text-red-300" },
+  overdue: { label: "Overdue", className: "border-red-400/40 bg-red-400/5 text-red-600 dark:text-red-300" },
   executing: { label: "Worker active", className: "border-sentinel-lime/30 bg-sentinel-lime/5 text-sentinel-lime" },
-  failed: { label: "Needs retry", className: "border-red-400/40 bg-red-400/5 text-red-300" },
+  failed: { label: "Needs retry", className: "border-red-400/40 bg-red-400/5 text-red-600 dark:text-red-300" },
 };
 
 function useCurrentTime() {
@@ -153,7 +153,7 @@ export function ReleaseGovernanceQueue({
                 </div>
                 <div>
                   <span className="text-[10px] uppercase tracking-[0.12em] text-sentinel-dim">Deadline</span>
-                  <p className={`mt-1 flex items-center gap-1.5 text-xs ${isOverdue ? "text-red-300" : "text-sentinel-text"}`}>
+                  <p className={`mt-1 flex items-center gap-1.5 text-xs ${isOverdue ? "text-red-600 dark:text-red-300" : "text-sentinel-text"}`}>
                     <Clock3 className="h-3.5 w-3.5 shrink-0" />
                     {releaseGovernanceCountdown(item.expiresAt, now)}
                   </p>
@@ -165,7 +165,7 @@ export function ReleaseGovernanceQueue({
               </p>
 
               {item.executionSummary ? (
-                <div className={`mt-4 flex items-start gap-2 rounded-xl border px-3 py-3 text-xs leading-5 ${item.status === "failed" ? "border-red-400/25 bg-red-400/5 text-red-200" : "border-sentinel-line text-sentinel-muted"}`}>
+                <div className={`mt-4 flex items-start gap-2 rounded-xl border px-3 py-3 text-xs leading-5 ${item.status === "failed" ? "border-red-400/25 bg-red-400/5 text-red-700 dark:text-red-200" : "border-sentinel-line text-sentinel-muted"}`}>
                   {item.status === "failed" ? (
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   ) : (
@@ -181,7 +181,7 @@ export function ReleaseGovernanceQueue({
                     Four-eyes control: another administrator must review your request.
                   </div>
                 ) : isOverdue ? (
-                  <div className="mt-4 rounded-xl border border-red-400/25 bg-red-400/5 px-3 py-3 text-xs leading-5 text-red-200">
+                  <div className="mt-4 rounded-xl border border-red-400/25 bg-red-400/5 px-3 py-3 text-xs leading-5 text-red-700 dark:text-red-200">
                     This deadline has passed. Opening the request will record its expiration.
                   </div>
                 ) : (

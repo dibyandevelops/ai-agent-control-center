@@ -18,14 +18,17 @@ const config: Config = {
           text: "var(--text)",
           muted: "var(--muted)",
           dim: "var(--muted-2)",
-          lime: "#b7f34a", // Primary electric lime from logo
-          cyan: "#2dd4bf", // Cyber teal/mint from logo stop 60%
-          azure: "#38bdf8", // Sky cyan from logo stop 100%
+          lime: "var(--accent)", // Theme adaptive: #b7f34a (dark) / #0f766e (light)
+          cyan: "var(--accent-cyan)", // Theme adaptive: #2dd4bf (dark) / #0d9488 (light)
+          azure: "var(--accent-sky)", // Theme adaptive: #38bdf8 (dark) / #0284c7 (light)
           indigo: "#6366f1",
-          emerald: "#10b981", // Emerald from logo hex frame
+          emerald: "var(--success)", // Theme adaptive: #10b981 (dark) / #059669 (light)
           accent: "var(--accent)",
           amber: "var(--amber)",
           red: "var(--danger)",
+          "brand-lime": "#b7f34a",
+          "brand-cyan": "#2dd4bf",
+          "brand-sky": "#38bdf8",
         },
       },
       fontFamily: {

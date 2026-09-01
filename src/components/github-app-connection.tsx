@@ -64,7 +64,7 @@ export function GitHubAppConnection({
     <section className="col-span-full mt-1 rounded-xl border border-sentinel-border bg-sentinel-panel-soft/60 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-semibold text-white">
+          <div className="flex items-center gap-2 text-sm font-semibold text-sentinel-text">
             <ShieldCheck className="h-4 w-4 text-sentinel-lime" />
             Organization-scoped access
           </div>
@@ -81,7 +81,7 @@ export function GitHubAppConnection({
         <div className="mt-4 rounded-lg border border-sentinel-border bg-sentinel-bg/50 p-3" key={connection.id}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-sm font-semibold text-white">
+              <div className="flex items-center gap-2 text-sm font-semibold text-sentinel-text">
                 <GitBranch className="h-4 w-4 text-sentinel-lime" />
                 <span className="truncate">{connection.accountLogin}</span>
                 <span className="text-[10px] font-normal uppercase text-sentinel-muted">{connection.accountType}</span>
@@ -103,7 +103,7 @@ export function GitHubAppConnection({
           <div className="mt-3 flex flex-wrap gap-2">
             {connection.repositories.filter((item) => item.enabled).map((repository) => (
               <a
-                className="max-w-full truncate rounded-md border border-sentinel-border px-2.5 py-1 text-[11px] text-sentinel-muted transition hover:border-sentinel-lime/50 hover:text-white"
+                className="max-w-full truncate rounded-md border border-sentinel-border px-2.5 py-1 text-[11px] text-sentinel-muted transition hover:border-sentinel-lime/50 hover:text-sentinel-text"
                 href={`https://github.com/${repository.fullName}`}
                 key={repository.id}
                 rel="noreferrer"

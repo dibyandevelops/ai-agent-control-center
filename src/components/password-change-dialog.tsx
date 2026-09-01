@@ -82,7 +82,7 @@ export function PasswordChangeDialog({
 
         <form onSubmit={submit} className="space-y-4 px-6 py-5">
           {required ? (
-            <div className="flex gap-2.5 rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 px-3.5 py-3 text-xs leading-5 text-amber-100">
+            <div className="flex gap-2.5 rounded-xl border border-sentinel-amber/25 bg-sentinel-amber/10 px-3.5 py-3 text-xs leading-5 text-amber-800 dark:text-amber-100">
               <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-sentinel-amber" />
               Protected actions remain unavailable until this password is changed.
             </div>
@@ -129,7 +129,7 @@ export function PasswordChangeDialog({
             />
           </label>
           {error ? (
-            <div className="flex items-start gap-2 rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-200">
+            <div className="flex items-start gap-2 rounded-xl border border-sentinel-red/30 bg-sentinel-red/10 px-3.5 py-3 text-xs text-red-700 dark:text-red-200">
               <ShieldAlert className="h-4 w-4 shrink-0" /> {error}
             </div>
           ) : (

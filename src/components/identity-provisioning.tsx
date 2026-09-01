@@ -231,7 +231,7 @@ export function IdentityProvisioning({ onNotify }: { onNotify: (message: string)
         <span className="rounded-full border border-sentinel-line px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-sentinel-muted">SCIM 2.0 & SAML</span>
       </div>
 
-      {error ? <div className="mt-4 flex gap-2 rounded-lg border border-sentinel-red/30 bg-sentinel-red/10 px-3 py-2 text-xs text-red-200"><ShieldAlert className="h-4 w-4 shrink-0" />{error}</div> : null}
+      {error ? <div className="mt-4 flex gap-2 rounded-lg border border-sentinel-red/30 bg-sentinel-red/10 px-3 py-2 text-xs text-red-700 dark:text-red-200"><ShieldAlert className="h-4 w-4 shrink-0" />{error}</div> : null}
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <div className="rounded-lg border border-sentinel-line bg-sentinel-canvas/50 p-4">

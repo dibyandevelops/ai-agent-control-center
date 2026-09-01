@@ -215,8 +215,8 @@ function displayTime(value: string) {
 function Status({ status }: { status: AgentStatus }) {
   if (status === "quarantined") {
     return (
-      <span className="status status-blocked border-sentinel-red/40 bg-sentinel-red/15 text-red-300 font-semibold inline-flex items-center gap-1">
-        <ShieldAlert className="h-3 w-3 text-red-400 shrink-0" />
+      <span className="status status-blocked border-sentinel-red/40 bg-sentinel-red/15 text-red-600 dark:text-red-300 font-semibold inline-flex items-center gap-1">
+        <ShieldAlert className="h-3 w-3 text-red-500 shrink-0" />
         Quarantined
       </span>
     );
@@ -828,7 +828,7 @@ function AgentTable({
                           ? "border-sentinel-lime/30 bg-sentinel-lime/10 text-sentinel-lime"
                           : agent.lastExecutionStatus === "executing"
                             ? "border-sentinel-amber/30 bg-sentinel-amber/10 text-sentinel-amber"
-                            : "border-red-400/30 bg-red-400/10 text-red-300"
+                            : "border-red-400/30 bg-red-400/10 text-red-600 dark:text-red-300"
                       }`}
                     >
                       {executionLabel(agent.lastExecutionStatus)}
@@ -954,7 +954,7 @@ function AgentTable({
               </label>
 
               {quarantineError ? (
-                <div className="rounded-lg border border-sentinel-red/30 bg-sentinel-red/10 p-3 text-xs text-red-200">
+                <div className="rounded-lg border border-sentinel-red/30 bg-sentinel-red/10 p-3 text-xs text-red-700 dark:text-red-200">
                   {quarantineError}
                 </div>
               ) : null}
@@ -1812,7 +1812,7 @@ function AuditView({
           {integrity.verified ? (
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-sentinel-lime" />
           ) : (
-            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-300" />
+            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-300" />
           )}
           <div>
             <strong className="text-sm text-sentinel-text">
@@ -1830,7 +1830,7 @@ function AuditView({
           </div>
         </section>
       ) : integrityError ? (
-        <section className="mb-5 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200">
+        <section className="mb-5 rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-700 dark:text-red-200">
           {integrityError}
         </section>
       ) : null}
@@ -2176,7 +2176,7 @@ function ActionDetailDrawer({
               Loading evidence…
             </div>
           ) : error ? (
-            <div className="rounded-xl border border-red-400/30 bg-red-400/10 p-5 text-sm text-red-200">
+            <div className="rounded-xl border border-red-400/30 bg-red-400/10 p-5 text-sm text-red-700 dark:text-red-200">
               {error}
             </div>
           ) : detail ? (
@@ -2213,10 +2213,10 @@ function ActionDetailDrawer({
                   <p className="mt-2 text-xs leading-5 text-sentinel-muted">{detail.execution.summary || "No execution outcome reported."}</p>
                   {detail.execution.errorCode ? (
                     <div className="mt-4 rounded-lg border border-red-400/25 bg-red-400/10 p-3">
-                      <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-red-300">
+                      <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-red-600 dark:text-red-300">
                         Failure code
                       </span>
-                      <code className="mt-1 block break-all text-[11px] text-red-100">
+                      <code className="mt-1 block break-all text-[11px] text-red-800 dark:text-red-100">
                         {detail.execution.errorCode}
                       </code>
                     </div>

@@ -69,7 +69,7 @@ export function MfaVerificationDialog({
               value={code}
             />
           </label>
-          {error ? <p className="mt-3 text-xs text-red-300">{error}</p> : null}
+          {error ? <p className="mt-3 text-xs text-red-600 dark:text-red-300">{error}</p> : null}
           <div className="dialog-actions mt-5">
             <button className="secondary-button" onClick={onClose}>Cancel</button>
             <button
