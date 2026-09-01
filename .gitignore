@@ -11,6 +11,7 @@
 # local files
 .DS_Store
 *.pem
+*.pdf
 
 # debug
 npm-debug.log*
