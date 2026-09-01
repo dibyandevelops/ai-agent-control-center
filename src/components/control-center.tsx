@@ -32,6 +32,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Settings,
   Shield,
   ShieldAlert,
   ShieldCheck,
@@ -96,6 +97,7 @@ import { AgentDetailDrawer } from "@/components/agent-detail-drawer";
 import { ShortcutsDialog } from "@/components/shortcuts-dialog";
 import { PolicySimulationPanel } from "@/components/policy-simulation-panel";
 import { ToastNotification, type ToastData } from "@/components/toast-notification";
+import { SettingsView } from "@/components/dashboard/views/settings-view";
 
 export type DashboardView =
   | "overview"
@@ -105,7 +107,8 @@ export type DashboardView =
   | "audit"
   | "integrations"
   | "credentials"
-  | "team";
+  | "team"
+  | "settings";
 
 type WorkspaceMode = "demo" | "connecting" | "live";
 
@@ -135,6 +138,7 @@ const navItems: Array<{
   { id: "integrations", label: "Integrations", icon: PlugZap },
   { id: "credentials", label: "Credentials", icon: KeyRound, adminOnly: true },
   { id: "team", label: "Team access", icon: UsersRound, adminOnly: true },
+  { id: "settings", label: "Settings", icon: Settings },
 ];
 
 const titles: Record<DashboardView, string> = {
@@ -146,6 +150,7 @@ const titles: Record<DashboardView, string> = {
   integrations: "Integrations",
   credentials: "Agent credentials",
   team: "Team access",
+  settings: "Settings & Preferences",
 };
 
 function money(value: number) {
@@ -3168,6 +3173,7 @@ export function ControlCenter({
         else if (key === "u") { e.preventDefault(); handleSelectView("audit"); }
         else if (key === "c") { e.preventDefault(); handleSelectView("credentials"); }
         else if (key === "t") { e.preventDefault(); handleSelectView("team"); }
+        else if (key === "s") { e.preventDefault(); handleSelectView("settings"); }
       }
     }
 
@@ -3188,6 +3194,7 @@ export function ControlCenter({
         "integrations",
         "credentials",
         "team",
+        "settings",
       ];
       if (requested && validViews.includes(requested)) {
         setView(requested as DashboardView);
@@ -4034,6 +4041,37 @@ export function ControlCenter({
               <OperatorManagement
                 currentOperator={operatorIdentity}
                 onNotify={setToast}
+              />
+            )}
+            {view === "settings" && (
+              <SettingsView
+                operator={operatorIdentity}
+                canManageOperators={canManageOperators}
+                integrityVerified={true}
+                onVerifyIntegrity={async () => {
+                  const res = await fetch("/api/v1/audit/integrity");
+                  const data = await res.json();
+                  if (data.verified) {
+                    setToast({ message: "Cryptographic SHA-256 seal verified.", type: "success" });
+                  } else {
+                    setToast({ message: data.error || "Hash chain mismatch.", type: "error" });
+                  }
+                }}
+                onUpdateOperatorName={(newName) => {
+                  setOperatorIdentity((prev) => prev ? { ...prev, displayName: newName } : prev);
+                  setToast("Profile display name updated.");
+                }}
+                onUpdateOrgName={(newOrgName) => {
+                  setOperatorIdentity((prev) => prev ? { ...prev, organizationName: newOrgName } : prev);
+                  setToast("Organization name updated.");
+                }}
+                onChangePassword={() => {
+                  if (!operatorIdentity) return;
+                  setPasswordChangeRequired(operatorIdentity.mustChangePassword);
+                  setPasswordChangeError("");
+                  setPasswordChangeOpen(true);
+                }}
+                onSelectView={handleSelectView}
               />
             )}
           </>

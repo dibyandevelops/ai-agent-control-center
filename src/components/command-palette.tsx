@@ -9,6 +9,7 @@ import {
   PlugZap,
   Plus,
   Search,
+  Settings,
   Shield,
   ShieldCheck,
   UsersRound,
@@ -61,6 +62,7 @@ export function CommandPalette({
       { id: "integrations", label: "Integrations & HTTPS Webhooks", category: "Navigation", icon: PlugZap, action: () => onSelectView("integrations") },
       { id: "team", label: "Team & SCIM / SAML Directory", category: "Navigation", icon: UsersRound, action: () => onSelectView("team") },
       { id: "credentials", label: "Agent API Keys & Credentials", category: "Navigation", icon: KeyRound, action: () => onSelectView("credentials") },
+      { id: "settings", label: "Workspace & Profile Settings", category: "Navigation", icon: Settings, action: () => onSelectView("settings") },
     ],
     [onSelectView],
   );

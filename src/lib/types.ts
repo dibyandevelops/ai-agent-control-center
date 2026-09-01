@@ -10,7 +10,8 @@ export type DashboardView =
   | "audit"
   | "integrations"
   | "credentials"
-  | "team";
+  | "team"
+  | "settings";
 
 export interface OperatorIdentity {
   id: string;
