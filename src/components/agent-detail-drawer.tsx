@@ -4,7 +4,6 @@ import {
   Activity,
   Bot,
   CheckCircle2,
-  Clock,
   Coins,
   Copy,
   Download,
@@ -13,13 +12,14 @@ import {
   Server,
   ShieldAlert,
   ShieldCheck,
-  User,
-  Users,
   X,
-  Zap,
 } from "lucide-react";
 import React, { useState } from "react";
 import type { Agent, AuditEvent } from "@/lib/types";
+import { OverviewTab } from "./agent-drawer/tabs/overview-tab";
+import { PermissionsTab } from "./agent-drawer/tabs/permissions-tab";
+import { DecisionsTab } from "./agent-drawer/tabs/decisions-tab";
+import { TelemetryTab } from "./agent-drawer/tabs/telemetry-tab";
 
 interface AgentDetailDrawerProps {
   agent: Agent | null;
@@ -46,7 +46,6 @@ export function AgentDetailDrawer({
 }: AgentDetailDrawerProps) {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [copiedKey, setCopiedKey] = useState(false);
-  const [selectedAudit, setSelectedAudit] = useState<AuditEvent | null>(null);
 
   if (!open || !agent) return null;
 
@@ -54,7 +53,7 @@ export function AgentDetailDrawer({
   const agentAudits = auditLogs.filter(
     (log) =>
       log.agent?.toLowerCase().includes(agent.name.toLowerCase()) ||
-      agent.name.toLowerCase().includes(log.agent?.toLowerCase() || "")
+      agent.name.toLowerCase().includes(log.agent?.toLowerCase() || ""),
   );
 
   async function handleCopyId() {
@@ -243,238 +242,17 @@ export function AgentDetailDrawer({
 
         {/* Tab Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* Tab 1: Overview */}
           {activeTab === "overview" && (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-sentinel-border bg-sentinel-canvas/50 p-4 space-y-3">
-                <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-sentinel-muted">
-                  Agent Metadata & Ownership
-                </h3>
-                <dl className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <dt className="text-sentinel-muted text-[11px]">Primary Owner</dt>
-                    <dd className="mt-1 font-semibold text-sentinel-text flex items-center gap-1.5">
-                      <User className="h-3.5 w-3.5 text-sentinel-muted" />
-                      {agent.owner}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sentinel-muted text-[11px]">Assigned Team</dt>
-                    <dd className="mt-1 font-semibold text-sentinel-text flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5 text-sentinel-muted" />
-                      {agent.team}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sentinel-muted text-[11px]">Provider Framework</dt>
-                    <dd className="mt-1 font-mono text-sentinel-text">{agent.provider}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-sentinel-muted text-[11px]">Last Active</dt>
-                    <dd className="mt-1 font-mono text-sentinel-text flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 text-sentinel-muted" />
-                      {agent.lastSeen}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div className="rounded-2xl border border-sentinel-border bg-sentinel-canvas/50 p-4 space-y-2">
-                <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-sentinel-muted">
-                  Latest Action Summary
-                </h3>
-                <div className="flex items-start gap-3 rounded-xl border border-sentinel-border bg-sentinel-surface p-3">
-                  <Zap className="h-4 w-4 text-sentinel-accent shrink-0 mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <strong className="text-xs font-semibold text-sentinel-text block">
-                      {agent.lastAction}
-                    </strong>
-                    <p className="mt-0.5 text-[11px] text-sentinel-muted">
-                      Executed under active governance rules with full deterministic telemetry capture.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-sentinel-border bg-sentinel-canvas/50 p-4 space-y-2">
-                <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-sentinel-muted">
-                  Security Posture
-                </h3>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="rounded-xl border border-sentinel-border bg-sentinel-surface p-3">
-                    <span className="text-[11px] text-sentinel-muted">Killswitch State</span>
-                    <strong className={`block mt-1 font-semibold ${isQuarantined ? "text-sentinel-danger" : "text-sentinel-success"}`}>
-                      {isQuarantined ? "ACTIVATED (Blocked)" : "Normal Operation"}
-                    </strong>
-                  </div>
-                  <div className="rounded-xl border border-sentinel-border bg-sentinel-surface p-3">
-                    <span className="text-[11px] text-sentinel-muted">Audit Trail Hash</span>
-                    <strong className="block mt-1 font-mono text-[11px] text-sentinel-text truncate">
-                      SHA256: 4f98...b29e
-                    </strong>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <OverviewTab agent={agent} isQuarantined={isQuarantined} />
           )}
 
-          {/* Tab 2: Permissions */}
-          {activeTab === "permissions" && (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-sentinel-border bg-sentinel-canvas/50 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-sentinel-muted">
-                    Scoped Action Permissions ({agent.permissions.length})
-                  </h3>
-                  <span className="text-[10px] text-sentinel-muted">Enforced at runtime</span>
-                </div>
-                <div className="space-y-2">
-                  {agent.permissions.map((perm, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between rounded-xl border border-sentinel-border bg-sentinel-surface px-3.5 py-2.5 text-xs"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Lock className="h-3.5 w-3.5 text-sentinel-accent shrink-0" />
-                        <code className="font-mono text-xs font-semibold text-sentinel-text truncate">
-                          {perm}
-                        </code>
-                      </div>
-                      <span className="inline-flex items-center gap-1 rounded-full border border-sentinel-success/30 bg-sentinel-success-soft px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sentinel-success">
-                        <CheckCircle2 className="h-3 w-3" /> Allowed
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          {activeTab === "permissions" && <PermissionsTab agent={agent} />}
 
-              <div className="rounded-2xl border border-sentinel-border bg-sentinel-canvas/50 p-4 space-y-2">
-                <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-sentinel-muted">
-                  Default Policy Guardrails
-                </h3>
-                <p className="text-xs text-sentinel-muted leading-relaxed">
-                  Any unlisted API actions or tool requests outside the authorized scopes above are automatically intercepted and routed to the <strong>Human Approval Queue</strong> or blocked by default.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 3: Decisions Stream */}
           {activeTab === "decisions" && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-sentinel-muted">
-                  Recent Policy Decisions ({agentAudits.length})
-                </h3>
-                <span className="text-[10px] text-sentinel-muted">Tamper-evident record</span>
-              </div>
-
-              {agentAudits.length === 0 ? (
-                <div className="rounded-2xl border border-sentinel-border bg-sentinel-canvas/30 p-8 text-center text-xs text-sentinel-muted">
-                  <Clock className="mx-auto h-6 w-6 mb-2 text-sentinel-muted opacity-60" />
-                  <p>No recent decisions recorded in the current active window.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {agentAudits.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => setSelectedAudit(selectedAudit?.id === item.id ? null : item)}
-                      className="cursor-pointer rounded-xl border border-sentinel-border bg-sentinel-surface p-3 text-xs transition hover:border-sentinel-accent hover:bg-sentinel-surface-raised"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span
-                            className={`inline-flex rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                              item.result === "Allowed" || item.result === "Succeeded"
-                                ? "bg-sentinel-success-soft text-sentinel-success"
-                                : item.result === "Approved"
-                                  ? "bg-sentinel-amber-soft text-sentinel-amber"
-                                  : "bg-sentinel-danger-soft text-sentinel-danger"
-                            }`}
-                          >
-                            {item.result}
-                          </span>
-                          <strong className="truncate text-sentinel-text font-semibold">
-                            {item.action}
-                          </strong>
-                        </div>
-                        <time className="font-mono text-[10px] text-sentinel-muted shrink-0">
-                          {item.time}
-                        </time>
-                      </div>
-
-                      {selectedAudit?.id === item.id && (
-                        <div className="mt-3 border-t border-sentinel-border pt-3 font-mono text-[11px] text-sentinel-muted space-y-1.5 animate-dialog-in">
-                          <div>Actor: <span className="text-sentinel-text">{item.actor}</span></div>
-                          <div>Detail: <span className="text-sentinel-text">{item.detail}</span></div>
-                          {item.externalReference ? (
-                            <div>Ref: <span className="text-sentinel-text break-all">{item.externalReference}</span></div>
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <DecisionsTab agentAudits={agentAudits} />
           )}
 
-          {/* Tab 4: Telemetry & Cost */}
-          {activeTab === "telemetry" && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-sentinel-border bg-sentinel-canvas/50 p-4">
-                  <span className="text-[11px] font-semibold text-sentinel-muted">Monthly Spend Cap</span>
-                  <div className="mt-2 flex items-baseline gap-2">
-                    <strong className="font-mono text-xl font-bold text-sentinel-text">
-                      ${agent.cost.toLocaleString()}
-                    </strong>
-                    <span className="text-[10px] text-sentinel-muted">/ $5,000 budget</span>
-                  </div>
-                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-sentinel-surface">
-                    <div
-                      className="h-full bg-sentinel-accent transition-all"
-                      style={{ width: `${Math.min(100, (agent.cost / 5000) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-sentinel-border bg-sentinel-canvas/50 p-4">
-                  <span className="text-[11px] font-semibold text-sentinel-muted">P95 Policy Latency</span>
-                  <div className="mt-2 flex items-baseline gap-2">
-                    <strong className="font-mono text-xl font-bold text-sentinel-text">
-                      4.2 ms
-                    </strong>
-                    <span className="text-[10px] text-sentinel-success">Fast (Edge cached)</span>
-                  </div>
-                  <p className="mt-2 text-[10px] text-sentinel-muted">
-                    Deterministic evaluations without network hops.
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-sentinel-border bg-sentinel-canvas/50 p-4 space-y-3">
-                <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-sentinel-muted">
-                  Token Consumption Rate
-                </h3>
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div className="rounded-xl border border-sentinel-border bg-sentinel-surface p-2.5">
-                    <span className="text-[10px] text-sentinel-muted">Prompt Tokens</span>
-                    <strong className="block mt-1 font-mono text-sm text-sentinel-text">1.4M</strong>
-                  </div>
-                  <div className="rounded-xl border border-sentinel-border bg-sentinel-surface p-2.5">
-                    <span className="text-[10px] text-sentinel-muted">Completion Tokens</span>
-                    <strong className="block mt-1 font-mono text-sm text-sentinel-text">380K</strong>
-                  </div>
-                  <div className="rounded-xl border border-sentinel-border bg-sentinel-surface p-2.5">
-                    <span className="text-[10px] text-sentinel-muted">Cache Hit Rate</span>
-                    <strong className="block mt-1 font-mono text-sm text-sentinel-success">92.4%</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {activeTab === "telemetry" && <TelemetryTab agent={agent} />}
         </div>
       </div>
     </div>
