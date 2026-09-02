@@ -51,6 +51,7 @@ import { PoliciesView } from "@/components/dashboard/views/policies-view";
 import { AuditView } from "@/components/dashboard/views/audit-view";
 import { IntegrationsView } from "@/components/dashboard/views/integrations-view";
 import { SettingsView } from "@/components/dashboard/views/settings-view";
+import { AccessRestrictedView } from "@/components/dashboard/views/access-restricted-view";
 
 type WorkspaceMode = "demo" | "connecting" | "live";
 
@@ -104,41 +105,46 @@ function WorkspaceBanner({
   error: string;
   onConnect: () => void;
 }) {
+  if (mode === "live") return null;
+
   return (
-    <div className="mx-7 mt-4 flex min-h-12 items-center gap-3 rounded-lg border border-sentinel-line bg-sentinel-surface px-4 text-xs max-md:mx-4 max-md:items-start max-md:py-3">
-      <span
-        className={`h-2 w-2 shrink-0 rounded-full ${
-          mode === "live"
-            ? "bg-sentinel-lime shadow-[0_0_12px_rgba(183,243,74,0.55)]"
-            : mode === "connecting"
-              ? "animate-pulse bg-sentinel-amber"
-              : "bg-sentinel-muted"
-        }`}
-      />
-      <div className="flex-1">
-        <strong className="font-semibold text-sentinel-text">
-          {mode === "live"
-            ? "Live enforcement workspace"
-            : mode === "connecting"
-              ? "Connecting to live workspace"
-              : "Development preview"}
-        </strong>
-        <span className="ml-2 text-sentinel-muted max-md:ml-0 max-md:mt-1 max-md:block">
-          {error ||
-            (mode === "live"
-              ? "Requests, approvals, policies, and evidence are loaded from PostgreSQL."
-              : "The interface is using local demo data until you connect an operator session.")}
-        </span>
-      </div>
-      {mode !== "live" ? (
-        <button
-          type="button"
-          className="secondary-button shrink-0"
-          onClick={onConnect}
+    <div className="mx-6 mt-4 flex items-center justify-between gap-4 rounded-2xl border border-sentinel-line bg-gradient-to-r from-sentinel-surface via-sentinel-surface-raised to-sentinel-surface px-5 py-3 shadow-sm max-md:mx-4 max-md:flex-col max-md:items-start">
+      <div className="flex items-center gap-3 min-w-0">
+        <span
+          className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl border ${
+            mode === "connecting"
+              ? "border-sentinel-amber/40 bg-sentinel-amber/15 text-sentinel-amber animate-pulse"
+              : "border-sentinel-line bg-sentinel-canvas text-sentinel-muted"
+          }`}
         >
-          <PlugZap className="h-3.5 w-3.5" /> Connect live
-        </button>
-      ) : null}
+          <PlugZap className="h-4 w-4 text-sentinel-lime" />
+        </span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <strong className="text-xs font-semibold text-sentinel-text">
+              {mode === "connecting"
+                ? "Connecting to live enforcement workspace…"
+                : "Development Preview Mode"}
+            </strong>
+            <span className="rounded bg-sentinel-canvas px-1.5 py-0.5 text-[10px] font-mono text-sentinel-muted">
+              Demo Scenarios Active
+            </span>
+          </div>
+          <p className="mt-0.5 text-[11px] text-sentinel-muted truncate">
+            {error ||
+              "All actions and policy events are running against in-memory demo scenarios. Sign in to sync with your live database."}
+          </p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="primary-button text-xs py-1.5 px-4 shrink-0 shadow-sm"
+        onClick={onConnect}
+      >
+        <PlugZap className="h-3.5 w-3.5" />
+        <span>Connect Live Session</span>
+      </button>
     </div>
   );
 }
@@ -369,8 +375,7 @@ export function ControlCenter({
     operatorIdentity?.role === "admin";
   const canGovernReleases =
     workspaceMode === "demo" || operatorIdentity?.role === "admin";
-  const canManageOperators =
-    workspaceMode === "demo" || operatorIdentity?.role === "admin";
+  const canManageOperators = Boolean(operatorIdentity?.role === "admin");
 
   const pendingApprovals = useMemo(
     () => approvalList.filter((a) => a.status === "pending"),
@@ -721,6 +726,10 @@ export function ControlCenter({
           onLogout={() => void logout()}
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           onToggleNotifications={() => setNotificationsOpen((prev) => !prev)}
+          onOpenConnect={() => {
+            setWorkspaceError("");
+            setConnectOpen(true);
+          }}
           notificationsOpen={notificationsOpen}
           approvals={approvalList}
           quarantinedAgents={agentList.filter((a) => a.status === "quarantined")}
@@ -735,6 +744,7 @@ export function ControlCenter({
           onClose={() => setCommandPaletteOpen(false)}
           onSelectView={handleSelectView}
           onOpenCreatePolicy={() => handleSelectView("policies")}
+          canManageOperators={canManageOperators}
           agents={agentList}
           policies={policyList}
         />
@@ -867,17 +877,39 @@ export function ControlCenter({
                 onNotify={setToast}
               />
             )}
-            {view === "credentials" && operatorIdentity?.role === "admin" && (
-              <ApiKeyManagement
-                organizationName={operatorIdentity.organizationName}
-                onNotify={setToast}
-              />
+            {view === "credentials" && (
+              canManageOperators && operatorIdentity ? (
+                <ApiKeyManagement
+                  organizationName={operatorIdentity.organizationName}
+                  onNotify={setToast}
+                />
+              ) : (
+                <AccessRestrictedView
+                  targetView="credentials"
+                  onConnect={() => {
+                    setWorkspaceError("");
+                    setConnectOpen(true);
+                  }}
+                  onBackToOverview={() => handleSelectView("overview")}
+                />
+              )
             )}
-            {view === "team" && operatorIdentity?.role === "admin" && (
-              <OperatorManagement
-                currentOperator={operatorIdentity}
-                onNotify={setToast}
-              />
+            {view === "team" && (
+              canManageOperators && operatorIdentity ? (
+                <OperatorManagement
+                  currentOperator={operatorIdentity}
+                  onNotify={setToast}
+                />
+              ) : (
+                <AccessRestrictedView
+                  targetView="team"
+                  onConnect={() => {
+                    setWorkspaceError("");
+                    setConnectOpen(true);
+                  }}
+                  onBackToOverview={() => handleSelectView("overview")}
+                />
+              )
             )}
             {view === "settings" && (
               <SettingsView

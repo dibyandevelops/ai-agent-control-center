@@ -23,6 +23,7 @@ interface CommandPaletteProps {
   onSelectView: (view: DashboardView) => void;
   onOpenCreatePolicy?: () => void;
   onVerifyIntegrity?: () => void;
+  canManageOperators?: boolean;
   agents?: Agent[];
   policies?: Policy[];
 }
@@ -33,6 +34,7 @@ export function CommandPalette({
   onSelectView,
   onOpenCreatePolicy,
   onVerifyIntegrity,
+  canManageOperators = false,
   agents = [],
   policies = [],
 }: CommandPaletteProps) {
@@ -52,20 +54,78 @@ export function CommandPalette({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  const quickNav = useMemo(
-    () => [
-      { id: "overview", label: "Overview Dashboard", category: "Navigation", icon: LayoutDashboard, action: () => onSelectView("overview") },
-      { id: "approvals", label: "Approval Queue & 4-Eyes Governance", category: "Navigation", icon: FileCheck2, action: () => onSelectView("approvals") },
-      { id: "policies", label: "Policies & Sandbox Replay", category: "Navigation", icon: Shield, action: () => onSelectView("policies") },
-      { id: "agents", label: "AI Agent Inventory & Killswitches", category: "Navigation", icon: Bot, action: () => onSelectView("agents") },
-      { id: "audit", label: "Audit Log & Cryptographic Seals", category: "Navigation", icon: FileClock, action: () => onSelectView("audit") },
-      { id: "integrations", label: "Integrations & HTTPS Webhooks", category: "Navigation", icon: PlugZap, action: () => onSelectView("integrations") },
-      { id: "team", label: "Team & SCIM / SAML Directory", category: "Navigation", icon: UsersRound, action: () => onSelectView("team") },
-      { id: "credentials", label: "Agent API Keys & Credentials", category: "Navigation", icon: KeyRound, action: () => onSelectView("credentials") },
-      { id: "settings", label: "Workspace & Profile Settings", category: "Navigation", icon: Settings, action: () => onSelectView("settings") },
-    ],
-    [onSelectView],
-  );
+  const quickNav = useMemo(() => {
+    const items = [
+      {
+        id: "overview",
+        label: "Overview Dashboard",
+        category: "Navigation",
+        icon: LayoutDashboard,
+        action: () => onSelectView("overview"),
+      },
+      {
+        id: "approvals",
+        label: "Approval Queue & 4-Eyes Governance",
+        category: "Navigation",
+        icon: FileCheck2,
+        action: () => onSelectView("approvals"),
+      },
+      {
+        id: "policies",
+        label: "Policies & Sandbox Replay",
+        category: "Navigation",
+        icon: Shield,
+        action: () => onSelectView("policies"),
+      },
+      {
+        id: "agents",
+        label: "AI Agent Inventory & Killswitches",
+        category: "Navigation",
+        icon: Bot,
+        action: () => onSelectView("agents"),
+      },
+      {
+        id: "audit",
+        label: "Audit Log & Cryptographic Seals",
+        category: "Navigation",
+        icon: FileClock,
+        action: () => onSelectView("audit"),
+      },
+      {
+        id: "integrations",
+        label: "Integrations & HTTPS Webhooks",
+        category: "Navigation",
+        icon: PlugZap,
+        action: () => onSelectView("integrations"),
+      },
+      ...(canManageOperators
+        ? [
+            {
+              id: "team",
+              label: "Team & SCIM / SAML Directory",
+              category: "Navigation",
+              icon: UsersRound,
+              action: () => onSelectView("team"),
+            },
+            {
+              id: "credentials",
+              label: "Agent API Keys & Credentials",
+              category: "Navigation",
+              icon: KeyRound,
+              action: () => onSelectView("credentials"),
+            },
+          ]
+        : []),
+      {
+        id: "settings",
+        label: "Workspace & Profile Settings",
+        category: "Navigation",
+        icon: Settings,
+        action: () => onSelectView("settings"),
+      },
+    ];
+    return items;
+  }, [onSelectView, canManageOperators]);
 
   const quickActions = useMemo(
     () => [
@@ -98,71 +158,75 @@ export function CommandPalette({
     if (!q) {
       return [...quickNav, ...quickActions];
     }
+    const navAndActions = [...quickNav, ...quickActions].filter((item) =>
+      item.label.toLowerCase().includes(q),
+    );
 
-    const matchedNav = quickNav.filter((item) => item.label.toLowerCase().includes(q));
-    const matchedActions = quickActions.filter((item) => item.label.toLowerCase().includes(q));
-
-    const matchedAgents = agents
-      .filter((a) => a.name.toLowerCase().includes(q) || a.owner.toLowerCase().includes(q))
+    const matchingAgents = agents
+      .filter(
+        (agent) =>
+          agent.name.toLowerCase().includes(q) ||
+          agent.team.toLowerCase().includes(q) ||
+          agent.owner.toLowerCase().includes(q),
+      )
       .slice(0, 5)
-      .map((a) => ({
-        id: `agent-${a.id}`,
-        label: `${a.name} (${a.status}) — Owner: ${a.owner}`,
-        category: "AI Agent",
+      .map((agent) => ({
+        id: `agent-${agent.id}`,
+        label: `${agent.name} (${agent.team})`,
+        category: "Agent",
         icon: Bot,
         action: () => onSelectView("agents"),
       }));
 
-    const matchedPolicies = policies
-      .filter((p) => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q))
+    const matchingPolicies = policies
+      .filter((policy) => policy.name.toLowerCase().includes(q))
       .slice(0, 5)
-      .map((p) => ({
-        id: `policy-${p.id}`,
-        label: `${p.name} [${p.mode}]`,
+      .map((policy) => ({
+        id: `policy-${policy.id}`,
+        label: `Policy: ${policy.name}`,
         category: "Policy",
         icon: Shield,
         action: () => onSelectView("policies"),
       }));
 
-    return [...matchedNav, ...matchedActions, ...matchedAgents, ...matchedPolicies];
+    return [...navAndActions, ...matchingAgents, ...matchingPolicies];
   }, [query, quickNav, quickActions, agents, policies, onSelectView]);
 
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[100] grid place-items-start justify-center bg-black/75 p-4 pt-16 sm:pt-24 backdrop-blur-sm"
+      className="fixed inset-0 z-[120] grid place-items-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in"
       role="presentation"
-      onMouseDown={() => {
-        setQuery("");
-        onClose();
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="w-full max-w-xl overflow-hidden rounded-2xl border border-sentinel-line-strong bg-sentinel-surface shadow-2xl animate-dialog-in"
+        className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-sentinel-line-strong bg-sentinel-surface shadow-2xl animate-dialog-in"
         role="dialog"
         aria-modal="true"
         aria-label="Command Palette"
-        onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center border-b border-sentinel-line px-4 py-3">
-          <Search className="h-4 w-4 text-sentinel-muted" />
+          <Search className="mr-3 h-4 w-4 text-sentinel-muted" />
           <input
-            className="flex-1 bg-transparent px-3 text-sm text-sentinel-text placeholder:text-sentinel-dim outline-none"
-            placeholder="Type a command, search agents, or jump to view…"
+            type="text"
+            className="w-full bg-transparent text-sm text-sentinel-text placeholder-sentinel-dim outline-none"
+            placeholder="Search views, agents, policies, actions… (ESC to close)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
           />
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-sentinel-line px-1.5 py-0.5 text-[10px] font-mono text-sentinel-muted">
+          <kbd className="rounded border border-sentinel-line bg-sentinel-canvas px-1.5 py-0.5 text-[10px] font-mono text-sentinel-muted">
             ESC
           </kbd>
         </div>
 
         <div className="max-h-80 overflow-y-auto p-2">
           {filteredItems.length === 0 ? (
-            <div className="py-8 text-center text-xs text-sentinel-muted">
-              No results found for &ldquo;{query}&rdquo;
+            <div className="p-6 text-center text-xs text-sentinel-muted">
+              No matching commands or resources found for &ldquo;{query}&rdquo;
             </div>
           ) : (
             <div className="space-y-1">
@@ -171,20 +235,17 @@ export function CommandPalette({
                 return (
                   <button
                     key={item.id}
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs transition hover:bg-sentinel-raised hover:text-sentinel-lime group"
+                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-sentinel-text transition hover:bg-sentinel-raised hover:text-sentinel-lime"
                     onClick={() => {
                       item.action();
-                      setQuery("");
                       onClose();
                     }}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Icon className="h-4 w-4 text-sentinel-muted group-hover:text-sentinel-lime shrink-0" />
-                      <span className="truncate text-sentinel-text group-hover:text-sentinel-lime font-medium">
-                        {item.label}
-                      </span>
+                      <Icon className="h-4 w-4 text-sentinel-muted shrink-0" />
+                      <span className="truncate">{item.label}</span>
                     </div>
-                    <span className="text-[10px] font-mono text-sentinel-dim uppercase tracking-wider shrink-0 ml-2">
+                    <span className="rounded-md border border-sentinel-line bg-sentinel-canvas/60 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-sentinel-dim shrink-0">
                       {item.category}
                     </span>
                   </button>
@@ -194,9 +255,9 @@ export function CommandPalette({
           )}
         </div>
 
-        <div className="border-t border-sentinel-line bg-sentinel-canvas/60 px-4 py-2 text-[11px] text-sentinel-dim flex items-center justify-between">
-          <span>Navigate with click or arrow keys</span>
-          <span>SentinelOps v0.1.0</span>
+        <div className="border-t border-sentinel-line bg-sentinel-canvas/40 px-4 py-2 text-[11px] text-sentinel-muted flex items-center justify-between">
+          <span>ProTip: Press <kbd className="font-mono text-sentinel-text">?</kbd> for full shortcut map</span>
+          <span className="font-mono">SentinelOps v1.2</span>
         </div>
       </div>
     </div>
