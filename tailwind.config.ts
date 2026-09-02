@@ -31,6 +31,9 @@ const config: Config = {
           "brand-sky": "#38bdf8",
         },
       },
+      borderColor: {
+        DEFAULT: "var(--border)",
+      },
       fontFamily: {
         sentinel: ["var(--font-app)", "Arial", "Helvetica", "sans-serif"],
         mono: ["var(--font-geist-mono)", "SFMono-Regular", "Consolas", "monospace"],

@@ -55,6 +55,14 @@
   --success-soft: rgba(5, 150, 105, 0.10);
 }
 
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+}
+
 * {
   box-sizing: border-box;
 }

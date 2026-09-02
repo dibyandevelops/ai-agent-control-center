@@ -762,37 +762,37 @@ export function ControlCenter({
           <main className="page animate-pulse space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-2">
-                <div className="h-8 w-60 rounded-xl bg-sentinel-line" />
-                <div className="h-4 w-96 rounded-lg bg-sentinel-line/60" />
+                <div className="h-8 w-60 rounded-xl bg-sentinel-soft/70" />
+                <div className="h-4 w-96 rounded-lg bg-sentinel-soft/40" />
               </div>
               <div className="flex gap-3">
-                <div className="h-10 w-36 rounded-xl bg-sentinel-line" />
-                <div className="h-10 w-36 rounded-xl bg-emerald-500/20 dark:bg-sentinel-lime/20" />
+                <div className="h-10 w-36 rounded-xl bg-sentinel-soft/60" />
+                <div className="h-10 w-36 rounded-xl bg-emerald-500/15 dark:bg-sentinel-lime/15" />
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-5 space-y-3"
+                  className="rounded-2xl border border-sentinel-line/60 bg-sentinel-surface p-5 space-y-3"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="h-4 w-24 rounded bg-sentinel-line/70" />
-                    <div className="h-8 w-8 rounded-lg bg-sentinel-line/50" />
+                    <div className="h-4 w-24 rounded bg-sentinel-soft/60" />
+                    <div className="h-8 w-8 rounded-lg bg-sentinel-soft/40" />
                   </div>
-                  <div className="h-8 w-20 rounded bg-sentinel-line" />
-                  <div className="h-3 w-32 rounded bg-sentinel-line/50" />
+                  <div className="h-8 w-20 rounded bg-sentinel-soft/80" />
+                  <div className="h-3 w-32 rounded bg-sentinel-soft/40" />
                 </div>
               ))}
             </div>
-            <div className="rounded-3xl border border-sentinel-line bg-sentinel-surface p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-sentinel-line/60 pb-4">
-                <div className="h-6 w-52 rounded bg-sentinel-line" />
-                <div className="h-8 w-32 rounded-xl bg-sentinel-line/50" />
+            <div className="rounded-3xl border border-sentinel-line/60 bg-sentinel-surface p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-sentinel-line/50 pb-4">
+                <div className="h-6 w-52 rounded bg-sentinel-soft/70" />
+                <div className="h-8 w-32 rounded-xl bg-sentinel-soft/40" />
               </div>
-              <div className="h-14 w-full rounded-xl bg-sentinel-line/30" />
-              <div className="h-14 w-full rounded-xl bg-sentinel-line/30" />
-              <div className="h-14 w-full rounded-xl bg-sentinel-line/30" />
+              <div className="h-14 w-full rounded-xl bg-sentinel-soft/30" />
+              <div className="h-14 w-full rounded-xl bg-sentinel-soft/30" />
+              <div className="h-14 w-full rounded-xl bg-sentinel-soft/30" />
             </div>
           </main>
         ) : (
