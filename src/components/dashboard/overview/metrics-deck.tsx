@@ -20,6 +20,7 @@ export function MetricCard({
   badgeColor = "text-sentinel-lime border-sentinel-lime/30 bg-sentinel-lime/10",
   meterPercent,
   meterColor = "bg-sentinel-lime",
+  onClick,
 }: {
   icon: typeof Bot;
   title: string;
@@ -29,9 +30,15 @@ export function MetricCard({
   badgeColor?: string;
   meterPercent?: number;
   meterColor?: string;
+  onClick?: () => void;
 }) {
   return (
-    <div className="group relative flex h-full flex-col justify-between overflow-hidden rounded-xl border border-sentinel-line/80 bg-gradient-to-b from-sentinel-surface via-sentinel-surface/90 to-sentinel-surface/60 p-3 sm:p-3.5 shadow-sm backdrop-blur-md transition-all duration-200 hover:border-sentinel-lime/40 hover:shadow-md">
+    <div
+      onClick={onClick}
+      className={`group relative flex h-full flex-col justify-between overflow-hidden rounded-xl border border-sentinel-line/80 bg-gradient-to-b from-sentinel-surface via-sentinel-surface/90 to-sentinel-surface/60 p-3 sm:p-3.5 shadow-sm backdrop-blur-md transition-all duration-200 hover:border-sentinel-lime/40 hover:shadow-md ${
+        onClick ? "cursor-pointer hover:border-sentinel-lime/60 hover:scale-[1.01]" : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-sentinel-line bg-sentinel-canvas/80 text-sentinel-lime shadow-sm transition-transform duration-200 group-hover:scale-105">
@@ -78,11 +85,13 @@ export function MetricsDeck({
   approvals,
   audit,
   className = "mb-5",
+  onViewApprovals,
 }: {
   agents: Agent[];
   approvals: Approval[];
   audit: AuditEvent[];
   className?: string;
+  onViewApprovals?: () => void;
 }) {
   const totalSpend = agents.reduce((sum, agent) => sum + agent.cost, 0);
   const healthyAgents = agents.filter((agent) => agent.status === "healthy").length;
@@ -138,6 +147,7 @@ export function MetricsDeck({
         }
         meterPercent={approvals.length > 0 ? 35 : 100}
         meterColor={approvals.length > 0 ? "bg-amber-400" : "bg-sentinel-lime"}
+        onClick={onViewApprovals}
       />
       <MetricCard
         icon={CircleDollarSign}

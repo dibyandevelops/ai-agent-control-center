@@ -10,7 +10,7 @@ import { MetricsDeck, MetricCard } from "../overview/metrics-deck";
 import { ActivityChart } from "../overview/activity-chart";
 import { RiskPosture } from "../overview/risk-posture";
 import { ApprovalCard } from "../overview/approval-card";
-import { ApprovalRail } from "../overview/approval-rail";
+import { ApprovalRail, ApprovalBanner } from "../overview/approval-rail";
 import { PilotReadiness } from "../overview/pilot-readiness";
 import { OperationsHub, AgentActivityFeed } from "../overview/operations-hub";
 
@@ -24,6 +24,7 @@ export {
   RiskPosture,
   ApprovalCard,
   ApprovalRail,
+  ApprovalBanner,
   PilotReadiness,
   OperationsHub,
   AgentActivityFeed,
@@ -93,35 +94,31 @@ export function OverviewView({
           approvals={approvals}
           audit={audit}
           className="mb-0"
+          onViewApprovals={onViewApprovals}
         />
       </div>
 
-      {/* 2. Independently Scrollable Workspace: Operations Hub (Fleet Roster Table & Telemetry), Analytics Line Chart, Risk Posture, and Consequential Approvals */}
-      <div ref={scrollAreaRef} className="overview-scroll-area flex-1 min-h-0 overflow-y-auto pr-1 pb-4 pt-2.5 space-y-5">
-        <div className="dashboard-grid">
-          {/* Main Column: Operations Center & Analytics */}
-          <div className="dashboard-main space-y-5 min-w-0">
-            {/* Unified Operations Hub (Fleet Roster / Live Telemetry / Security Gate) */}
-            <OperationsHub
-              agents={agents}
-              audit={audit}
-              onOpenPolicies={onOpenPolicies}
-            />
+      {/* 2. Independently Scrollable Workspace */}
+      <div ref={scrollAreaRef} className="overview-scroll-area flex-1 min-h-0 overflow-y-auto pr-1 pb-4 pt-2.5 space-y-4">
+        {/* Prominent Consequential Approval Gate: Highly notifiable when pending actions exist */}
+        <ApprovalBanner
+          approvals={approvals}
+          onDecision={onDecision}
+          onViewAll={onViewApprovals}
+          canDecide={canDecide}
+        />
 
-            {/* Analytics Line Chart & Threat Posture */}
-            <div className="analytics-grid">
-              <ActivityChart events={audit} live={live} fallbackData={chartData} />
-              <RiskPosture events={audit} onOpenPolicies={onOpenPolicies} />
-            </div>
-          </div>
+        {/* 100% Full-Width Operations Hub: Fleet Roster Table, Live Telemetry Stream, Security Gate */}
+        <OperationsHub
+          agents={agents}
+          audit={audit}
+          onOpenPolicies={onOpenPolicies}
+        />
 
-          {/* Right Sidebar: Human-in-the-Loop Consequential Approvals */}
-          <ApprovalRail
-            approvals={approvals}
-            onDecision={onDecision}
-            onViewAll={onViewApprovals}
-            canDecide={canDecide}
-          />
+        {/* 100% Full-Width Analytics: Activity Line Chart & Real-Time Risk Posture */}
+        <div className="analytics-grid">
+          <ActivityChart events={audit} live={live} fallbackData={chartData} />
+          <RiskPosture events={audit} onOpenPolicies={onOpenPolicies} />
         </div>
       </div>
     </main>
