@@ -2,7 +2,9 @@
 
 import {
   ArrowDownToLine,
+  BookOpen,
   Bot,
+  ExternalLink,
   Filter,
   LoaderCircle,
   MoreHorizontal,
@@ -12,6 +14,7 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import React, { useMemo, useState } from "react";
 import type { Agent, AgentStatus, AuditEvent } from "@/lib/types";
 import { TablePagination } from "@/components/table-pagination";
@@ -429,9 +432,20 @@ export function AgentsView({
           <h2>AI agent inventory</h2>
           <p>Every autonomous system, owner, permission, and health signal in one place.</p>
         </div>
-        <button className="primary-button primary-large w-full sm:w-auto justify-center" onClick={onRegister}>
-          <Plus /> Register agent
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Link
+            href="/docs/connecting-agents"
+            target="_blank"
+            className="secondary-button text-xs py-2 px-3 flex items-center justify-center gap-1.5 w-full sm:w-auto"
+          >
+            <BookOpen className="h-3.5 w-3.5 text-sentinel-lime" />
+            <span>Connection Docs</span>
+            <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+          </Link>
+          <button className="primary-button primary-large w-full sm:w-auto justify-center" onClick={onRegister}>
+            <Plus /> Register agent
+          </button>
+        </div>
       </div>
       <div className="summary-strip">
         <span><strong>{agents.length}</strong> Registered</span>
