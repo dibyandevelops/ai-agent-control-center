@@ -2,6 +2,7 @@
 
 import {
   Bell,
+  Bot,
   Building2,
   ChevronDown,
   Command,
@@ -13,6 +14,7 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
+import Link from "next/link";
 import React from "react";
 import type { Agent, Approval, DashboardView, OperatorIdentity } from "@/lib/types";
 import { NotificationPopover } from "@/components/notification-popover";
@@ -111,6 +113,15 @@ export function TopBar({
             <Command />K
           </kbd>
         </button>
+
+        <Link
+          href="/sales-agent"
+          className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+          title="Try Orkestrate Sales Assistant"
+        >
+          <Bot className="h-3.5 w-3.5" />
+          <span>Sales Agent</span>
+        </Link>
 
         <ThemeToggle />
 
