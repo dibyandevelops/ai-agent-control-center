@@ -31,14 +31,14 @@ export function MetricCard({
   meterColor?: string;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-sentinel-line/80 bg-gradient-to-b from-sentinel-surface via-sentinel-surface/90 to-sentinel-surface/60 p-5 shadow-sm backdrop-blur-md transition-all duration-200 hover:border-sentinel-lime/40 hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+    <div className="group relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-sentinel-line/80 bg-gradient-to-b from-sentinel-surface via-sentinel-surface/90 to-sentinel-surface/60 p-4 sm:p-5 shadow-sm backdrop-blur-md transition-all duration-200 hover:border-sentinel-lime/40 hover:shadow-md">
+      <div className="flex items-start justify-between gap-2.5">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sentinel-line bg-sentinel-canvas/80 text-sentinel-lime shadow-sm transition-transform duration-200 group-hover:scale-105">
             <Icon className="h-5 w-5" />
           </div>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-sentinel-muted">
+          <div className="min-w-0">
+            <span className="block truncate text-[10px] font-bold uppercase tracking-wider text-sentinel-muted whitespace-nowrap">
               {title}
             </span>
             <div className="mt-0.5 font-mono text-2xl font-bold tracking-tight text-sentinel-text">
@@ -48,25 +48,27 @@ export function MetricCard({
         </div>
         {badge && (
           <span
-            className={`rounded-full border px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${badgeColor}`}
+            className={`shrink-0 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${badgeColor}`}
           >
             {badge}
           </span>
         )}
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2 text-[11px] text-sentinel-muted">
-        <span className="truncate">{subtitle}</span>
-      </div>
-
-      {meterPercent !== undefined && (
-        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-sentinel-canvas/70">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${meterColor}`}
-            style={{ width: `${Math.min(100, Math.max(0, meterPercent))}%` }}
-          />
+      <div className="mt-auto pt-3.5">
+        <div className="flex items-center justify-between gap-2 text-[11px] text-sentinel-muted">
+          <span className="truncate">{subtitle}</span>
         </div>
-      )}
+
+        {meterPercent !== undefined && (
+          <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-sentinel-canvas/70">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${meterColor}`}
+              style={{ width: `${Math.min(100, Math.max(0, meterPercent))}%` }}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -105,7 +107,7 @@ export function MetricsDeck({
       />
       <MetricCard
         icon={ShieldCheck}
-        title="Policy Enforcement"
+        title="Policy Guard"
         value={compliance}
         subtitle={
           policySummary.total
