@@ -67,12 +67,21 @@ export function useControlCenterActions({
     setRegisterOpen(false);
   }
 
-  async function decideApproval(approval: Approval, decision: "approved" | "denied") {
+  async function decideApproval(
+    approval: Approval,
+    decision: "approved" | "denied",
+    reason?: string,
+  ) {
     if (workspaceMode === "live") {
       const response = await fetch(`/api/v1/actions/${approval.id}/decision`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ decision }),
+        body: JSON.stringify({
+          decision,
+          reason:
+            reason ||
+            `${decision === "approved" ? "Approved" : "Denied"} via Operator Dashboard`,
+        }),
       });
       if (!response.ok) {
         const err = (await response.json().catch(() => ({}))) as { error?: string };

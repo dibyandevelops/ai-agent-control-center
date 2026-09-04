@@ -24,7 +24,12 @@ export const actionEvaluationSchema = z.object({
 
 export const decisionSchema = z.object({
   decision: z.enum(["approved", "denied"]),
-  reason: z.string().min(3).max(1_000),
+  reason: z
+    .string()
+    .trim()
+    .max(1_000)
+    .optional()
+    .transform((val) => (val && val.length > 0 ? val : "Decision recorded by operator.")),
 });
 
 export const releaseGovernanceRequestSchema = z.object({
