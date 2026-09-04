@@ -565,14 +565,14 @@ export function ApprovalCard({
         ) : null}
         <div>
           <dt>Context</dt>
-          <dd className="min-w-0 break-words [overflow-wrap:anywhere]">
+          <dd className={`min-w-0 break-words [overflow-wrap:anywhere] ${expanded ? "" : "line-clamp-2"}`} title={approval.context}>
             {approval.context}
           </dd>
         </div>
       </dl>
 
-      {(detailed || expanded) && (
-        <div className="mb-3 rounded-lg border border-sentinel-line/60 bg-sentinel-canvas/60 p-2.5 text-[11px] space-y-1.5">
+      {expanded && (
+        <div className="mb-3 rounded-lg border border-sentinel-line/60 bg-sentinel-canvas/70 p-3 text-[11px] space-y-2">
           <div className="flex items-center justify-between text-sentinel-muted text-[10px]">
             <span className="font-semibold text-sentinel-text">Governance & Impact Assessment</span>
             <span className="font-mono text-[9px] text-sentinel-muted">UUID: {approval.id}</span>
@@ -580,6 +580,10 @@ export function ApprovalCard({
           <p className="text-sentinel-muted leading-relaxed text-[10px]">
             Zero-trust policy engine intercepted this mutation because target <span className="font-mono font-medium text-sentinel-text">{approval.resource}</span> contains production-impacting permissions. Execution remains paused until an authorized reviewer signs off.
           </p>
+          <div className="pt-2 border-t border-sentinel-line/40 text-[10px] text-sentinel-muted flex items-center justify-between">
+            <span>Trigger: Production Mutation Policy</span>
+            <span className="font-mono text-amber-500 dark:text-amber-400 font-medium">Status: Awaiting Human Sign-Off</span>
+          </div>
         </div>
       )}
 
@@ -587,10 +591,10 @@ export function ApprovalCard({
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1 text-[11px] font-medium text-sentinel-muted hover:text-sentinel-text"
+          className="flex items-center gap-1 text-xs font-semibold text-sentinel-lime hover:underline cursor-pointer"
         >
-          {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          <span>{expanded ? "Less details" : "More details"}</span>
+          {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          <span>{expanded ? "Hide details" : "Show details"}</span>
         </button>
       </div>
 
