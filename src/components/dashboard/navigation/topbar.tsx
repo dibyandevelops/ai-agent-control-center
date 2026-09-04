@@ -92,26 +92,40 @@ export function TopBar({
       <div className="topbar-actions">
         {operator ? (
           <button
-            className="organization-control"
+            className="organization-control cursor-pointer"
             onClick={() => onSelectView("settings")}
             title="Manage organization & settings"
           >
-            <Building2 />
-            <span className="truncate max-w-[120px]">{operator.organizationName}</span>
-            <ChevronDown className="h-3 w-3 opacity-60" />
+            <Building2 className="h-4 w-4 shrink-0 text-sentinel-muted" />
+            <span className="truncate max-w-[140px] sm:max-w-[170px] text-xs font-medium">{operator.organizationName}</span>
+            <ChevronDown className="h-3 w-3 opacity-60 shrink-0" />
           </button>
         ) : null}
 
         <button
-          className="command-control hidden md:flex"
+          className="command-control hidden md:flex w-48 lg:w-56 xl:w-64 items-center justify-between cursor-pointer"
           onClick={onOpenCommandPalette}
           aria-label="Search or run command"
         >
-          <Search />
-          <span>Search or run command…</span>
-          <kbd>
-            <Command />K
+          <div className="flex items-center gap-2 min-w-0">
+            <Search className="h-3.5 w-3.5 shrink-0 text-sentinel-muted" />
+            <span className="truncate whitespace-nowrap text-xs text-sentinel-muted">
+              <span className="hidden lg:inline">Search or run command…</span>
+              <span className="lg:hidden">Search…</span>
+            </span>
+          </div>
+          <kbd className="shrink-0 font-mono text-[10px] flex items-center gap-0.5 ml-1">
+            <Command className="h-2.5 w-2.5" />K
           </kbd>
+        </button>
+
+        <button
+          className="icon-button md:hidden"
+          onClick={onOpenCommandPalette}
+          aria-label="Search or run command"
+          title="Search (⌘K)"
+        >
+          <Search className="h-4 w-4" />
         </button>
 
         <ThemeToggle />

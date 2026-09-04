@@ -748,9 +748,15 @@ export function ControlCenter({
           onClose={() => setCommandPaletteOpen(false)}
           onSelectView={handleSelectView}
           onOpenCreatePolicy={() => handleSelectView("policies")}
+          onOpenRegisterAgent={() => setRegisterOpen(true)}
+          onOpenConnect={() => {
+            setWorkspaceError("");
+            setConnectOpen(true);
+          }}
           canManageOperators={canManageOperators}
           agents={agentList}
           policies={policyList}
+          approvals={approvalList}
         />
 
         <WorkspaceBanner

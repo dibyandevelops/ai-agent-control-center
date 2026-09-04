@@ -15,7 +15,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
-import type { Agent, DashboardView, Policy } from "@/lib/types";
+import type { Agent, Approval, DashboardView, Policy } from "@/lib/types";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -23,9 +23,12 @@ interface CommandPaletteProps {
   onSelectView: (view: DashboardView) => void;
   onOpenCreatePolicy?: () => void;
   onVerifyIntegrity?: () => void;
+  onOpenRegisterAgent?: () => void;
+  onOpenConnect?: () => void;
   canManageOperators?: boolean;
   agents?: Agent[];
   policies?: Policy[];
+  approvals?: Approval[];
 }
 
 export function CommandPalette({
@@ -34,25 +37,16 @@ export function CommandPalette({
   onSelectView,
   onOpenCreatePolicy,
   onVerifyIntegrity,
+  onOpenRegisterAgent,
+  onOpenConnect,
   canManageOperators = false,
   agents = [],
   policies = [],
+  approvals = [],
 }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        if (open) onClose();
-      }
-      if (event.key === "Escape" && open) {
-        onClose();
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const listRef = React.useRef<HTMLDivElement | null>(null);
 
   const quickNav = useMemo(() => {
     const items = [
@@ -129,6 +123,28 @@ export function CommandPalette({
 
   const quickActions = useMemo(
     () => [
+      ...(onOpenRegisterAgent
+        ? [
+            {
+              id: "register-agent",
+              label: "Register new AI agent",
+              category: "Action",
+              icon: Bot,
+              action: onOpenRegisterAgent,
+            },
+          ]
+        : []),
+      ...(onOpenConnect
+        ? [
+            {
+              id: "connect-session",
+              label: "Connect live telemetry session",
+              category: "Action",
+              icon: PlugZap,
+              action: onOpenConnect,
+            },
+          ]
+        : []),
       {
         id: "create-policy",
         label: "Create new enforcement policy",
@@ -150,7 +166,7 @@ export function CommandPalette({
         },
       },
     ],
-    [onSelectView, onOpenCreatePolicy, onVerifyIntegrity],
+    [onSelectView, onOpenCreatePolicy, onVerifyIntegrity, onOpenRegisterAgent, onOpenConnect],
   );
 
   const filteredItems = useMemo(() => {
@@ -159,27 +175,44 @@ export function CommandPalette({
       return [...quickNav, ...quickActions];
     }
     const navAndActions = [...quickNav, ...quickActions].filter((item) =>
-      item.label.toLowerCase().includes(q),
+      item.label.toLowerCase().includes(q) || item.category.toLowerCase().includes(q),
     );
+
+    const matchingApprovals = approvals
+      .filter(
+        (approval) =>
+          approval.agentName.toLowerCase().includes(q) ||
+          approval.request.toLowerCase().includes(q) ||
+          approval.resource.toLowerCase().includes(q),
+      )
+      .slice(0, 4)
+      .map((approval) => ({
+        id: `approval-${approval.id}`,
+        label: `Approval Gate: ${approval.agentName} (${approval.request})`,
+        category: "Approval",
+        icon: FileCheck2,
+        action: () => onSelectView("approvals"),
+      }));
 
     const matchingAgents = agents
       .filter(
         (agent) =>
           agent.name.toLowerCase().includes(q) ||
           agent.team.toLowerCase().includes(q) ||
-          agent.owner.toLowerCase().includes(q),
+          agent.owner.toLowerCase().includes(q) ||
+          agent.status.toLowerCase().includes(q),
       )
       .slice(0, 5)
       .map((agent) => ({
         id: `agent-${agent.id}`,
-        label: `${agent.name} (${agent.team})`,
+        label: `${agent.name} • ${agent.team} (${agent.status})`,
         category: "Agent",
         icon: Bot,
         action: () => onSelectView("agents"),
       }));
 
     const matchingPolicies = policies
-      .filter((policy) => policy.name.toLowerCase().includes(q))
+      .filter((policy) => policy.name.toLowerCase().includes(q) || policy.description?.toLowerCase().includes(q))
       .slice(0, 5)
       .map((policy) => ({
         id: `policy-${policy.id}`,
@@ -189,8 +222,53 @@ export function CommandPalette({
         action: () => onSelectView("policies"),
       }));
 
-    return [...navAndActions, ...matchingAgents, ...matchingPolicies];
-  }, [query, quickNav, quickActions, agents, policies, onSelectView]);
+    return [...matchingApprovals, ...navAndActions, ...matchingAgents, ...matchingPolicies];
+  }, [query, quickNav, quickActions, agents, policies, approvals, onSelectView]);
+
+  useEffect(() => {
+    if (open) {
+      setQuery("");
+      setSelectedIndex(0);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [query]);
+
+  useEffect(() => {
+    if (!open) return;
+    const activeEl = listRef.current?.querySelector(`[data-index="${selectedIndex}"]`);
+    activeEl?.scrollIntoView({ block: "nearest" });
+  }, [selectedIndex, open]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        if (open) onClose();
+      }
+      if (!open) return;
+
+      if (event.key === "Escape") {
+        onClose();
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSelectedIndex((prev) => (filteredItems.length ? (prev + 1) % filteredItems.length : 0));
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSelectedIndex((prev) => (filteredItems.length ? (prev - 1 + filteredItems.length) % filteredItems.length : 0));
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        if (filteredItems[selectedIndex]) {
+          filteredItems[selectedIndex].action();
+          onClose();
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose, filteredItems, selectedIndex]);
 
   if (!open) return null;
 
@@ -212,8 +290,8 @@ export function CommandPalette({
           <Search className="mr-3 h-4 w-4 text-sentinel-muted" />
           <input
             type="text"
-            className="w-full bg-transparent text-sm text-sentinel-text placeholder-sentinel-dim outline-none"
-            placeholder="Search views, agents, policies, actions… (ESC to close)"
+            className="w-full bg-transparent text-sm text-sentinel-text placeholder:text-sentinel-muted outline-none"
+            placeholder="Search views, agents, approvals, policies… (ESC to close)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
@@ -223,26 +301,33 @@ export function CommandPalette({
           </kbd>
         </div>
 
-        <div className="max-h-80 overflow-y-auto p-2">
+        <div ref={listRef} className="max-h-80 overflow-y-auto p-2">
           {filteredItems.length === 0 ? (
             <div className="p-6 text-center text-xs text-sentinel-muted">
               No matching commands or resources found for &ldquo;{query}&rdquo;
             </div>
           ) : (
             <div className="space-y-1">
-              {filteredItems.map((item) => {
+              {filteredItems.map((item, index) => {
                 const Icon = item.icon;
+                const isSelected = index === selectedIndex;
                 return (
                   <button
                     key={item.id}
-                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-sentinel-text transition hover:bg-sentinel-raised hover:text-sentinel-lime"
+                    data-index={index}
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition cursor-pointer ${
+                      isSelected
+                        ? "bg-sentinel-surface-raised border border-sentinel-lime/40 text-sentinel-lime shadow-sm"
+                        : "text-sentinel-text hover:bg-sentinel-surface-raised hover:text-sentinel-lime border border-transparent"
+                    }`}
+                    onMouseEnter={() => setSelectedIndex(index)}
                     onClick={() => {
                       item.action();
                       onClose();
                     }}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Icon className="h-4 w-4 text-sentinel-muted shrink-0" />
+                      <Icon className={`h-4 w-4 shrink-0 ${isSelected ? "text-sentinel-lime" : "text-sentinel-muted"}`} />
                       <span className="truncate">{item.label}</span>
                     </div>
                     <span className="rounded-md border border-sentinel-line bg-sentinel-canvas/60 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-sentinel-dim shrink-0">
@@ -256,8 +341,11 @@ export function CommandPalette({
         </div>
 
         <div className="border-t border-sentinel-line bg-sentinel-canvas/40 px-4 py-2 text-[11px] text-sentinel-muted flex items-center justify-between">
-          <span>ProTip: Press <kbd className="font-mono text-sentinel-text">?</kbd> for full shortcut map</span>
-          <span className="font-mono">SentinelOps v1.2</span>
+          <div className="flex items-center gap-2">
+            <span>Navigate <kbd className="font-mono text-[10px] px-1 bg-sentinel-surface border rounded">↑</kbd> <kbd className="font-mono text-[10px] px-1 bg-sentinel-surface border rounded">↓</kbd></span>
+            <span>Select <kbd className="font-mono text-[10px] px-1 bg-sentinel-surface border rounded">↵</kbd></span>
+          </div>
+          <span className="font-mono text-[10px]">SentinelOps Command Center</span>
         </div>
       </div>
     </div>

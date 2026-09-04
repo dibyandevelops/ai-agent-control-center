@@ -449,19 +449,22 @@ button:disabled {
 }
 
 .command-control {
-  max-width: 210px;
-  width: 100%;
-  padding: 0 10px;
+  height: 38px;
+  padding: 0 12px;
   color: var(--muted);
   text-align: left;
+  white-space: nowrap;
 }
 
-.command-control > svg {
-  width: 16px;
+.command-control svg {
+  width: 15px;
+  height: 15px;
 }
 
 .command-control span {
-  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 kbd {
