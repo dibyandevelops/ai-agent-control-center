@@ -13,26 +13,9 @@ import {
   Shield,
   UsersRound,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  agents as initialAgents,
-  approvals as initialApprovals,
-  auditEvents as initialAuditEvents,
-  integrations,
-  policies as initialPolicies,
-} from "@/lib/demo-data";
+import { useCallback, useEffect, useState } from "react";
 import { MfaVerificationDialog } from "@/components/mfa-verification-dialog";
-import type {
-  Agent,
-  Approval,
-  AuditEvent,
-  DashboardView,
-  Integration,
-  OperatorIdentity,
-  Policy,
-  PolicyActivationRequest,
-  ReleaseGovernanceQueueItem,
-} from "@/lib/types";
+import type { DashboardView } from "@/lib/types";
 import { OperatorManagement } from "@/components/operator-management";
 import { PasswordChangeDialog } from "@/components/password-change-dialog";
 import { ApiKeyManagement } from "@/components/api-key-management";
@@ -44,7 +27,6 @@ import { Sidebar } from "@/components/dashboard/navigation/sidebar";
 import { ActionDetailDrawer } from "@/components/dashboard/drawers/action-detail-drawer";
 import { RegisterDialog } from "@/components/dashboard/dialogs/register-agent-dialog";
 import { LiveConnectionDialog } from "@/components/dashboard/dialogs/live-connection-dialog";
-export type { DashboardView } from "@/lib/types";
 import { OverviewView } from "@/components/dashboard/views/overview-view";
 import { AgentsView } from "@/components/dashboard/views/agents-view";
 import { ActivityView } from "@/components/dashboard/views/activity-view";
@@ -54,20 +36,15 @@ import { AuditView } from "@/components/dashboard/views/audit-view";
 import { IntegrationsView } from "@/components/dashboard/views/integrations-view";
 import { SettingsView } from "@/components/dashboard/views/settings-view";
 import { AccessRestrictedView } from "@/components/dashboard/views/access-restricted-view";
+import {
+  useControlCenterData,
+  type WorkspaceMode,
+} from "@/hooks/use-control-center-data";
+import { useControlCenterActions } from "@/hooks/use-control-center-actions";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
-type WorkspaceMode = "demo" | "connecting" | "live";
-
-interface LiveControlCenterPayload {
-  mode: "live";
-  operator: OperatorIdentity;
-  agents: Agent[];
-  approvals: Approval[];
-  policies: Policy[];
-  policyActivations: PolicyActivationRequest[];
-  releaseGovernance: ReleaseGovernanceQueueItem[];
-  audit: AuditEvent[];
-  integrations: Integration[];
-}
+export type { DashboardView };
+export type { WorkspaceMode };
 
 export const navItems: Array<{
   id: DashboardView;
@@ -146,7 +123,7 @@ function WorkspaceBanner({
         className="primary-button text-xs py-1.5 px-4 shrink-0 shadow-sm"
         onClick={onConnect}
       >
-        <PlugZap className="h-3.5 w-3.5" />
+        <PlugZap2 className="h-3.5 w-3.5" />
         <span>Connect Live Session</span>
       </button>
     </div>
@@ -165,31 +142,17 @@ export function ControlCenter({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
-  const [connectLoading, setConnectLoading] = useState(false);
   const [passwordChangeOpen, setPasswordChangeOpen] = useState(false);
   const [passwordChangeRequired, setPasswordChangeRequired] = useState(false);
   const [passwordChangeLoading, setPasswordChangeLoading] = useState(false);
   const [passwordChangeError, setPasswordChangeError] = useState("");
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>("connecting");
-  const [workspaceError, setWorkspaceError] = useState("");
-  const [operatorIdentity, setOperatorIdentity] = useState<OperatorIdentity | null>(null);
-  const [agentList, setAgentList] = useState(initialAgents);
-  const [approvalList, setApprovalList] = useState(initialApprovals);
-  const [policyList, setPolicyList] = useState(initialPolicies);
-  const [policyActivationList, setPolicyActivationList] = useState<PolicyActivationRequest[]>([]);
-  const [releaseGovernanceList, setReleaseGovernanceList] = useState<ReleaseGovernanceQueueItem[]>([]);
-  const [auditList, setAuditList] = useState(initialAuditEvents);
-  const [integrationList, setIntegrationList] = useState(integrations);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastData | string | null>(null);
   const [pendingMfaAction, setPendingMfaAction] = useState<null | { label: string; retry: () => Promise<void> }>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const pendingKeySeqRef = useRef<string | null>(null);
-  const keySeqTimerRef = useRef<number | null>(null);
 
   const handleSelectView = useCallback((nextView: DashboardView) => {
     setView(nextView);
@@ -200,50 +163,10 @@ export function ControlCenter({
     }
   }, []);
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      const target = e.target as HTMLElement;
-      if (
-        target?.tagName === "INPUT" ||
-        target?.tagName === "TEXTAREA" ||
-        target?.tagName === "SELECT" ||
-        target?.isContentEditable
-      ) {
-        return;
-      }
-
-      if (e.key === "?" && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        setShortcutsOpen((prev) => !prev);
-        return;
-      }
-
-      if (e.key.toLowerCase() === "g" && !e.metaKey && !e.ctrlKey) {
-        pendingKeySeqRef.current = "g";
-        if (keySeqTimerRef.current) window.clearTimeout(keySeqTimerRef.current);
-        keySeqTimerRef.current = window.setTimeout(() => {
-          pendingKeySeqRef.current = null;
-        }, 1200);
-        return;
-      }
-
-      if (pendingKeySeqRef.current === "g") {
-        const key = e.key.toLowerCase();
-        pendingKeySeqRef.current = null;
-        if (key === "o") { e.preventDefault(); handleSelectView("overview"); }
-        else if (key === "a") { e.preventDefault(); handleSelectView("agents"); }
-        else if (key === "p") { e.preventDefault(); handleSelectView("policies"); }
-        else if (key === "i") { e.preventDefault(); handleSelectView("integrations"); }
-        else if (key === "u") { e.preventDefault(); handleSelectView("audit"); }
-        else if (key === "c") { e.preventDefault(); handleSelectView("credentials"); }
-        else if (key === "t") { e.preventDefault(); handleSelectView("team"); }
-        else if (key === "s") { e.preventDefault(); handleSelectView("settings"); }
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleSelectView]);
+  useKeyboardShortcuts({
+    onSelectView: handleSelectView,
+    onToggleShortcuts: () => setShortcutsOpen((prev) => !prev),
+  });
 
   useEffect(() => {
     const onPopState = () => {
@@ -277,426 +200,62 @@ export function ControlCenter({
     return () => window.clearTimeout(timer);
   }, []);
 
-  const applyLivePayload = useCallback((payload: LiveControlCenterPayload) => {
-    setAgentList(payload.agents);
-    setApprovalList(payload.approvals);
-    setPolicyList(payload.policies);
-    setPolicyActivationList(payload.policyActivations);
-    setReleaseGovernanceList(payload.releaseGovernance);
-    setAuditList(payload.audit);
-    setIntegrationList(payload.integrations);
-    setOperatorIdentity(payload.operator);
-    setWorkspaceMode("live");
-    setWorkspaceError("");
-  }, []);
+  const {
+    workspaceMode,
+    setWorkspaceMode,
+    workspaceError,
+    setWorkspaceError,
+    operatorIdentity,
+    setOperatorIdentity,
+    agentList,
+    setAgentList,
+    approvalList,
+    setApprovalList,
+    policyList,
+    setPolicyList,
+    policyActivationList,
+    releaseGovernanceList,
+    auditList,
+    integrationList,
+    refreshLiveWorkspace,
+    canApprove,
+    canManagePolicies,
+    canGovernReleases,
+    canManageOperators,
+    pendingApprovals,
+  } = useControlCenterData();
 
-  const refreshLiveWorkspace = useCallback(async () => {
-    const response = await fetch("/api/v1/control-center", { cache: "no-store" });
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(payload.error || "Unable to load live workspace.");
-    }
-    applyLivePayload((await response.json()) as LiveControlCenterPayload);
-  }, [applyLivePayload]);
-
-  useEffect(() => {
-    const restoreTimer = window.setTimeout(() => {
-      try {
-        const saved = window.localStorage.getItem("sentinelops-demo-state");
-        if (saved) {
-          const parsed = JSON.parse(saved) as {
-            agents?: Agent[];
-            approvals?: Approval[];
-            policies?: Policy[];
-            audit?: AuditEvent[];
-          };
-          if (parsed.agents?.length) setAgentList(parsed.agents);
-          if (parsed.approvals?.length) setApprovalList(parsed.approvals);
-          if (parsed.policies?.length) setPolicyList(parsed.policies);
-          if (parsed.audit?.length) setAuditList(parsed.audit);
-        }
-      } catch {
-        // demo state parsing fallback
-      } finally {
-        setHydrated(true);
-      }
-    }, 0);
-    return () => window.clearTimeout(restoreTimer);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated || workspaceMode === "live") return;
-    try {
-      window.localStorage.setItem(
-        "sentinelops-demo-state",
-        JSON.stringify({
-          agents: agentList,
-          approvals: approvalList,
-          policies: policyList,
-          audit: auditList,
-        }),
-      );
-    } catch {
-      // storage unavailable
-    }
-  }, [agentList, approvalList, policyList, auditList, workspaceMode, hydrated]);
-
-  useEffect(() => {
-    let unmounted = false;
-    async function init() {
-      try {
-        const response = await fetch("/api/v1/control-center", { cache: "no-store" });
-        if (unmounted) return;
-        if (response.ok) {
-          applyLivePayload((await response.json()) as LiveControlCenterPayload);
-        } else {
-          setWorkspaceMode("demo");
-        }
-      } catch {
-        if (!unmounted) setWorkspaceMode("demo");
-      }
-    }
-    void init();
-    return () => {
-      unmounted = true;
-    };
-  }, [applyLivePayload]);
-
-  useEffect(() => {
-    if (workspaceMode !== "live") return;
-    const interval = window.setInterval(() => {
-      void refreshLiveWorkspace().catch(() => {});
-    }, 4000);
-    return () => window.clearInterval(interval);
-  }, [workspaceMode, refreshLiveWorkspace]);
-
-  const canApprove =
-    workspaceMode === "demo" ||
-    operatorIdentity?.role === "admin" ||
-    operatorIdentity?.role === "approver";
-  const canManagePolicies =
-    workspaceMode === "demo" ||
-    operatorIdentity?.role === "admin";
-  const canGovernReleases =
-    workspaceMode === "demo" || operatorIdentity?.role === "admin";
-  const canManageOperators = Boolean(operatorIdentity?.role === "admin");
-
-  const pendingApprovals = useMemo(
-    () => approvalList.filter((a) => a.status === "pending"),
-    [approvalList],
-  );
-
-  async function register(newAgent: Agent) {
-    if (workspaceMode === "live") {
-      const response = await fetch("/api/v1/agents", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name: newAgent.name,
-          owner: newAgent.owner,
-          team: newAgent.team,
-          provider: newAgent.provider,
-          description: newAgent.description,
-        }),
-      });
-      if (!response.ok) {
-        const err = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error || "Failed to register agent");
-      }
-      await refreshLiveWorkspace();
-      setToast(`Agent "${newAgent.name}" successfully registered.`);
-    } else {
-      setAgentList((prev) => [newAgent, ...prev]);
-      setToast(`Agent "${newAgent.name}" registered in demo workspace.`);
-    }
-    setRegisterOpen(false);
-  }
-
-  async function decide(approval: Approval, decision: "approved" | "denied") {
-    if (workspaceMode === "live") {
-      const response = await fetch(`/api/v1/actions/${approval.id}/decision`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ decision }),
-      });
-      if (!response.ok) {
-        const err = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error || "Decision failed");
-      }
-      await refreshLiveWorkspace();
-    } else {
-      setApprovalList((prev) =>
-        prev.map((item) =>
-          item.id === approval.id
-            ? { ...item, status: decision === "approved" ? "approved" : "denied" }
-            : item,
-        ),
-      );
-    }
-    setToast(
-      decision === "approved"
-        ? `Approved: ${approval.request}`
-        : `Denied: ${approval.request}`,
-    );
-  }
-
-  async function decideReleaseGovernance(
-    governanceId: string,
-    decision: "approved" | "rejected",
-    reason: string,
-  ) {
-    if (workspaceMode === "live") {
-      const response = await fetch(
-        `/api/v1/release-governance/${governanceId}/decision`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ decision, reason }),
-        },
-      );
-      if (!response.ok) {
-        const err = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error || "Governance decision failed");
-      }
-      await refreshLiveWorkspace();
-      setToast(`Release operation ${decision}.`);
-    }
-  }
-
-  async function retryReleaseGovernance(governanceId: string) {
-    if (workspaceMode === "live") {
-      const response = await fetch(
-        `/api/v1/release-governance/${governanceId}/retry`,
-        { method: "POST" },
-      );
-      if (!response.ok) {
-        const err = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error || "Retry failed");
-      }
-      await refreshLiveWorkspace();
-      setToast("Release execution requeued.");
-    }
-  }
-
-  async function togglePolicy(policyId: string) {
-    const policy = policyList.find((p) => p.id === policyId);
-    if (!policy) return;
-
-    if (workspaceMode === "live") {
-      const response = await fetch(`/api/v1/policies/${policyId}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ enabled: !policy.enabled }),
-      });
-      if (!response.ok) {
-        const err = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error || "Policy toggle failed");
-      }
-      await refreshLiveWorkspace();
-    } else {
-      setPolicyList((prev) =>
-        prev.map((item) =>
-          item.id === policyId ? { ...item, enabled: !item.enabled } : item,
-        ),
-      );
-    }
-    setToast(
-      !policy.enabled
-        ? `Enabled policy: ${policy.name}`
-        : `Disabled policy: ${policy.name}`,
-    );
-  }
-
-  function savePolicy(savedPolicy: Policy) {
-    if (workspaceMode === "live") {
-      void refreshLiveWorkspace();
-    } else {
-      setPolicyList((prev) => {
-        const exists = prev.some((p) => p.id === savedPolicy.id);
-        if (exists) {
-          return prev.map((p) => (p.id === savedPolicy.id ? savedPolicy : p));
-        }
-        return [savedPolicy, ...prev];
-      });
-    }
-    setToast(`Saved policy: ${savedPolicy.name}`);
-  }
-
-  async function decidePolicyActivation(
-    requestId: string,
-    decision: "approved" | "rejected",
-    reason: string,
-  ) {
-    if (workspaceMode === "live") {
-      const response = await fetch(
-        `/api/v1/policies/activation-requests/${requestId}/decision`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ decision, reason }),
-        },
-      );
-      if (!response.ok) {
-        const err = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error || "Activation decision failed");
-      }
-      await refreshLiveWorkspace();
-      setToast(`Policy activation ${decision}.`);
-    }
-  }
-
-  async function handleQuarantineAgent(agent: Agent, reason: string) {
-    if (workspaceMode === "live") {
-      const response = await fetch(`/api/v1/agents/${agent.id}/quarantine`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-      if (!response.ok) {
-        const err = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error || "Quarantine failed");
-      }
-      await refreshLiveWorkspace();
-    } else {
-      setAgentList((prev) =>
-        prev.map((a) =>
-          a.id === agent.id ? { ...a, status: "quarantined" } : a,
-        ),
-      );
-    }
-    setToast({
-      message: `Killswitch activated: ${agent.name} quarantined.`,
-      type: "error",
-    });
-  }
-
-  async function handleUnquarantineAgent(agent: Agent, reason: string) {
-    if (workspaceMode === "live") {
-      const response = await fetch(`/api/v1/agents/${agent.id}/unquarantine`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ reason }),
-      });
-      if (!response.ok) {
-        const err = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error || "Unquarantine failed");
-      }
-      await refreshLiveWorkspace();
-    } else {
-      setAgentList((prev) =>
-        prev.map((a) => (a.id === agent.id ? { ...a, status: "healthy" } : a)),
-      );
-    }
-    setToast({
-      message: `Quarantine lifted: ${agent.name} restored.`,
-      type: "success",
-    });
-  }
-
-  async function retryDeadNotifications() {
-    if (workspaceMode === "live") {
-      const response = await fetch("/api/v1/notifications/retry-dead", {
-        method: "POST",
-      });
-      if (!response.ok) {
-        const err = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error || "Retry failed");
-      }
-      await refreshLiveWorkspace();
-      setToast("Retrying dead letter notifications.");
-    }
-  }
-
-  async function acknowledgeGitHubDrift(incidentId: string, note: string) {
-    if (workspaceMode === "live") {
-      const response = await fetch(
-        `/api/v1/github-drift/${incidentId}/acknowledge`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ note }),
-        },
-      );
-      if (!response.ok) {
-        const err = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error || "Acknowledge failed");
-      }
-      await refreshLiveWorkspace();
-      setToast("GitHub drift acknowledged.");
-    }
-  }
-
-  async function resolveGitHubDrift(incidentId: string, note: string) {
-    if (workspaceMode === "live") {
-      const response = await fetch(
-        `/api/v1/github-drift/${incidentId}/resolve`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ note }),
-        },
-      );
-      if (!response.ok) {
-        const err = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error || "Resolve failed");
-      }
-      await refreshLiveWorkspace();
-      setToast("GitHub drift resolved.");
-    }
-  }
-
-  async function connectLiveWorkspace(email: string, password: string) {
-    setConnectLoading(true);
-    setWorkspaceError("");
-    try {
-      const response = await fetch("/api/v1/session", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = (await response.json()) as { error?: string };
-      if (!response.ok) {
-        throw new Error(data.error || "Connection failed.");
-      }
-      await refreshLiveWorkspace();
-      setConnectOpen(false);
-      setToast("Signed in to live workspace.");
-    } catch (err) {
-      setWorkspaceError(err instanceof Error ? err.message : "Connection failed.");
-    } finally {
-      setConnectLoading(false);
-    }
-  }
-
-  async function connectLiveWorkspaceWithSso(email: string) {
-    setConnectLoading(true);
-    setWorkspaceError("");
-    try {
-      const response = await fetch("/api/v1/sso/saml/start", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = (await response.json()) as { error?: string; redirectUrl?: string };
-      if (!response.ok || !data.redirectUrl) {
-        throw new Error(data.error || "SSO redirect failed.");
-      }
-      window.location.href = data.redirectUrl;
-    } catch (err) {
-      setWorkspaceError(err instanceof Error ? err.message : "SSO start failed.");
-      setConnectLoading(false);
-    }
-  }
-
-  async function logout() {
-    try {
-      await fetch("/api/v1/session", { method: "DELETE" });
-    } finally {
-      setOperatorIdentity(null);
-      setWorkspaceMode("demo");
-      setToast("Logged out of live session.");
-    }
-  }
+  const {
+    connectLoading,
+    registerAgent,
+    decideApproval,
+    decideReleaseGovernance,
+    retryReleaseGovernance,
+    togglePolicy,
+    savePolicy,
+    decidePolicyActivation,
+    handleQuarantineAgent,
+    handleUnquarantineAgent,
+    retryDeadNotifications,
+    acknowledgeGitHubDrift,
+    resolveGitHubDrift,
+    connectLiveWorkspace,
+    connectLiveWorkspaceWithSso,
+    logout,
+  } = useControlCenterActions({
+    workspaceMode,
+    refreshLiveWorkspace,
+    setAgentList,
+    setApprovalList,
+    setPolicyList,
+    policyList,
+    setOperatorIdentity,
+    setWorkspaceMode,
+    setWorkspaceError,
+    setToast,
+    setRegisterOpen,
+    setConnectOpen,
+  });
 
   return (
     <div className="app-shell">
@@ -737,7 +296,7 @@ export function ControlCenter({
           notificationsOpen={notificationsOpen}
           approvals={approvalList}
           quarantinedAgents={agentList.filter((a) => a.status === "quarantined")}
-          onDecision={decide}
+          onDecision={decideApproval}
           integrityVerified={true}
           onSelectView={handleSelectView}
           canDecide={canApprove}
@@ -815,7 +374,7 @@ export function ControlCenter({
                 operator={operatorIdentity}
                 live={workspaceMode === "live"}
                 onRegister={() => setRegisterOpen(true)}
-                onDecision={decide}
+                onDecision={decideApproval}
                 onViewApprovals={() => handleSelectView("approvals")}
                 onOpenCredentials={() => handleSelectView("credentials")}
                 onOpenIntegrations={() => handleSelectView("integrations")}
@@ -851,7 +410,7 @@ export function ControlCenter({
                 approvals={pendingApprovals}
                 releaseGovernance={releaseGovernanceList}
                 operatorId={operatorIdentity?.id ?? null}
-                onDecision={decide}
+                onDecision={decideApproval}
                 onReleaseDecision={decideReleaseGovernance}
                 onReleaseRetry={retryReleaseGovernance}
                 onViewEvidence={setSelectedRequestId}
@@ -975,7 +534,7 @@ export function ControlCenter({
       <RegisterDialog
         open={registerOpen}
         onClose={() => setRegisterOpen(false)}
-        onRegister={register}
+        onRegister={registerAgent}
       />
       <LiveConnectionDialog
         open={connectOpen}
