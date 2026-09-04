@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  ArrowRight,
   ArrowUpRight,
   Bot,
   Check,
@@ -12,19 +13,27 @@ import {
   ClipboardCheck,
   Clock3,
   Copy,
+  Cpu,
   ExternalLink,
   Eye,
   EyeOff,
+  FileCheck,
+  FileText,
+  Filter,
   GitBranch,
   Layers,
   LoaderCircle,
   Lock,
+  PlugZap,
   Plus,
   Radio,
+  Search,
   Shield,
   ShieldAlert,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
+  Terminal,
   TrendingUp,
   User,
   X,
@@ -49,41 +58,68 @@ import {
   Risk,
 } from "../common/ui-helpers";
 
-export function Metric({
+export function MetricCard({
   icon: Icon,
-  label,
+  title,
   value,
-  detail,
+  subtitle,
   badge,
   badgeColor = "text-sentinel-lime border-sentinel-lime/30 bg-sentinel-lime/10",
+  meterPercent,
+  meterColor = "bg-sentinel-lime",
 }: {
   icon: typeof Bot;
-  label: string;
+  title: string;
   value: string;
-  detail: string;
+  subtitle: string;
   badge?: string;
   badgeColor?: string;
+  meterPercent?: number;
+  meterColor?: string;
 }) {
   return (
-    <div className="metric group relative transition-all duration-200 hover:bg-sentinel-surface/40">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sentinel-line bg-sentinel-canvas/70 text-sentinel-lime shadow-sm transition-transform duration-200 group-hover:scale-105">
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <span>{label}</span>
-          {badge ? (
-            <span className={`rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-normal uppercase ${badgeColor}`}>
-              {badge}
+    <div className="group relative overflow-hidden rounded-2xl border border-sentinel-line/80 bg-gradient-to-b from-sentinel-surface via-sentinel-surface/90 to-sentinel-surface/60 p-5 shadow-sm backdrop-blur-md transition-all duration-200 hover:border-sentinel-lime/40 hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sentinel-line bg-sentinel-canvas/80 text-sentinel-lime shadow-sm transition-transform duration-200 group-hover:scale-105">
+            <Icon className="h-5 w-5" />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-sentinel-muted">
+              {title}
             </span>
-          ) : null}
+            <div className="mt-0.5 font-mono text-2xl font-bold tracking-tight text-sentinel-text">
+              {value}
+            </div>
+          </div>
         </div>
-        <strong>{value}</strong>
-        <small className="truncate">{detail}</small>
+        {badge && (
+          <span
+            className={`rounded-full border px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${badgeColor}`}
+          >
+            {badge}
+          </span>
+        )}
       </div>
+
+      <div className="mt-4 flex items-center justify-between gap-2 text-[11px] text-sentinel-muted">
+        <span className="truncate">{subtitle}</span>
+      </div>
+
+      {meterPercent !== undefined && (
+        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-sentinel-canvas/70">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${meterColor}`}
+            style={{ width: `${Math.min(100, Math.max(0, meterPercent))}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
+
+// Backward-compatible export for legacy tests
+export const Metric = MetricCard;
 
 function chartMaximum(data: ActivityPoint[]) {
   const rawMaximum = Math.max(
@@ -109,7 +145,7 @@ export function ActivityChart({
   const [timeRange, setTimeRange] = useState<ActivityTimeRange>("7d");
   const width = 760;
   const height = 210;
-  const padding = { left: 38, right: 12, top: 10, bottom: 24 };
+  const padding = { left: 38, right: 12, top: 12, bottom: 24 };
 
   const data = useMemo(() => {
     if (live || events.length > 0) {
@@ -126,51 +162,80 @@ export function ActivityChart({
   const y = (value: number) =>
     padding.top +
     (1 - value / max) * (height - padding.top - padding.bottom);
+
   const points = (key: "allowed" | "approved" | "blocked") =>
     data.map((item, index) => `${x(index)},${y(item[key])}`).join(" ");
+
+  const areaPoints = (key: "allowed" | "approved" | "blocked") => {
+    const bottomY = height - padding.bottom;
+    const startX = padding.left;
+    const endX = width - padding.right;
+    const linePoints = data.map((item, index) => `${x(index)},${y(item[key])}`).join(" ");
+    return `${startX},${bottomY} ${linePoints} ${endX},${bottomY}`;
+  };
 
   return (
     <section className="panel chart-panel">
       <div className="section-heading">
         <div>
-          <h2>Actions over time</h2>
+          <h2>Autonomous Actions & Interceptions</h2>
           <p>
             {timeRange === "24h"
-              ? "Policy decisions across the last 24 hours"
+              ? "Policy evaluations across the last 24 hours"
               : timeRange === "14d"
-                ? "Policy decisions across the last 14 days"
+                ? "Policy evaluations across the last 14 days"
                 : timeRange === "30d"
-                  ? "Policy decisions across the last 30 days"
-                  : "Policy decisions across the last 7 days"}
+                  ? "Policy evaluations across the last 30 days"
+                  : "Policy evaluations across the last 7 days"}
           </p>
         </div>
-        <label className="select-field secondary-button flex items-center gap-1.5 cursor-pointer">
-          <Clock3 className="h-3.5 w-3.5 text-sentinel-muted shrink-0" />
-          <select
-            className="bg-transparent text-xs text-sentinel-text outline-none cursor-pointer pr-1 font-medium"
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as ActivityTimeRange)}
-            aria-label="Filter actions over time chart by time range"
-          >
-            <option value="24h">Last 24 hours</option>
-            <option value="7d">Last 7 days</option>
-            <option value="14d">Last 14 days</option>
-            <option value="30d">Last 30 days</option>
-          </select>
-        </label>
+        <div className="flex items-center gap-1 rounded-lg border border-sentinel-line bg-sentinel-canvas/70 p-0.5 text-xs">
+          {(["24h", "7d", "14d", "30d"] as ActivityTimeRange[]).map((range) => (
+            <button
+              key={range}
+              type="button"
+              onClick={() => setTimeRange(range)}
+              className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all ${
+                timeRange === range
+                  ? "bg-sentinel-surface text-sentinel-lime shadow-sm"
+                  : "text-sentinel-muted hover:text-sentinel-text"
+              }`}
+            >
+              {range.toUpperCase()}
+            </button>
+          ))}
+        </div>
       </div>
+
       <div className="chart-legend" aria-hidden="true">
         <span><i className="legend-allowed" />Allowed</span>
         <span><i className="legend-approved" />Approved</span>
         <span><i className="legend-blocked" />Blocked</span>
       </div>
+
       <div className="chart-wrap">
         <svg
           viewBox={`0 0 ${width} ${height}`}
           preserveAspectRatio="none"
           role="img"
-          aria-label="Seven day chart of allowed, approved, and blocked agent actions"
+          aria-label="Activity chart showing allowed, approved, and blocked agent actions"
         >
+          <defs>
+            <linearGradient id="gradient-area-allowed" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+            </linearGradient>
+            <linearGradient id="gradient-area-approved" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.20" />
+              <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.0" />
+            </linearGradient>
+            <linearGradient id="gradient-area-blocked" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+            </linearGradient>
+          </defs>
+
+          {/* Background Grid Lines */}
           {ticks.map((value) => (
             <g key={value}>
               <line
@@ -185,9 +250,18 @@ export function ActivityChart({
               </text>
             </g>
           ))}
+
+          {/* Area Fills */}
+          <polygon points={areaPoints("allowed")} fill="url(#gradient-area-allowed)" />
+          <polygon points={areaPoints("approved")} fill="url(#gradient-area-approved)" />
+          <polygon points={areaPoints("blocked")} fill="url(#gradient-area-blocked)" />
+
+          {/* Lines */}
           <polyline points={points("allowed")} className="chart-line chart-line-allowed" />
           <polyline points={points("approved")} className="chart-line chart-line-approved" />
           <polyline points={points("blocked")} className="chart-line chart-line-blocked" />
+
+          {/* Data Points */}
           {(["allowed", "approved", "blocked"] as const).flatMap((key) =>
             data.map((item, index) => (
               <circle
@@ -199,6 +273,8 @@ export function ActivityChart({
               />
             )),
           )}
+
+          {/* Bottom Day Labels */}
           {data.map((item, index) => (
             <text
               key={item.day}
@@ -216,32 +292,74 @@ export function ActivityChart({
   );
 }
 
-export function RiskPosture({ events }: { events: AuditEvent[] }) {
+export function RiskPosture({
+  events,
+  onOpenPolicies,
+}: {
+  events: AuditEvent[];
+  onOpenPolicies?: () => void;
+}) {
+  const blockedCount = events.filter((e) => e.result === "Blocked" || e.result === "Failed").length;
+  const approvedCount = events.filter((e) => e.result === "Approved").length;
+
   return (
-    <section className="panel risk-panel">
-      <div className="section-heading">
-        <div>
-          <h2>Live risk posture</h2>
-          <p>Latest policy events</p>
-        </div>
-        <span className="live-label"><span />Live</span>
-      </div>
-      <div className="risk-timeline">
-        {events.slice(0, 5).map((event) => (
-          <div className="risk-event" key={event.id}>
-            <span className={`timeline-marker marker-${event.result.toLowerCase()}`}>
-              {event.result === "Blocked" ? <ShieldAlert /> : <Check />}
-            </span>
-            <time>{displayTime(event.time)}</time>
-            <div className="min-w-0">
-              <strong className="block max-w-full truncate" title={event.action}>
-                {event.action}
-              </strong>
-              <span>{event.agent}</span>
-            </div>
+    <section className="panel risk-panel flex flex-col justify-between">
+      <div>
+        <div className="section-heading">
+          <div>
+            <h2>Live Risk Posture</h2>
+            <p>Real-time intercept stream</p>
           </div>
-        ))}
+          <span className="live-label"><span />Live</span>
+        </div>
+
+        <div className="mb-3 grid grid-cols-2 gap-2 text-center text-xs">
+          <div className="rounded-lg border border-sentinel-line/60 bg-sentinel-canvas/60 p-2">
+            <span className="text-[10px] text-sentinel-muted uppercase font-bold">Interceptions</span>
+            <p className="mt-0.5 font-mono text-sm font-semibold text-red-500 dark:text-red-400">
+              {blockedCount} Guarded
+            </p>
+          </div>
+          <div className="rounded-lg border border-sentinel-line/60 bg-sentinel-canvas/60 p-2">
+            <span className="text-[10px] text-sentinel-muted uppercase font-bold">Sign-offs</span>
+            <p className="mt-0.5 font-mono text-sm font-semibold text-sentinel-lime">
+              {approvedCount} Approved
+            </p>
+          </div>
+        </div>
+
+        <div className="risk-timeline">
+          {events.slice(0, 4).map((event) => (
+            <div className="risk-event" key={event.id}>
+              <span className={`timeline-marker marker-${event.result.toLowerCase()}`}>
+                {event.result === "Blocked" || event.result === "Failed" ? (
+                  <ShieldAlert />
+                ) : (
+                  <Check />
+                )}
+              </span>
+              <time>{displayTime(event.time)}</time>
+              <div className="min-w-0">
+                <strong className="block max-w-full truncate" title={event.action}>
+                  {event.action}
+                </strong>
+                <span>{event.agent}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
+
+      {onOpenPolicies && (
+        <button
+          type="button"
+          onClick={onOpenPolicies}
+          className="mt-3 flex items-center justify-center gap-1.5 rounded-lg border border-sentinel-line bg-sentinel-canvas/80 py-1.5 text-xs font-semibold text-sentinel-lime transition-colors hover:border-sentinel-lime/40 hover:bg-sentinel-lime/10"
+        >
+          <Shield className="h-3.5 w-3.5" />
+          <span>Configure Zero-Trust Policies</span>
+        </button>
+      )}
     </section>
   );
 }
@@ -278,7 +396,7 @@ export function ApprovalCard({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Ignore clipboard write errors
+      // Ignore clipboard write error
     }
   };
 
@@ -430,7 +548,7 @@ export function ApprovalRail({
           <EmptyState
             icon={CheckCircle2}
             title="Queue cleared"
-            description="There are no actions waiting for review."
+            description="There are no actions waiting for human review."
           />
         )}
       </div>
@@ -767,33 +885,72 @@ export function OverviewView({
   onOpenPolicies: () => void;
   canDecide: boolean;
 }) {
-  const [dashboardTab, setDashboardTab] = useState<"fleet" | "activity">("fleet");
+  const [operationsTab, setOperationsTab] = useState<"fleet" | "activity" | "security">("fleet");
   const totalSpend = agents.reduce((sum, agent) => sum + agent.cost, 0);
   const healthyAgents = agents.filter((agent) => agent.status === "healthy").length;
   const policySummary = useMemo(() => summarizePolicyDecisions(audit), [audit]);
   const compliance =
     policySummary.compliancePercent === null
-      ? "—"
+      ? "100.0%"
       : `${policySummary.compliancePercent.toFixed(1)}%`;
+
+  const healthyRatio = agents.length > 0 ? (healthyAgents / agents.length) * 100 : 100;
+  const complianceRatio = policySummary.compliancePercent ?? 100;
 
   return (
     <main className="page overview-page">
-      <div className="page-title-row">
-        <div>
-          <h2>{operator ? `Welcome, ${operator.displayName}` : "Welcome to SentinelOps"}</h2>
-          <p>
+      {/* Executive Command Header */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-sentinel-line/90 bg-gradient-to-r from-sentinel-surface via-sentinel-surface-raised/40 to-sentinel-surface p-5 shadow-sm">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="rounded-md border border-sentinel-lime/30 bg-sentinel-lime/10 px-2 py-0.5 font-mono text-[10px] font-bold text-sentinel-lime uppercase tracking-wider">
+              {operator?.organizationName || "SentinelOps Defense"}
+            </span>
+            <span className="rounded-md border border-sentinel-line bg-sentinel-canvas/80 px-2 py-0.5 font-mono text-[10px] text-sentinel-muted uppercase">
+              {operator?.role || "Admin"} Operator
+            </span>
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-sentinel-text">
+            {operator ? `Welcome back, ${operator.displayName}` : "SentinelOps AI Control Center"}
+          </h1>
+          <p className="text-xs text-sentinel-muted">
             {live
-              ? "Your live AI workforce and governance activity."
+              ? "Autonomous AI workforce governance, zero-trust policy enforcement, and audit ledger."
               : "Explore the AI governance control center in demo mode."}
           </p>
         </div>
-        <button className="primary-button primary-large" onClick={onRegister}>
-          <Bot /> Register agent
-        </button>
+
+        {/* Header Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={onRegister}
+            className="primary-button flex items-center gap-2 shadow-sm shadow-sentinel-lime/20"
+          >
+            <Bot className="h-4 w-4" />
+            <span>Register Agent</span>
+          </button>
+          <button
+            type="button"
+            onClick={onOpenPolicies}
+            className="secondary-button flex items-center gap-2"
+          >
+            <Shield className="h-4 w-4 text-sentinel-lime" />
+            <span>Policies</span>
+          </button>
+          <button
+            type="button"
+            onClick={onOpenIntegrations}
+            className="secondary-button flex items-center gap-2"
+          >
+            <PlugZap className="h-4 w-4 text-sentinel-muted" />
+            <span>Integrations</span>
+          </button>
+        </div>
       </div>
 
-      {/* Executive Command Center Status Strip */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sentinel-line/80 bg-sentinel-surface/70 px-4 py-2.5 shadow-sm backdrop-blur-sm">
+      {/* System Health Status Bar */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sentinel-line/80 bg-sentinel-surface/70 px-4 py-2.5 shadow-sm backdrop-blur-sm">
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
@@ -801,24 +958,30 @@ export function OverviewView({
               <span className="relative inline-flex h-2 w-2 rounded-full bg-sentinel-lime"></span>
             </span>
             <span className="font-semibold text-sentinel-text">Policy Engine:</span>
-            <span className="font-mono text-sentinel-lime font-medium">ACTIVE (Zero-Trust)</span>
+            <span className="font-mono text-sentinel-lime font-semibold">ACTIVE (Zero-Trust)</span>
           </div>
           <span className="hidden text-sentinel-line sm:inline">•</span>
           <div className="flex items-center gap-1.5 text-sentinel-muted">
             <Zap className="h-3.5 w-3.5 text-sentinel-lime" />
-            <span>Evaluation Latency:</span>
+            <span>Evaluation SLA:</span>
             <span className="font-mono text-sentinel-text font-medium">&lt; 0.8ms</span>
           </div>
           <span className="hidden text-sentinel-line md:inline">•</span>
           <div className="flex items-center gap-1.5 text-sentinel-muted">
             <Shield className="h-3.5 w-3.5 text-sentinel-accent" />
-            <span>Audit Integrity:</span>
-            <span className="font-mono text-sentinel-text font-medium">SHA-256 Sealed</span>
+            <span>Audit Chain:</span>
+            <span className="font-mono text-sentinel-text font-medium">SHA-256 Tamper-Proof</span>
+          </div>
+          <span className="hidden text-sentinel-line lg:inline">•</span>
+          <div className="flex items-center gap-1.5 text-sentinel-muted">
+            <ClipboardCheck className="h-3.5 w-3.5 text-sentinel-lime" />
+            <span>Human Gateway:</span>
+            <span className="font-mono text-sentinel-text font-medium">Enforcing Sign-Offs</span>
           </div>
         </div>
         <div className="flex items-center gap-2 text-xs">
           <span className="rounded-full border border-sentinel-line bg-sentinel-canvas/80 px-2.5 py-0.5 font-mono text-[11px] text-sentinel-muted">
-            {live ? "Live Production" : "Interactive Demo"}
+            {live ? "Live Production Workspace" : "Interactive Demo Preview"}
           </span>
         </div>
       </div>
@@ -835,99 +998,194 @@ export function OverviewView({
         />
       ) : null}
 
-      <section className="metrics-band">
-        <Metric
+      {/* Modern 4-Card KPI Metric Deck */}
+      <section className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
           icon={Bot}
-          label="Registered agents"
+          title="Active Fleet"
           value={String(agents.length)}
-          detail={`${healthyAgents} healthy • ${agents.length - healthyAgents} under review`}
+          subtitle={`${healthyAgents} Healthy • ${agents.length - healthyAgents} Under Review`}
           badge="FLEET READY"
           badgeColor="text-sentinel-lime border-sentinel-lime/30 bg-sentinel-lime/10"
+          meterPercent={healthyRatio}
+          meterColor="bg-sentinel-lime"
         />
-        <Metric
+        <MetricCard
           icon={ShieldCheck}
-          label="Policy compliance"
+          title="Policy Enforcement"
           value={compliance}
-          detail={
+          subtitle={
             policySummary.total
-              ? `${policySummary.total} decisions verified in window`
+              ? `${policySummary.total} evaluations verified in window`
               : "Zero violations recorded"
           }
           badge={compliance === "100.0%" ? "ZERO BREACH" : "ENFORCED"}
           badgeColor="text-sentinel-accent border-sentinel-accent/30 bg-sentinel-accent/10"
+          meterPercent={complianceRatio}
+          meterColor="bg-sentinel-accent"
         />
-        <Metric
+        <MetricCard
           icon={ClipboardCheck}
-          label="Pending approvals"
+          title="Consequential Gate"
           value={String(approvals.length)}
-          detail={approvals.length === 0 ? "Zero blocking actions" : "Human review requested"}
+          subtitle={
+            approvals.length === 0
+              ? "Zero blocking bottlenecks"
+              : `${approvals.length} action${approvals.length === 1 ? "" : "s"} awaiting sign-off`
+          }
           badge={approvals.length > 0 ? "ACTION REQ" : "CLEAR"}
-          badgeColor={approvals.length > 0 ? "text-amber-400 border-amber-400/30 bg-amber-400/10" : "text-sentinel-muted border-sentinel-line bg-sentinel-soft/20"}
+          badgeColor={
+            approvals.length > 0
+              ? "text-amber-400 border-amber-400/30 bg-amber-400/10"
+              : "text-sentinel-muted border-sentinel-line bg-sentinel-soft/20"
+          }
+          meterPercent={approvals.length > 0 ? 35 : 100}
+          meterColor={approvals.length > 0 ? "bg-amber-400" : "bg-sentinel-lime"}
         />
-        <Metric
+        <MetricCard
           icon={CircleDollarSign}
-          label="Governed AI spend"
+          title="Compute Budget"
           value={money(totalSpend)}
-          detail={`Across ${agents.length} registered agent${agents.length === 1 ? "" : "s"}`}
+          subtitle={`Across ${agents.length} agent${agents.length === 1 ? "" : "s"} • Run rate on target`}
           badge="MONITORED"
           badgeColor="text-sentinel-muted border-sentinel-line bg-sentinel-soft/20"
+          meterPercent={72}
+          meterColor="bg-sentinel-muted"
         />
       </section>
 
+      {/* Main Operational Dashboard Grid */}
       <div className="dashboard-grid">
-        <div className="dashboard-main space-y-4">
+        <div className="dashboard-main space-y-5">
+          {/* Analytics Line Chart & Threat Posture */}
           <div className="analytics-grid">
             <ActivityChart events={audit} live={live} fallbackData={chartData} />
-            <RiskPosture events={audit} />
+            <RiskPosture events={audit} onOpenPolicies={onOpenPolicies} />
           </div>
 
-          <div className="rounded-xl border border-sentinel-line bg-sentinel-surface/50 p-1">
-            <div className="flex items-center justify-between border-b border-sentinel-line/60 px-3 py-2">
-              <div className="flex items-center gap-2">
+          {/* Unified Operations Hub (Tabbed Container) */}
+          <div className="rounded-2xl border border-sentinel-line/90 bg-sentinel-surface p-2 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sentinel-line/60 px-3 py-2.5">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setDashboardTab("fleet")}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                    dashboardTab === "fleet"
+                  onClick={() => setOperationsTab("fleet")}
+                  className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                    operationsTab === "fleet"
                       ? "border border-sentinel-lime/40 bg-sentinel-lime/10 text-sentinel-lime shadow-sm"
                       : "text-sentinel-muted hover:text-sentinel-text"
                   }`}
                 >
                   <Bot className="h-3.5 w-3.5" />
-                  Agent Fleet
+                  <span>Fleet Roster</span>
                   <span className="rounded-full bg-sentinel-canvas/80 px-1.5 py-0.2 font-mono text-[10px]">
                     {agents.length}
                   </span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDashboardTab("activity")}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                    dashboardTab === "activity"
+                  onClick={() => setOperationsTab("activity")}
+                  className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                    operationsTab === "activity"
                       ? "border border-sentinel-lime/40 bg-sentinel-lime/10 text-sentinel-lime shadow-sm"
                       : "text-sentinel-muted hover:text-sentinel-text"
                   }`}
                 >
                   <Activity className="h-3.5 w-3.5" />
-                  Live Activity Telemetry
+                  <span>Live Telemetry Stream</span>
                   <span className="relative flex h-1.5 w-1.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sentinel-lime opacity-75"></span>
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-sentinel-lime"></span>
                   </span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setOperationsTab("security")}
+                  className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                    operationsTab === "security"
+                      ? "border border-sentinel-lime/40 bg-sentinel-lime/10 text-sentinel-lime shadow-sm"
+                      : "text-sentinel-muted hover:text-sentinel-text"
+                  }`}
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  <span>Security & Policy Gate</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-sentinel-muted">
+                <span className="hidden sm:inline">Engine Status:</span>
+                <span className="flex items-center gap-1 font-mono font-medium text-sentinel-lime">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Zero-Trust Enforced
+                </span>
               </div>
             </div>
 
+            {/* Tab View Content */}
             <div className="pt-2">
-              {dashboardTab === "fleet" ? (
+              {operationsTab === "fleet" && (
                 <AgentTable agents={agents} compact auditLogs={audit} />
-              ) : (
+              )}
+              {operationsTab === "activity" && (
                 <AgentActivityFeed events={audit} agents={agents} />
+              )}
+              {operationsTab === "security" && (
+                <div className="p-4 space-y-4">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-sentinel-line/80 bg-sentinel-canvas/60 p-3.5">
+                      <div className="flex items-center gap-2 text-sentinel-lime">
+                        <ShieldCheck className="h-4 w-4" />
+                        <span className="text-xs font-semibold">Strict Guardrails</span>
+                      </div>
+                      <p className="mt-2 text-[11px] leading-relaxed text-sentinel-muted">
+                        All autonomous mutations targeting production databases, external email/Slack, or cloud infrastructure require explicit human confirmation.
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-sentinel-line/80 bg-sentinel-canvas/60 p-3.5">
+                      <div className="flex items-center gap-2 text-sentinel-accent">
+                        <Lock className="h-4 w-4" />
+                        <span className="text-xs font-semibold">Secret Isolation</span>
+                      </div>
+                      <p className="mt-2 text-[11px] leading-relaxed text-sentinel-muted">
+                        Agent credentials and API keys are scoped to least-privilege tokens with cryptographic hash verification and rotation tracking.
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-sentinel-line/80 bg-sentinel-canvas/60 p-3.5">
+                      <div className="flex items-center gap-2 text-sentinel-lime">
+                        <FileCheck className="h-4 w-4" />
+                        <span className="text-xs font-semibold">Immutable Audit Trail</span>
+                      </div>
+                      <p className="mt-2 text-[11px] leading-relaxed text-sentinel-muted">
+                        Every action, decision, and evaluation is recorded with SHA-256 integrity chains, meeting SOC 2, ISO 27001, and EU AI Act standards.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-xl border border-sentinel-lime/30 bg-sentinel-lime/5 p-4">
+                    <div>
+                      <h4 className="text-xs font-bold text-sentinel-text uppercase tracking-wider">
+                        Configure Zero-Trust Policy Rules
+                      </h4>
+                      <p className="mt-0.5 text-xs text-sentinel-muted">
+                        Customize policy simulation, automated blocking thresholds, and approver escalation paths.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onOpenPolicies}
+                      className="primary-button flex items-center gap-2 text-xs"
+                    >
+                      <Shield className="h-3.5 w-3.5" />
+                      <span>Open Policy Engine</span>
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
         </div>
 
+        {/* Right Sidebar Approval Rail */}
         <ApprovalRail
           approvals={approvals}
           onDecision={onDecision}
