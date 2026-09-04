@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 import type { DashboardView } from "@/lib/types";
 
 export const navItems: Array<{
@@ -113,6 +114,17 @@ export function Sidebar({
               );
             })}
         </nav>
+
+        <div className="px-3 pb-2 pt-1">
+          <Link
+            href="/sales-agent"
+            className="flex items-center gap-2.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs font-medium text-emerald-400 transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/10"
+            title={collapsed && !open ? "Sales Agent Demo" : undefined}
+          >
+            <Bot className="h-4 w-4 shrink-0 text-emerald-400" />
+            {!collapsed || open ? <span>Sales Agent Demo</span> : null}
+          </Link>
+        </div>
 
         <div className="sidebar-footer">
           {!collapsed || open ? (

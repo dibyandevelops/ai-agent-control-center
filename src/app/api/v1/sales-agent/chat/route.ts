@@ -295,27 +295,57 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Intent 3: Demo Booking
-    if (["demo", "meeting", "schedule", "book", "call"].some((w) => text.toLowerCase().includes(w))) {
+    // Intent 3: Demo Booking & Rescheduling
+    if (["demo", "meeting", "schedule", "book", "call", "reschedule", "change"].some((w) => text.toLowerCase().includes(w))) {
       const email = emailMatch ? emailMatch[0].toLowerCase() : "prospect@enterprise.com";
-      const name = "Enterprise Engineering Lead";
+      const name = emailMatch ? email.split("@")[0].charAt(0).toUpperCase() + email.split("@")[0].slice(1) : "Enterprise Engineering Lead";
       const company = email.split("@")[1]?.split(".")[0].toUpperCase() || "Enterprise Partner";
 
+      const isReschedule = /change|reschedule|move|different (?:time|date)|another (?:time|date)|instead/i.test(text);
+
+      // Dynamic date & time extraction
+      let requestedSlot = "Thursday at 2:00 PM EST";
+
+      const dayMatch = text.match(/(?:next\s+|this\s+|coming\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?)/i);
+      const timeMatch = text.match(/(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)\b(?:\s*(?:est|pst|cst|gmt|utc))?)/i);
+
+      if (dayMatch && timeMatch) {
+        let day = dayMatch[0].trim().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+        let t = timeMatch[1].trim().toUpperCase();
+        if (!t.includes("EST") && !t.includes("PST") && !t.includes("UTC") && !t.includes("GMT") && !t.includes("CST")) {
+          t += " EST";
+        }
+        requestedSlot = `${day} at ${t}`;
+      } else if (dayMatch) {
+        let day = dayMatch[0].trim().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+        requestedSlot = `${day} at 2:00 PM EST`;
+      } else if (timeMatch) {
+        let t = timeMatch[1].trim().toUpperCase();
+        if (!t.includes("EST") && !t.includes("PST") && !t.includes("UTC") && !t.includes("GMT") && !t.includes("CST")) {
+          t += " EST";
+        }
+        requestedSlot = `Tomorrow at ${t}`;
+      }
+
+      const actionName = isReschedule ? "reschedule_demo_meeting" : "book_demo_meeting";
+
       reasoningList.push({
-        intent: `Schedule product demonstration for ${name} (${company})`,
-        scope: "Authorized — Direct objective for inbound technical qualification.",
+        intent: isReschedule
+          ? `Reschedule technical demonstration to '${requestedSlot}' for ${name} (${company})`
+          : `Schedule product demonstration for ${name} (${company}) at '${requestedSlot}'`,
+        scope: "Authorized — Inbound technical qualification and schedule management.",
         risk: "Low risk — Calendar invite reservation; standard sales qualification.",
       });
 
       const decision = await evaluateWithSentinel({
-        action: "book_demo_meeting",
+        action: actionName,
         resource: `calendar://solutions-architect/${email}`,
         riskHint: "low",
-        context: { email, company, slot: "Thursday at 2:00 PM EST" },
+        context: { email, company, slot: requestedSlot, isReschedule },
       });
 
       evaluationsList.push({
-        action: "book_demo_meeting",
+        action: actionName,
         resource: `calendar://solutions-architect/${email}`,
         status: decision.status,
         risk: decision.risk,
@@ -324,16 +354,24 @@ export async function POST(request: NextRequest) {
       });
 
       const bookingRef = `DEMO-${Math.floor(Math.random() * 90000 + 10000)}`;
-      await reportOutcome(decision.requestId, `Technical demo confirmed for ${name} (${company})`, bookingRef);
+      await reportOutcome(
+        decision.requestId,
+        isReschedule
+          ? `Technical demo rescheduled to ${requestedSlot} for ${name} (${company})`
+          : `Technical demo confirmed for ${name} (${company}) at ${requestedSlot}`,
+        bookingRef,
+      );
 
       return NextResponse.json({
-        response: `Your technical demonstration has been booked successfully!\n\n• **Meeting Reference**: \`${bookingRef}\`\n• **Scheduled Time**: **Thursday at 2:00 PM EST**\n• **Host**: Enterprise Solutions Engineering Team\n• **Conference Link**: https://sentinelops.ai/meet/${bookingRef.toLowerCase()}\n• **Topic**: Enterprise AI Governance Architecture & SentinelOps Control Plane Integration\n\nA calendar invitation has been dispatched to **${email}**. We look forward to demonstrating how SentinelOps secures autonomous AI operations.`,
+        response: isReschedule
+          ? `Your technical demonstration has been **rescheduled** to **${requestedSlot}**!\n\n• **Updated Meeting Reference**: \`${bookingRef}\`\n• **New Scheduled Time**: **${requestedSlot}**\n• **Host**: Enterprise Solutions Engineering Team\n• **Conference Link**: https://sentinelops.ai/meet/${bookingRef.toLowerCase()}\n• **Topic**: Enterprise AI Governance Architecture & SentinelOps Control Plane Integration\n\nYour calendar invitation has been updated and dispatched to **${email}**.`
+          : `Your technical demonstration has been booked successfully!\n\n• **Meeting Reference**: \`${bookingRef}\`\n• **Scheduled Time**: **${requestedSlot}**\n• **Host**: Enterprise Solutions Engineering Team\n• **Conference Link**: https://sentinelops.ai/meet/${bookingRef.toLowerCase()}\n• **Topic**: Enterprise AI Governance Architecture & SentinelOps Control Plane Integration\n\nA calendar invitation has been dispatched to **${email}**. We look forward to demonstrating how SentinelOps secures autonomous AI operations.`,
         reasoning: reasoningList,
         evaluations: evaluationsList,
         toolsCalled: [{
-          tool: "book_demo_meeting",
-          args: { email, company },
-          result: { bookingRef },
+          tool: actionName,
+          args: { email, company, slot: requestedSlot, isReschedule },
+          result: { bookingRef, slot: requestedSlot },
         }],
       });
     }

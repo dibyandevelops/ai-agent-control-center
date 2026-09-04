@@ -803,11 +803,33 @@ class OrkestrateSalesAssistant:
             except Exception as e:
                 return f"Unable to calculate pricing: {e}"
 
-        # Check for Demo Booking Intent
-        if any(w in text.lower() for w in ["demo", "meeting", "schedule", "book", "call"]):
+        # Check for Demo Booking & Rescheduling Intent
+        if any(w in text.lower() for w in ["demo", "meeting", "schedule", "book", "call", "reschedule", "change"]):
             email = email_match.group(0) if email_match else "prospect@enterprise.com"
-            name = "Prospective Engineering Lead"
+            name = email.split("@")[0].capitalize() if email_match else "Prospective Engineering Lead"
             company = email.split("@")[-1].split(".")[0].capitalize()
+
+            is_reschedule = bool(re.search(r"change|reschedule|move|different (?:time|date)|another (?:time|date)|instead", text, re.IGNORECASE))
+
+            # Dynamic date & time extraction
+            requested_slot = "Thursday at 2:00 PM EST"
+            day_match = re.search(r"(?:next\s+|this\s+|coming\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?)", text, re.IGNORECASE)
+            time_match = re.search(r"(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)\b(?:\s*(?:est|pst|cst|gmt|utc))?)", text, re.IGNORECASE)
+
+            if day_match and time_match:
+                day_str = re.sub(r"\b[a-z]", lambda m: m.group(0).upper(), day_match.group(0).strip())
+                t_str = time_match.group(1).strip().upper()
+                if not any(tz in t_str for tz in ["EST", "PST", "UTC", "GMT", "CST"]):
+                    t_str += " EST"
+                requested_slot = f"{day_str} at {t_str}"
+            elif day_match:
+                day_str = re.sub(r"\b[a-z]", lambda m: m.group(0).upper(), day_match.group(0).strip())
+                requested_slot = f"{day_str} at 2:00 PM EST"
+            elif time_match:
+                t_str = time_match.group(1).strip().upper()
+                if not any(tz in t_str for tz in ["EST", "PST", "UTC", "GMT", "CST"]):
+                    t_str += " EST"
+                requested_slot = f"Tomorrow at {t_str}"
 
             try:
                 booking = self.book_demo_meeting(
@@ -815,8 +837,19 @@ class OrkestrateSalesAssistant:
                     email=email,
                     company=company,
                     topic="Enterprise AI Governance Architecture & SentinelOps Integration",
-                    preferred_slot="Thursday at 2:00 PM EST",
+                    preferred_slot=requested_slot,
                 )
+                if is_reschedule:
+                    return (
+                        f"Your technical demonstration has been **rescheduled** to **{booking['scheduled_time']}**!\n\n"
+                        f"• Updated Meeting Reference: `{booking['booking_reference']}`\n"
+                        f"• New Scheduled Time: **{booking['scheduled_time']}**\n"
+                        f"• Host: {booking['solutions_architect']}\n"
+                        f"• Conference Link: {booking['meeting_link']}\n"
+                        f"• Topic: {booking['topic']}\n\n"
+                        f"Your calendar invitation has been updated and dispatched to {booking['attendee']}."
+                    )
+
                 return (
                     f"Your technical demonstration has been booked successfully!\n\n"
                     f"• Meeting Reference: `{booking['booking_reference']}`\n"
@@ -828,7 +861,7 @@ class OrkestrateSalesAssistant:
                     f"We look forward to demonstrating how SentinelOps secures autonomous AI operations."
                 )
             except Exception as e:
-                return f"Unable to book demonstration: {e}"
+                return f"Unable to {'reschedule' if is_reschedule else 'book'} demonstration: {e}"
 
         # General Technical / Architectural Inquiries
         return (
