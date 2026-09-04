@@ -77,10 +77,12 @@ export function MetricsDeck({
   agents,
   approvals,
   audit,
+  className = "mb-5",
 }: {
   agents: Agent[];
   approvals: Approval[];
   audit: AuditEvent[];
+  className?: string;
 }) {
   const totalSpend = agents.reduce((sum, agent) => sum + agent.cost, 0);
   const healthyAgents = agents.filter((agent) => agent.status === "healthy").length;
@@ -94,7 +96,7 @@ export function MetricsDeck({
   const complianceRatio = policySummary.compliancePercent ?? 100;
 
   return (
-    <section className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+    <section className={`grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4 ${className}`}>
       <MetricCard
         icon={Bot}
         title="Active Fleet"
