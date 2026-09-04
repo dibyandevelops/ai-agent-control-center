@@ -106,20 +106,22 @@ export function PoliciesView({
           <h2>Policy engine</h2>
           <p>Turn governance requirements into deterministic guardrails executed across every agent action.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto max-sm:grid max-sm:grid-cols-2">
           <button
             type="button"
-            className="secondary-button"
+            className="secondary-button justify-center"
             onClick={scrollToSandbox}
           >
-            <Zap className="h-4 w-4 text-sentinel-accent" /> Test in Sandbox
+            <Zap className="h-4 w-4 text-sentinel-accent shrink-0" />
+            <span className="truncate">Test Sandbox</span>
           </button>
           <button
-            className="primary-button primary-large"
+            className="primary-button primary-large justify-center"
             onClick={() => openEditor(null)}
             disabled={!canManage}
           >
-            <Plus /> Create policy
+            <Plus className="shrink-0" />
+            <span className="truncate">Create policy</span>
           </button>
         </div>
       </div>
@@ -131,8 +133,8 @@ export function PoliciesView({
               <h2>Enforcement policies</h2>
               <p>{activeCount} of {policies.length} policies actively enforced</p>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <label className="search-field">
+            <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+              <label className="search-field w-full sm:w-auto flex-1">
                 <Search />
                 <input
                   value={searchQuery}
@@ -145,11 +147,11 @@ export function PoliciesView({
           </div>
 
           {/* Filter Pills Bar */}
-          <div className="flex items-center gap-1.5 overflow-x-auto px-5 py-2.5 border-b border-sentinel-border bg-sentinel-surface-raised/20 text-xs">
+          <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap px-4 sm:px-5 py-2.5 border-b border-sentinel-border bg-sentinel-surface-raised/20 text-xs">
             <button
               type="button"
               onClick={() => setModeFilter("all")}
-              className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+              className={`rounded-lg px-2.5 py-1 font-semibold transition shrink-0 ${
                 modeFilter === "all"
                   ? "bg-sentinel-surface text-sentinel-text border border-sentinel-border-strong shadow-xs"
                   : "text-sentinel-muted hover:text-sentinel-text"
@@ -160,7 +162,7 @@ export function PoliciesView({
             <button
               type="button"
               onClick={() => setModeFilter("active")}
-              className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+              className={`rounded-lg px-2.5 py-1 font-semibold transition shrink-0 ${
                 modeFilter === "active"
                   ? "bg-sentinel-success-soft text-sentinel-success border border-sentinel-success/30 shadow-xs"
                   : "text-sentinel-muted hover:text-sentinel-text"
@@ -171,7 +173,7 @@ export function PoliciesView({
             <button
               type="button"
               onClick={() => setModeFilter("Block")}
-              className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+              className={`rounded-lg px-2.5 py-1 font-semibold transition shrink-0 ${
                 modeFilter === "Block"
                   ? "bg-sentinel-danger-soft text-sentinel-danger border border-sentinel-danger/30 shadow-xs"
                   : "text-sentinel-muted hover:text-sentinel-text"
@@ -182,7 +184,7 @@ export function PoliciesView({
             <button
               type="button"
               onClick={() => setModeFilter("Approval")}
-              className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+              className={`rounded-lg px-2.5 py-1 font-semibold transition shrink-0 ${
                 modeFilter === "Approval"
                   ? "bg-sentinel-amber-soft text-sentinel-amber border border-sentinel-amber/30 shadow-xs"
                   : "text-sentinel-muted hover:text-sentinel-text"
@@ -194,7 +196,7 @@ export function PoliciesView({
               <button
                 type="button"
                 onClick={() => setModeFilter("pending")}
-                className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                className={`rounded-lg px-2.5 py-1 font-semibold transition shrink-0 ${
                   modeFilter === "pending"
                     ? "bg-sentinel-accent-soft text-sentinel-accent border border-sentinel-accent/30 shadow-xs"
                     : "text-sentinel-muted hover:text-sentinel-text"

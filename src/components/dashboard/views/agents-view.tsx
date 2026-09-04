@@ -429,7 +429,7 @@ export function AgentsView({
           <h2>AI agent inventory</h2>
           <p>Every autonomous system, owner, permission, and health signal in one place.</p>
         </div>
-        <button className="primary-button primary-large" onClick={onRegister}>
+        <button className="primary-button primary-large w-full sm:w-auto justify-center" onClick={onRegister}>
           <Plus /> Register agent
         </button>
       </div>

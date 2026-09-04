@@ -2348,7 +2348,37 @@ tbody tr:hover {
   .summary-strip {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 4px;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    padding-bottom: 6px;
+    gap: 8px;
+  }
+
+  .summary-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .summary-strip span {
+    flex-shrink: 0;
+  }
+
+  .filter-row {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    padding-bottom: 6px;
+    gap: 8px;
+  }
+
+  .filter-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-chip {
+    flex-shrink: 0;
   }
 
   .audit-table .table-heading {
@@ -2360,14 +2390,17 @@ tbody tr:hover {
   }
 
   .dialog-backdrop {
-    padding: 10px;
+    padding: 0;
     align-items: flex-end;
   }
 
   .dialog {
     width: 100%;
-    max-height: calc(100dvh - 20px);
-    border-radius: 20px 20px 12px 12px;
+    max-height: calc(100dvh - 16px);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
     overflow-y: auto;
   }
 

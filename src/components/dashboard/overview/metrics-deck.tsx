@@ -55,7 +55,7 @@ export function MetricCard({
         </div>
         {badge && (
           <span
-            className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${badgeColor}`}
+            className={`hidden sm:inline-block shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${badgeColor}`}
           >
             {badge}
           </span>
@@ -105,7 +105,7 @@ export function MetricsDeck({
   const complianceRatio = policySummary.compliancePercent ?? 100;
 
   return (
-    <section className={`grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4 ${className}`}>
+    <section className={`grid grid-cols-2 gap-2.5 sm:gap-3.5 xl:grid-cols-4 ${className}`}>
       <MetricCard
         icon={Bot}
         title="Active Fleet"

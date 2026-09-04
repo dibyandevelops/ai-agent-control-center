@@ -48,29 +48,29 @@ export function OverviewHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:w-full">
         <button
           type="button"
           onClick={onRegister}
-          className="primary-button text-xs py-1.5 px-3 flex items-center gap-1.5 shadow-sm shadow-sentinel-lime/20 cursor-pointer"
+          className="primary-button text-xs py-1.5 px-3 flex items-center justify-center gap-1.5 shadow-sm shadow-sentinel-lime/20 cursor-pointer"
         >
-          <Bot className="h-3.5 w-3.5" />
-          <span>Register Agent</span>
+          <Bot className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">Register Agent</span>
         </button>
         <button
           type="button"
           onClick={onOpenPolicies}
-          className="secondary-button text-xs py-1.5 px-3 flex items-center gap-1.5 cursor-pointer"
+          className="secondary-button text-xs py-1.5 px-3 flex items-center justify-center gap-1.5 cursor-pointer"
         >
-          <Shield className="h-3.5 w-3.5 text-sentinel-lime" />
-          <span>Policies</span>
+          <Shield className="h-3.5 w-3.5 shrink-0 text-sentinel-lime" />
+          <span className="truncate">Policies</span>
         </button>
         <button
           type="button"
           onClick={onOpenIntegrations}
           className="secondary-button text-xs py-1.5 px-3 hidden sm:flex items-center gap-1.5 cursor-pointer"
         >
-          <PlugZap className="h-3.5 w-3.5 text-sentinel-muted" />
+          <PlugZap className="h-3.5 w-3.5 shrink-0 text-sentinel-muted" />
           <span>Integrations</span>
         </button>
       </div>

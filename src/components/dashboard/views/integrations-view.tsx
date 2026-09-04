@@ -132,59 +132,59 @@ export function IntegrationsView({
           <h2>Enterprise integrations</h2>
           <p>Connect the systems where AI agents read data, call APIs, and take consequential actions.</p>
         </div>
-        <button className="primary-button" onClick={() => setRequestDialogOpen(true)}>
+        <button className="primary-button w-full sm:w-auto justify-center" onClick={() => setRequestDialogOpen(true)}>
           <Plus /> Request integration
         </button>
       </div>
 
       {/* Top Metrics Summary Band */}
-      <section className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4">
+      <section className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+        <div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-3.5 sm:p-4">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">
+            <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted truncate">
               Active Connectors
             </p>
-            <span className="flex h-2 w-2 relative">
+            <span className="flex h-2 w-2 relative shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sentinel-lime opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-sentinel-lime" />
             </span>
           </div>
-          <p className="mt-2 text-2xl font-semibold text-sentinel-lime">
-            {connectedCount} <span className="text-sm font-normal text-sentinel-muted">/ {visibleItems.length}</span>
+          <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold text-sentinel-lime">
+            {connectedCount} <span className="text-xs sm:text-sm font-normal text-sentinel-muted">/ {visibleItems.length}</span>
           </p>
-          <p className="mt-1 text-xs text-sentinel-muted">Enforcing policy controls</p>
+          <p className="mt-0.5 sm:mt-1 text-[11px] sm:text-xs text-sentinel-muted truncate">Enforcing policy controls</p>
         </div>
 
-        <div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">
+        <div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-3.5 sm:p-4">
+          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted truncate">
             GitHub Drift Guard
           </p>
-          <p className="mt-2 text-2xl font-semibold text-sentinel-text">
+          <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold text-sentinel-text truncate">
             {driftIncidents.length === 0 ? "Protected" : `${driftIncidents.length} Drift Alert`}
           </p>
-          <p className="mt-1 text-xs text-sentinel-muted">Release workflow guard</p>
+          <p className="mt-0.5 sm:mt-1 text-[11px] sm:text-xs text-sentinel-muted truncate">Release workflow guard</p>
         </div>
 
-        <div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">
+        <div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-3.5 sm:p-4">
+          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted truncate">
             SIEM / ChatOps Routing
           </p>
-          <p className="mt-2 text-2xl font-semibold text-sentinel-text">Active</p>
-          <p className="mt-1 text-xs text-sentinel-muted">Slack + HTTPS Webhook outbox</p>
+          <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold text-sentinel-text">Active</p>
+          <p className="mt-0.5 sm:mt-1 text-[11px] sm:text-xs text-sentinel-muted truncate">Slack + Webhook outbox</p>
         </div>
 
-        <div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted">
+        <div className="rounded-xl border border-sentinel-line bg-sentinel-surface p-3.5 sm:p-4">
+          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide text-sentinel-muted truncate">
             Agent SDK & APIs
           </p>
-          <p className="mt-2 text-2xl font-semibold text-sentinel-lime">Ready</p>
-          <p className="mt-1 text-xs text-sentinel-muted">Python SDK + HTTP REST</p>
+          <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-semibold text-sentinel-lime">Ready</p>
+          <p className="mt-0.5 sm:mt-1 text-[11px] sm:text-xs text-sentinel-muted truncate">Python SDK + HTTP REST</p>
         </div>
       </section>
 
       {/* Search & Filter Header */}
-      <section className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <label className="search-field wide-search max-w-sm flex-1">
+      <section className="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <label className="search-field wide-search w-full sm:max-w-sm flex-1">
           <Search />
           <input
             value={searchQuery}
@@ -194,11 +194,11 @@ export function IntegrationsView({
           />
         </label>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scroll-touch pb-1 sm:pb-0">
           {categories.map((cat) => (
             <button
               key={cat}
-              className={`filter-chip ${categoryFilter === cat ? "filter-active" : ""}`}
+              className={`filter-chip shrink-0 ${categoryFilter === cat ? "filter-active" : ""}`}
               onClick={() => setCategoryFilter(cat)}
             >
               {cat === "all" ? "All" : cat === "connected" ? "Connected" : cat}

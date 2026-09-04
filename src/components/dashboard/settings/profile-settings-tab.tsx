@@ -60,7 +60,7 @@ export function ProfileSettingsTab({
   return (
     <div className="space-y-6">
       {/* Profile Card */}
-      <div className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-6">
+      <div className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 pb-6 border-b border-sentinel-line">
           <div className="h-16 w-16 rounded-2xl bg-sentinel-surface-raised border border-sentinel-line flex items-center justify-center text-xl font-bold text-sentinel-text shadow-sm">
             {initials}
@@ -131,7 +131,7 @@ export function ProfileSettingsTab({
             <button
               type="submit"
               disabled={saving}
-              className="primary-button flex items-center gap-2"
+              className="primary-button flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               {saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Profile Changes
@@ -141,7 +141,7 @@ export function ProfileSettingsTab({
       </div>
 
       {/* Security & Authentication */}
-      <div className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-6">
+      <div className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-4 sm:p-6">
         <h4 className="text-sm font-semibold text-sentinel-text">Security & Authentication</h4>
         <p className="mt-1 text-xs text-sentinel-muted leading-relaxed">
           Manage your operator login credentials and multifactor authentication.
@@ -158,7 +158,7 @@ export function ProfileSettingsTab({
             <button
               type="button"
               onClick={onChangePassword}
-              className="secondary-button flex items-center gap-1.5 self-start sm:self-auto shrink-0"
+              className="secondary-button flex items-center justify-center gap-1.5 w-full sm:w-auto shrink-0"
             >
               <KeyRound className="h-3.5 w-3.5" />
               Change Password

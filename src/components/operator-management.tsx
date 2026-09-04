@@ -245,15 +245,15 @@ export function OperatorManagement({
           <h2>Team access</h2>
           <p>Control who can review agents, approve actions, and administer policies.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full sm:w-auto gap-2 max-sm:grid max-sm:grid-cols-2">
           <button
-            className="secondary-button"
+            className="secondary-button w-full justify-center"
             onClick={() => setInviteOpen(true)}
           >
             <Send className="h-4 w-4" /> Send invite
           </button>
           <button
-            className="primary-button primary-large"
+            className="primary-button primary-large w-full justify-center"
             onClick={() => setCreateOpen(true)}
           >
             <UserPlus /> Add operator
@@ -307,7 +307,7 @@ export function OperatorManagement({
             No active or pending team invitations. Use &quot;Send invite&quot; to invite a member.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto scroll-touch">
             <table className="w-full min-w-[700px] border-collapse text-left">
               <thead className="bg-sentinel-raised/60 text-[10px] uppercase tracking-[0.12em] text-sentinel-dim">
                 <tr>
@@ -401,7 +401,7 @@ export function OperatorManagement({
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto scroll-touch">
             <table className="w-full min-w-[820px] border-collapse text-left">
               <thead className="bg-sentinel-raised/60 text-[10px] uppercase tracking-[0.12em] text-sentinel-dim">
                 <tr>
@@ -521,7 +521,7 @@ export function OperatorManagement({
 
       {/* Approver Delegation Section */}
       <section className="mt-6 overflow-hidden rounded-app border border-sentinel-line bg-sentinel-surface shadow-app-1">
-        <div className="flex items-center justify-between border-b border-sentinel-line px-5 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-sentinel-line px-4 sm:px-5 py-3.5 sm:py-4">
           <div>
             <h3 className="flex items-center gap-2 text-sm font-semibold text-sentinel-text">
               <UserCheck className="h-4 w-4 text-sentinel-lime" />
@@ -532,7 +532,7 @@ export function OperatorManagement({
             </p>
           </div>
           <button
-            className="secondary-button"
+            className="secondary-button w-full sm:w-auto justify-center shrink-0"
             onClick={() => setDelegationOpen(true)}
           >
             <Calendar className="h-4 w-4" /> New delegation
@@ -544,7 +544,7 @@ export function OperatorManagement({
             No active or historical approver delegations.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto scroll-touch">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-sentinel-line bg-sentinel-canvas/50 text-[11px] font-semibold text-sentinel-muted">

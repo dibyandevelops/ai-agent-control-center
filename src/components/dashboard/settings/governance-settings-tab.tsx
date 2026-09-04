@@ -36,7 +36,7 @@ export function GovernanceSettingsTab({
   return (
     <div className="space-y-6">
       {/* Cryptographic Chain Status */}
-      <div className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-6">
+      <div className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-sentinel-line">
           <div className="flex items-start gap-4">
             <div
@@ -64,7 +64,7 @@ export function GovernanceSettingsTab({
             type="button"
             onClick={handleVerify}
             disabled={verifying}
-            className="secondary-button flex items-center gap-1.5 self-start sm:self-auto shrink-0"
+            className="secondary-button flex items-center justify-center gap-1.5 w-full sm:w-auto shrink-0"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${verifying ? "animate-spin" : ""}`} />
             {verifying ? "Verifying Seals…" : "Verify Chain Integrity"}
@@ -98,7 +98,7 @@ export function GovernanceSettingsTab({
       </div>
 
       {/* Audit Log Retention */}
-      <div className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-6">
+      <div className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-4 sm:p-6">
         <h4 className="text-sm font-semibold text-sentinel-text flex items-center gap-2">
           <FileClock className="h-4 w-4 text-sentinel-lime" />
           Audit Log Retention Window
@@ -122,7 +122,7 @@ export function GovernanceSettingsTab({
       </div>
 
       {/* Compliance Evidence Export */}
-      <div className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-6">
+      <div className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-4 sm:p-6">
         <h4 className="text-sm font-semibold text-sentinel-text flex items-center gap-2">
           <Download className="h-4 w-4 text-sentinel-lime" />
           Export Signed Audit Evidence
@@ -131,11 +131,11 @@ export function GovernanceSettingsTab({
           Download a verified, digitally signed package of all agent evaluations, approvals, and outcomes for your compliance auditors.
         </p>
 
-        <div className="mt-4 flex flex-wrap gap-3">
+        <div className="mt-4 flex flex-col sm:flex-row gap-3">
           <a
             href="/api/v1/audit/export?format=json"
             download
-            className="secondary-button flex items-center gap-1.5"
+            className="secondary-button flex items-center justify-center gap-1.5 w-full sm:w-auto"
           >
             <Download className="h-3.5 w-3.5" />
             Export JSON Archive
@@ -143,7 +143,7 @@ export function GovernanceSettingsTab({
           <a
             href="/api/v1/audit/export?format=csv"
             download
-            className="secondary-button flex items-center gap-1.5"
+            className="secondary-button flex items-center justify-center gap-1.5 w-full sm:w-auto"
           >
             <Download className="h-3.5 w-3.5" />
             Export CSV Records

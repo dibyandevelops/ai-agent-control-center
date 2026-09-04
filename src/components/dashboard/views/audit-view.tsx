@@ -152,9 +152,9 @@ export function AuditView({
               : "An immutable record of agent actions, policy decisions, and human approvals."}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
           <button
-            className="primary-button"
+            className="primary-button justify-center"
             onClick={verifyIntegrity}
             disabled={verifying}
           >
@@ -162,7 +162,7 @@ export function AuditView({
             {verifying ? "Verifying…" : "Verify integrity"}
           </button>
           <button
-            className="secondary-button"
+            className="secondary-button justify-center"
             onClick={() => void testSecurityDigestDelivery()}
             disabled={testingDelivery}
           >
@@ -170,7 +170,7 @@ export function AuditView({
             {testingDelivery ? "Sending…" : "Test security digest"}
           </button>
           <a
-            className="secondary-button"
+            className="secondary-button justify-center"
             href={`/api/v1/audit/export?scope=${scope}`}
             download
           >

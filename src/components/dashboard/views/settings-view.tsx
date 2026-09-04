@@ -53,11 +53,11 @@ export function SettingsView({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           {canManageOperators && (
             <button
               onClick={() => onSelectView("team")}
-              className="secondary-button flex items-center gap-1.5"
+              className="secondary-button flex items-center justify-center gap-1.5 w-full sm:w-auto"
             >
               <UsersRound className="h-3.5 w-3.5" />
               Manage Team & SCIM
@@ -67,7 +67,7 @@ export function SettingsView({
       </div>
 
       {/* Tabs Row */}
-      <div className="flex items-center gap-2 border-b border-sentinel-line pb-2 overflow-x-auto">
+      <div className="flex items-center gap-2 border-b border-sentinel-line pb-2 overflow-x-auto scroll-touch scrollbar-none">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const selected = activeTab === tab.id;

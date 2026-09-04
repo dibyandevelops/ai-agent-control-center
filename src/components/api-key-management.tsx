@@ -198,7 +198,7 @@ export function ApiKeyManagement({
           <h2>Agent credentials</h2>
           <p>Create and control the bearer keys agents use to request policy evaluations.</p>
         </div>
-        <button className="primary-button primary-large" onClick={() => setCreateOpen(true)}>
+        <button className="primary-button primary-large w-full sm:w-auto justify-center" onClick={() => setCreateOpen(true)}>
           <Plus /> Create API key
         </button>
       </div>
@@ -318,10 +318,10 @@ export function ApiKeyManagement({
                       <span className={`h-1.5 w-1.5 rounded-full ${credentialStatusDot(apiKey.status)}`} /> {credentialStatusLabel(apiKey.status)}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-3 text-xs text-sentinel-muted">
-                    <div><span className="mb-1 block text-[10px] uppercase tracking-wider text-sentinel-dim">Last used</span>{formatDate(apiKey.lastUsedAt)}</div>
-                    <div><span className="mb-1 block text-[10px] uppercase tracking-wider text-sentinel-dim">Expires</span>{apiKey.expiresAt ? formatDate(apiKey.expiresAt) : "Legacy"}</div>
-                    <div><span className="mb-1 block text-[10px] uppercase tracking-wider text-sentinel-dim">Created</span>{formatDate(apiKey.createdAt)}</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 text-xs text-sentinel-muted">
+                    <div><span className="mb-1 block text-[10px] uppercase tracking-wider text-sentinel-dim">Last used</span><span className="truncate block">{formatDate(apiKey.lastUsedAt)}</span></div>
+                    <div><span className="mb-1 block text-[10px] uppercase tracking-wider text-sentinel-dim">Expires</span><span className="truncate block">{apiKey.expiresAt ? formatDate(apiKey.expiresAt) : "Legacy"}</span></div>
+                    <div className="col-span-2 sm:col-span-1"><span className="mb-1 block text-[10px] uppercase tracking-wider text-sentinel-dim">Created</span><span className="truncate block">{formatDate(apiKey.createdAt)}</span></div>
                   </div>
                   {apiKey.status !== "revoked" ? (
                     <div className={`grid gap-2 ${apiKey.status === "active" ? "grid-cols-2" : "grid-cols-1"}`}>
