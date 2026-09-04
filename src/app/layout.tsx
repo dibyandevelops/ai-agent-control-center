@@ -3,6 +3,7 @@ import { Space_Grotesk } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { QueryProvider } from "@/components/query-provider";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -109,7 +110,7 @@ export default async function RootLayout({
       </head>
       <body className={spaceGrotesk.variable}>
         <ThemeProvider initialTheme={themeCookie as "dark" | "light" | undefined}>
-          {children}
+          <QueryProvider>{children}</QueryProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -5,9 +5,9 @@ import {
   Shield,
   ShieldAlert,
 } from "lucide-react";
-import React from "react";
 import type { AuditEvent } from "@/lib/types";
 import { displayTime } from "../common/ui-helpers";
+import { useRiskPosture } from "@/hooks/use-risk-posture";
 
 export function RiskPosture({
   events,
@@ -16,8 +16,7 @@ export function RiskPosture({
   events: AuditEvent[];
   onOpenPolicies?: () => void;
 }) {
-  const blockedCount = events.filter((e) => e.result === "Blocked" || e.result === "Failed").length;
-  const approvedCount = events.filter((e) => e.result === "Approved").length;
+  const { blockedCount, approvedCount, recentEvents } = useRiskPosture(events);
 
   return (
     <section className="panel risk-panel flex flex-col justify-between">
@@ -46,7 +45,7 @@ export function RiskPosture({
         </div>
 
         <div className="risk-timeline">
-          {events.slice(0, 4).map((event) => (
+          {recentEvents.map((event) => (
             <div className="risk-event" key={event.id}>
               <span className={`timeline-marker marker-${event.result.toLowerCase()}`}>
                 {event.result === "Blocked" || event.result === "Failed" ? (

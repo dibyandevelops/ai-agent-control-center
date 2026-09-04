@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import React from "react";
 import type { Agent, Approval, AuditEvent } from "@/lib/types";
-import { summarizePolicyDecisions } from "@/lib/dashboard-metrics";
 import { money } from "../common/ui-helpers";
+import { useOverviewMetrics } from "@/hooks/use-overview-metrics";
 
 export function MetricCard({
   icon: Icon,
@@ -93,16 +93,17 @@ export function MetricsDeck({
   className?: string;
   onViewApprovals?: () => void;
 }) {
-  const totalSpend = agents.reduce((sum, agent) => sum + agent.cost, 0);
-  const healthyAgents = agents.filter((agent) => agent.status === "healthy").length;
-  const policySummary = summarizePolicyDecisions(audit);
-  const compliance =
-    policySummary.compliancePercent === null
-      ? "100.0%"
-      : `${policySummary.compliancePercent.toFixed(1)}%`;
-
-  const healthyRatio = agents.length > 0 ? (healthyAgents / agents.length) * 100 : 100;
-  const complianceRatio = policySummary.compliancePercent ?? 100;
+  const {
+    totalSpend,
+    healthyAgents,
+    underReviewAgents,
+    policySummary,
+    complianceFormatted,
+    healthyRatio,
+    complianceRatio,
+    pendingApprovalsCount,
+    hasPendingApprovals,
+  } = useOverviewMetrics(agents, approvals, audit);
 
   return (
     <section className={`grid grid-cols-2 gap-2.5 sm:gap-3.5 xl:grid-cols-4 ${className}`}>
@@ -110,7 +111,7 @@ export function MetricsDeck({
         icon={Bot}
         title="Active Fleet"
         value={String(agents.length)}
-        subtitle={`${healthyAgents} Healthy • ${agents.length - healthyAgents} Under Review`}
+        subtitle={`${healthyAgents} Healthy • ${underReviewAgents} Under Review`}
         badge="FLEET READY"
         badgeColor="text-sentinel-lime border-sentinel-lime/30 bg-sentinel-lime/10"
         meterPercent={healthyRatio}
@@ -119,13 +120,13 @@ export function MetricsDeck({
       <MetricCard
         icon={ShieldCheck}
         title="Policy Guard"
-        value={compliance}
+        value={complianceFormatted}
         subtitle={
           policySummary.total
             ? `${policySummary.total} evaluations verified in window`
             : "Zero violations recorded"
         }
-        badge={compliance === "100.0%" ? "ZERO BREACH" : "ENFORCED"}
+        badge={complianceFormatted === "100.0%" ? "ZERO BREACH" : "ENFORCED"}
         badgeColor="text-sentinel-accent border-sentinel-accent/30 bg-sentinel-accent/10"
         meterPercent={complianceRatio}
         meterColor="bg-sentinel-accent"
@@ -133,20 +134,20 @@ export function MetricsDeck({
       <MetricCard
         icon={ClipboardCheck}
         title="Consequential Gate"
-        value={String(approvals.length)}
+        value={String(pendingApprovalsCount)}
         subtitle={
-          approvals.length === 0
+          !hasPendingApprovals
             ? "Zero blocking bottlenecks"
-            : `${approvals.length} action${approvals.length === 1 ? "" : "s"} awaiting sign-off`
+            : `${pendingApprovalsCount} action${pendingApprovalsCount === 1 ? "" : "s"} awaiting sign-off`
         }
-        badge={approvals.length > 0 ? "ACTION REQ" : "CLEAR"}
+        badge={hasPendingApprovals ? "ACTION REQ" : "CLEAR"}
         badgeColor={
-          approvals.length > 0
+          hasPendingApprovals
             ? "text-amber-400 border-amber-400/30 bg-amber-400/10"
             : "text-sentinel-muted border-sentinel-line bg-sentinel-soft/20"
         }
-        meterPercent={approvals.length > 0 ? 35 : 100}
-        meterColor={approvals.length > 0 ? "bg-amber-400" : "bg-sentinel-lime"}
+        meterPercent={hasPendingApprovals ? 35 : 100}
+        meterColor={hasPendingApprovals ? "bg-amber-400" : "bg-sentinel-lime"}
         onClick={onViewApprovals}
       />
       <MetricCard

@@ -1,8 +1,13 @@
 "use client";
 
-import React, { useRef } from "react";
+import React from "react";
 import type { Agent, Approval, AuditEvent, OperatorIdentity } from "@/lib/types";
 import { chartData } from "@/lib/demo-data";
+
+// Custom Hooks for React Query & Telemetry
+import { useOverviewQuery } from "@/hooks/use-overview-query";
+import { useApprovalMutation } from "@/hooks/use-approval-mutation";
+import { useScrollSync } from "@/hooks/use-scroll-sync";
 
 // Modular sub-components
 import { OverviewHeader } from "../overview/overview-header";
@@ -31,11 +36,11 @@ export {
 };
 
 export function OverviewView({
-  agents,
-  approvals,
-  audit,
-  operator,
-  live,
+  agents: propAgents,
+  approvals: propApprovals,
+  audit: propAudit,
+  operator: propOperator,
+  live: propLive,
   onRegister,
   onDecision,
   onViewApprovals,
@@ -44,11 +49,11 @@ export function OverviewView({
   onOpenPolicies,
   canDecide,
 }: {
-  agents: Agent[];
-  approvals: Approval[];
-  audit: AuditEvent[];
-  operator: OperatorIdentity | null;
-  live: boolean;
+  agents?: Agent[];
+  approvals?: Approval[];
+  audit?: AuditEvent[];
+  operator?: OperatorIdentity | null;
+  live?: boolean;
   onRegister: () => void;
   onDecision: (approval: Approval, decision: "approved" | "denied") => Promise<void>;
   onViewApprovals: () => void;
@@ -57,12 +62,47 @@ export function OverviewView({
   onOpenPolicies: () => void;
   canDecide: boolean;
 }) {
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  // 1. React Query for Overview data caching & background polling
+  const {
+    isFetching,
+    agents: queryAgents,
+    pendingApprovals: queryApprovals,
+    audit: queryAudit,
+    operator: queryOperator,
+    isLive: queryIsLive,
+  } = useOverviewQuery({
+    initialData: {
+      agents: propAgents,
+      approvals: propApprovals,
+      audit: propAudit,
+      operator: propOperator,
+      mode: propLive ? "live" : "demo",
+    },
+  });
 
-  const handlePinnedWheel = (e: React.WheelEvent) => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop += e.deltaY;
+  // 2. React Query Mutation for optimistic approval decision updates
+  const { decideApproval } = useApprovalMutation();
+
+  // 3. Synchronized wheel scrolling custom hook
+  const { scrollAreaRef, handlePinnedWheel } = useScrollSync();
+
+  // Fallback cleanly between query state and props
+  const agents = queryAgents?.length ? queryAgents : (propAgents ?? []);
+  const approvals = queryApprovals ?? propApprovals ?? [];
+  const audit = queryAudit?.length ? queryAudit : (propAudit ?? []);
+  const operator = queryOperator ?? propOperator ?? null;
+  const live = queryIsLive ?? propLive ?? false;
+
+  const handleDecision = async (
+    approval: Approval,
+    decision: "approved" | "denied",
+  ) => {
+    try {
+      await decideApproval(approval, decision);
+    } catch {
+      // Handled in mutation
     }
+    await onDecision?.(approval, decision);
   };
 
   return (
@@ -72,6 +112,7 @@ export function OverviewView({
         <OverviewHeader
           operator={operator}
           live={live}
+          isFetching={isFetching}
           onRegister={onRegister}
           onOpenPolicies={onOpenPolicies}
           onOpenIntegrations={onOpenIntegrations}
@@ -103,7 +144,7 @@ export function OverviewView({
         {/* Prominent Consequential Approval Gate: Highly notifiable when pending actions exist */}
         <ApprovalBanner
           approvals={approvals}
-          onDecision={onDecision}
+          onDecision={handleDecision}
           onViewAll={onViewApprovals}
           canDecide={canDecide}
         />

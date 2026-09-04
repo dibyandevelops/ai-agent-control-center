@@ -4,6 +4,7 @@ import {
   Bot,
   ClipboardCheck,
   PlugZap,
+  RefreshCw,
   Shield,
   Zap,
 } from "lucide-react";
@@ -13,12 +14,14 @@ import type { OperatorIdentity } from "@/lib/types";
 export function OverviewHeader({
   operator,
   live,
+  isFetching = false,
   onRegister,
   onOpenPolicies,
   onOpenIntegrations,
 }: {
   operator: OperatorIdentity | null;
   live: boolean;
+  isFetching?: boolean;
   onRegister: () => void;
   onOpenPolicies: () => void;
   onOpenIntegrations: () => void;
@@ -45,6 +48,15 @@ export function OverviewHeader({
           <span className="font-mono text-[11px]">&lt; 0.8ms SLA</span>
           <span className="text-sentinel-line">•</span>
           <span className="font-mono text-[11px]">SHA-256 Chain</span>
+          {isFetching && (
+            <>
+              <span className="text-sentinel-line">•</span>
+              <span className="flex items-center gap-1 font-mono text-[10px] text-sentinel-lime">
+                <RefreshCw className="h-2.5 w-2.5 animate-spin" />
+                <span>Sync</span>
+              </span>
+            </>
+          )}
         </div>
       </div>
 
