@@ -67,7 +67,7 @@ export function OverviewView({
   return (
     <main className="page overview-page">
       {/* 1. Pinned Top Deck: Mission Control Header, Launch Checklist, 4-Card KPI Metric Deck */}
-      <div className="pinned-overview-deck shrink-0 space-y-3" onWheel={handlePinnedWheel}>
+      <div className="pinned-overview-deck shrink-0 space-y-2.5" onWheel={handlePinnedWheel}>
         <OverviewHeader
           operator={operator}
           live={live}
@@ -97,7 +97,7 @@ export function OverviewView({
       </div>
 
       {/* 2. Independently Scrollable Workspace: Operations Hub (Fleet Roster Table & Telemetry), Analytics Line Chart, Risk Posture, and Consequential Approvals */}
-      <div ref={scrollAreaRef} className="overview-scroll-area flex-1 min-h-0 overflow-y-auto pr-1 pb-4 pt-3.5 space-y-5">
+      <div ref={scrollAreaRef} className="overview-scroll-area flex-1 min-h-0 overflow-y-auto pr-1 pb-4 pt-2.5 space-y-5">
         <div className="dashboard-grid">
           {/* Main Column: Operations Center & Analytics */}
           <div className="dashboard-main space-y-5 min-w-0">

@@ -413,7 +413,7 @@ button:disabled {
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-left: auto;
 }
 
@@ -449,7 +449,8 @@ button:disabled {
 }
 
 .command-control {
-  width: 255px;
+  max-width: 210px;
+  width: 100%;
   padding: 0 10px;
   color: var(--muted);
   text-align: left;
@@ -562,7 +563,7 @@ kbd svg {
   .overview-page {
     height: calc(100vh - 64px);
     overflow: hidden;
-    padding-top: 18px;
+    padding-top: 12px;
     padding-bottom: 8px;
   }
 

@@ -53,6 +53,8 @@ export function TopBar({
   canDecide?: boolean;
   viewTitles: Record<DashboardView, string>;
 }) {
+  const [profileMenuOpen, setProfileMenuOpen] = React.useState(false);
+
   const initials =
     operator?.displayName
       .split(" ")
@@ -66,21 +68,21 @@ export function TopBar({
 
   return (
     <header className="topbar relative">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
         <button className="icon-button menu-button" onClick={onMenu} aria-label="Open navigation">
           <Menu />
         </button>
 
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-sm font-semibold tracking-tight text-sentinel-text">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <h1 className="text-sm font-semibold tracking-tight text-sentinel-text truncate">
             {viewTitles[view]}
           </h1>
           {!operator ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-sentinel-amber/30 bg-sentinel-amber/10 px-2 py-0.5 text-[10px] font-semibold text-sentinel-amber">
+            <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-sentinel-amber/30 bg-sentinel-amber/10 px-2 py-0.5 text-[10px] font-semibold text-sentinel-amber shrink-0">
               <Sparkles className="h-2.5 w-2.5" /> Demo Preview
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-full border border-sentinel-lime/30 bg-sentinel-lime/10 px-2 py-0.5 text-[10px] font-semibold text-sentinel-lime">
+            <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-sentinel-lime/30 bg-sentinel-lime/10 px-2 py-0.5 text-[10px] font-semibold text-sentinel-lime shrink-0">
               <span className="h-1.5 w-1.5 rounded-full bg-sentinel-lime shadow-[0_0_6px_rgba(183,243,74,0.6)]" /> Live Workspace
             </span>
           )}
@@ -95,7 +97,7 @@ export function TopBar({
             title="Manage organization & settings"
           >
             <Building2 />
-            <span className="truncate max-w-[130px]">{operator.organizationName}</span>
+            <span className="truncate max-w-[120px]">{operator.organizationName}</span>
             <ChevronDown className="h-3 w-3 opacity-60" />
           </button>
         ) : null}
@@ -140,34 +142,103 @@ export function TopBar({
         </div>
 
         {operator ? (
-          <>
+          <div className="relative">
             <button
-              className="profile-control"
-              onClick={() => onSelectView("settings")}
-              aria-label="Operator profile & settings"
+              className="flex items-center gap-2 rounded-xl border border-sentinel-line/80 bg-sentinel-surface px-1.5 py-1 transition-all hover:border-sentinel-line-strong hover:bg-sentinel-surface-raised cursor-pointer"
+              onClick={() => setProfileMenuOpen((prev) => !prev)}
+              aria-label="Operator profile menu"
+              aria-expanded={profileMenuOpen}
             >
-              <span className="avatar">{initials}</span>
-              <span className="profile-name">
-                {operator.displayName}
-                <small className="ml-2 capitalize text-sentinel-muted">{operator.role}</small>
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sentinel-lime/10 font-mono text-xs font-bold text-sentinel-lime border border-sentinel-lime/30">
+                {initials}
               </span>
-              <KeyRound aria-hidden="true" className="h-3.5 w-3.5 text-sentinel-muted" />
+              <span className="hidden xl:inline text-xs font-medium text-sentinel-text truncate max-w-[100px]">
+                {operator.displayName.split(" ")[0]}
+              </span>
+              <span className="rounded bg-sentinel-canvas/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-sentinel-muted">
+                {operator.role}
+              </span>
+              <ChevronDown className="h-3 w-3 text-sentinel-muted transition-transform duration-150" />
             </button>
 
-            <button
-              className="secondary-button topbar-logout flex items-center gap-1.5"
-              onClick={onLogout}
-              aria-label="Log out"
-              title="Log out"
-            >
-              <LogOut className="h-4 w-4 shrink-0" />
-              <span className="hidden sm:inline">Log out</span>
-            </button>
-          </>
+            {profileMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setProfileMenuOpen(false)}
+                />
+                <div className="absolute right-0 top-full mt-2 z-50 w-64 rounded-2xl border border-sentinel-line bg-sentinel-surface p-2 shadow-2xl backdrop-blur-xl animate-in fade-in-50 zoom-in-95">
+                  <div className="border-b border-sentinel-line/60 p-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sentinel-lime/10 font-mono text-xs font-bold text-sentinel-lime border border-sentinel-lime/30">
+                        {initials}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-bold text-sentinel-text">
+                          {operator.displayName}
+                        </p>
+                        <p className="truncate text-[11px] text-sentinel-muted">
+                          {operator.email}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[10px]">
+                      <span className="rounded border border-sentinel-line bg-sentinel-canvas px-1.5 py-0.5 uppercase font-medium text-sentinel-muted">
+                        {operator.role} Role
+                      </span>
+                      <span className="font-mono text-sentinel-lime flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-sentinel-lime"></span>
+                        Active
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="py-1 space-y-0.5 text-xs">
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sentinel-text hover:bg-sentinel-canvas transition-colors text-left cursor-pointer"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        onSelectView("settings");
+                      }}
+                    >
+                      <Building2 className="h-3.5 w-3.5 text-sentinel-muted" />
+                      <span>Workspace & Account Settings</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sentinel-text hover:bg-sentinel-canvas transition-colors text-left cursor-pointer"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        onChangePassword();
+                      }}
+                    >
+                      <KeyRound className="h-3.5 w-3.5 text-sentinel-muted" />
+                      <span>Change Password</span>
+                    </button>
+                  </div>
+
+                  <div className="border-t border-sentinel-line/60 pt-1">
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-red-500 hover:bg-red-500/10 transition-colors text-xs font-medium text-left cursor-pointer"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        onLogout();
+                      }}
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      <span>Log Out</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         ) : (
           <button
             type="button"
-            className="primary-button text-xs py-1.5 px-3.5 flex items-center gap-1.5 shadow-sm"
+            className="primary-button text-xs py-1.5 px-3.5 flex items-center gap-1.5 shadow-sm cursor-pointer"
             onClick={onOpenConnect}
           >
             <PlugZap className="h-3.5 w-3.5" />
