@@ -123,7 +123,44 @@ Report the execution result back to SentinelOps.
 | `pending` | `bool` | `True` if awaiting human review |
 | `blocked` | `bool` | `True` if denied or blocked |
 | `reason` | `str` | Why the decision was made |
-| `risk` | `str` | `low`, `medium`, or `high` |
+## Examples
+
+The SDK includes production-ready example scripts in the `examples/` directory:
+
+### 1. Governed Enterprise Sales Representative (`sales_representative_agent.py`)
+
+A full implementation of the **Orkestrate Sales Assistant** featuring:
+- **Mandatory 3-step internal reasoning protocol** before any tool execution (Customer Intent, Scope Authorization, Risk Assessment).
+- **Hard pricing policy guardrails**:
+  - $\le 15\%$ standard annual contract discount $\rightarrow$ automatically allowed.
+  - $15\% - 30\%$ custom discount $\rightarrow$ routes to SentinelOps for 4-Eyes Human Operator approval.
+  - $> 30\%$ discount $\rightarrow$ strictly rejected by policy.
+- **Anti-Prompt-Injection** and adversarial input sanitization.
+- **Interactive Terminal Chat** and automated scenario testing.
+
+```bash
+# Run automated scenarios against local SentinelOps
+python examples/sales_representative_agent.py --scenarios
+
+# Run interactive chat mode
+python examples/sales_representative_agent.py --interactive
+```
+
+### 2. Autonomous Sales Outreach Bot (`demo_sales_agent.py`)
+
+Simulates background outreach with lead qualification, email drafting, and CRM sync.
+
+```bash
+python examples/demo_sales_agent.py
+```
+
+### 3. Connection Diagnostics (`test_connection.py`)
+
+Verify connectivity, API key authentication, and audit round-trips.
+
+```bash
+python examples/test_connection.py
+```
 
 ## License
 

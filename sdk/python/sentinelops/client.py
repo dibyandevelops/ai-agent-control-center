@@ -115,6 +115,7 @@ class SentinelOps:
         team: str = "Engineering",
         provider: str = "Unknown",
         idempotency_key: str | None = None,
+        risk_hint: str | None = None,
     ) -> Decision:
         """Submit an agent action for policy evaluation.
 
@@ -141,6 +142,8 @@ class SentinelOps:
         idempotency_key : str, optional
             Unique key to prevent duplicate evaluations.  Auto-generated
             if not provided.
+        risk_hint : str, optional
+            Optional risk override: ``"low"``, ``"medium"``, or ``"high"``.
 
         Returns
         -------
@@ -148,7 +151,7 @@ class SentinelOps:
             The policy evaluation result.  Check ``decision.approved``
             to see if the action is safe to execute.
         """
-        payload = {
+        payload: dict[str, Any] = {
             "idempotencyKey": idempotency_key or uuid.uuid4().hex,
             "agent": {
                 "externalId": agent_id,
@@ -162,6 +165,8 @@ class SentinelOps:
             "environment": environment,
             "context": context or {},
         }
+        if risk_hint is not None:
+            payload["riskHint"] = risk_hint
 
         data = self._post("/api/v1/actions/evaluate", payload)
         return Decision.from_api_response(data)
