@@ -33,40 +33,62 @@ export interface OverviewDataPayload {
 
 export const OVERVIEW_QUERY_KEY = ["control-center", "overview"] as const;
 
-async function fetchOverviewData(): Promise<OverviewDataPayload> {
-  const response = await fetch("/api/v1/control-center", { cache: "no-store" });
-  if (!response.ok) {
-    // In demo mode or unauthenticated preview, construct fallback payload
-    let savedState: {
-      agents?: Agent[];
-      approvals?: Approval[];
-      policies?: Policy[];
-      audit?: AuditEvent[];
-    } = {};
-    if (typeof window !== "undefined") {
-      try {
-        const saved = window.localStorage.getItem("sentinelops-demo-state");
-        if (saved) savedState = JSON.parse(saved);
-      } catch {
-        // local storage fallback
+export async function fetchOverviewData({
+  signal,
+}: { signal?: AbortSignal } = {}): Promise<OverviewDataPayload> {
+  try {
+    const response = await fetch("/api/v1/control-center", {
+      signal,
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      // In demo mode or unauthenticated preview, construct fallback payload
+      let savedState: {
+        agents?: Agent[];
+        approvals?: Approval[];
+        policies?: Policy[];
+        audit?: AuditEvent[];
+      } = {};
+      if (typeof window !== "undefined") {
+        try {
+          const saved = window.localStorage.getItem("sentinelops-demo-state");
+          if (saved) savedState = JSON.parse(saved);
+        } catch {
+          // local storage fallback
+        }
       }
+
+      return {
+        mode: "demo",
+        operator: null,
+        agents: savedState.agents?.length ? savedState.agents : demoAgents,
+        approvals: savedState.approvals?.length ? savedState.approvals : demoApprovals,
+        policies: savedState.policies?.length ? savedState.policies : demoPolicies,
+        policyActivations: [],
+        releaseGovernance: [],
+        audit: savedState.audit?.length ? savedState.audit : demoAudit,
+        integrations: demoIntegrations,
+      };
     }
 
+    const json = (await response.json()) as OverviewDataPayload;
+    return json;
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw err;
+    }
     return {
       mode: "demo",
       operator: null,
-      agents: savedState.agents?.length ? savedState.agents : demoAgents,
-      approvals: savedState.approvals?.length ? savedState.approvals : demoApprovals,
-      policies: savedState.policies?.length ? savedState.policies : demoPolicies,
+      agents: demoAgents,
+      approvals: demoApprovals,
+      policies: demoPolicies,
       policyActivations: [],
       releaseGovernance: [],
-      audit: savedState.audit?.length ? savedState.audit : demoAudit,
+      audit: demoAudit,
       integrations: demoIntegrations,
     };
   }
-
-  const json = (await response.json()) as OverviewDataPayload;
-  return json;
 }
 
 export interface UseOverviewQueryOptions {
@@ -79,13 +101,15 @@ export function useOverviewQuery(options?: UseOverviewQueryOptions) {
 
   const query = useQuery({
     queryKey: OVERVIEW_QUERY_KEY,
-    queryFn: fetchOverviewData,
-    staleTime: 3_000,
+    queryFn: ({ signal }) => fetchOverviewData({ signal }),
+    staleTime: 15_000,
+    gcTime: 5 * 60_000,
     refetchInterval: (query) => {
-      // In live workspace mode, poll every 4 seconds for sub-second telemetry updates
-      return query.state.data?.mode === "live" ? 4_000 : false;
+      // In live workspace mode, poll every 5 seconds for telemetry updates
+      return query.state.data?.mode === "live" ? 5_000 : false;
     },
-    initialData: options?.initialData
+    // Use placeholderData to prevent re-renders from recreating inline initialData and looping
+    placeholderData: options?.initialData
       ? {
           mode: options.initialData.mode ?? "demo",
           operator: options.initialData.operator ?? null,

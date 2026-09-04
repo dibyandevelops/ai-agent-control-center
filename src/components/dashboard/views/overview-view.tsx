@@ -70,15 +70,7 @@ export function OverviewView({
     audit: queryAudit,
     operator: queryOperator,
     isLive: queryIsLive,
-  } = useOverviewQuery({
-    initialData: {
-      agents: propAgents,
-      approvals: propApprovals,
-      audit: propAudit,
-      operator: propOperator,
-      mode: propLive ? "live" : "demo",
-    },
-  });
+  } = useOverviewQuery();
 
   // 2. React Query Mutation for optimistic approval decision updates
   const { decideApproval } = useApprovalMutation();

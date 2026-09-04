@@ -57,12 +57,12 @@ export function RequestIntegrationDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[90] flex items-center justify-center p-4 max-sm:items-end max-sm:p-0 bg-black/75 backdrop-blur-sm"
       role="presentation"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-2xl border border-sentinel-line-strong bg-sentinel-surface shadow-2xl animate-dialog-in"
+        className="w-full max-w-lg overflow-hidden rounded-2xl max-sm:rounded-b-none max-sm:max-h-[90dvh] max-sm:overflow-y-auto border border-sentinel-line-strong bg-sentinel-surface shadow-2xl animate-dialog-in pb-safe"
         role="dialog"
         aria-modal="true"
         aria-labelledby="request-integration-title"

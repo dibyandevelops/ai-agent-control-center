@@ -80,12 +80,12 @@ export function CreateDelegationDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[80] grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4 max-sm:items-end max-sm:p-0 bg-black/70 backdrop-blur-sm"
       role="presentation"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2"
+        className="w-full max-w-lg overflow-hidden rounded-app-lg max-sm:rounded-b-none max-sm:max-h-[90dvh] max-sm:overflow-y-auto border border-sentinel-line-strong bg-sentinel-surface shadow-app-2 pb-safe"
         role="dialog"
         aria-modal="true"
         aria-labelledby="delegation-dialog-title"

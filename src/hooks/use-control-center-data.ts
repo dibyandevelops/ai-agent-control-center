@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   Agent,
   Approval,
@@ -45,6 +45,7 @@ export function useControlCenterData() {
   const [auditList, setAuditList] = useState<AuditEvent[]>(initialAuditEvents);
   const [integrationList, setIntegrationList] = useState<Integration[]>(integrations);
   const [hydrated, setHydrated] = useState(false);
+  const activeAbortControllerRef = useRef<AbortController | null>(null);
 
   const applyLivePayload = useCallback((payload: LiveControlCenterPayload) => {
     setAgentList(payload.agents);
@@ -60,12 +61,29 @@ export function useControlCenterData() {
   }, []);
 
   const refreshLiveWorkspace = useCallback(async () => {
-    const response = await fetch("/api/v1/control-center", { cache: "no-store" });
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
-      throw new Error(payload.error || "Unable to load live workspace.");
+    // Abort any prior in-flight request before launching new fetch
+    if (activeAbortControllerRef.current) {
+      activeAbortControllerRef.current.abort();
     }
-    applyLivePayload((await response.json()) as LiveControlCenterPayload);
+    const controller = new AbortController();
+    activeAbortControllerRef.current = controller;
+
+    try {
+      const response = await fetch("/api/v1/control-center", {
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error || "Unable to load live workspace.");
+      }
+      applyLivePayload((await response.json()) as LiveControlCenterPayload);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return; // gracefully ignore cancelled request
+      }
+      throw err;
+    }
   }, [applyLivePayload]);
 
   useEffect(() => {
@@ -111,31 +129,40 @@ export function useControlCenterData() {
   }, [agentList, approvalList, policyList, auditList, workspaceMode, hydrated]);
 
   useEffect(() => {
-    let unmounted = false;
+    const controller = new AbortController();
     async function init() {
       try {
-        const response = await fetch("/api/v1/control-center", { cache: "no-store" });
-        if (unmounted) return;
+        const response = await fetch("/api/v1/control-center", {
+          signal: controller.signal,
+          cache: "no-store",
+        });
         if (response.ok) {
           applyLivePayload((await response.json()) as LiveControlCenterPayload);
         } else {
           setWorkspaceMode("demo");
         }
-      } catch {
-        if (!unmounted) setWorkspaceMode("demo");
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setWorkspaceMode("demo");
       }
     }
     void init();
     return () => {
-      unmounted = true;
+      controller.abort();
     };
   }, [applyLivePayload]);
+
+  useEffect(() => {
+    return () => {
+      activeAbortControllerRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (workspaceMode !== "live") return;
     const interval = window.setInterval(() => {
       void refreshLiveWorkspace().catch(() => {});
-    }, 4000);
+    }, 5000);
     return () => window.clearInterval(interval);
   }, [workspaceMode, refreshLiveWorkspace]);
 

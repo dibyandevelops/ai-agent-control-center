@@ -274,14 +274,14 @@ export function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-[120] grid place-items-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[120] flex items-start justify-center p-4 pt-16 max-sm:p-2 max-sm:pt-10 bg-black/60 backdrop-blur-sm animate-fade-in"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-sentinel-line-strong bg-sentinel-surface shadow-2xl animate-dialog-in"
+        className="flex w-full max-w-lg max-h-[85vh] flex-col overflow-hidden rounded-2xl border border-sentinel-line-strong bg-sentinel-surface shadow-2xl animate-dialog-in"
         role="dialog"
         aria-modal="true"
         aria-label="Command Palette"

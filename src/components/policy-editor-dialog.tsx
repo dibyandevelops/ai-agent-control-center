@@ -207,8 +207,8 @@ export function PolicyEditorDialog({
       : null;
 
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4 backdrop-blur-sm" role="presentation">
-      <div className="max-h-[92vh] w-full max-w-5xl overflow-x-hidden overflow-y-auto rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2" role="dialog" aria-modal="true" aria-labelledby="policy-editor-title">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 max-sm:items-end max-sm:p-0 bg-black/75 backdrop-blur-sm" role="presentation">
+      <div className="max-h-[92vh] max-sm:max-h-[90dvh] max-sm:rounded-b-none w-full max-w-5xl overflow-x-hidden overflow-y-auto rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2 pb-safe" role="dialog" aria-modal="true" aria-labelledby="policy-editor-title">
         <div className="sticky top-0 z-10 flex items-start justify-between border-b border-sentinel-line bg-sentinel-surface/95 px-4 sm:px-6 py-4 sm:py-5 backdrop-blur">
           <div>
             <h2 id="policy-editor-title" className="text-base sm:text-lg font-semibold tracking-tight text-sentinel-text">{policy ? "Edit policy" : "Create enforcement policy"}</h2>

@@ -298,8 +298,8 @@ export function PolicyHistoryDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[95] grid place-items-center bg-black/75 p-4 backdrop-blur-sm" role="presentation">
-      <section className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2" role="dialog" aria-modal="true" aria-labelledby="policy-history-title">
+    <div className="fixed inset-0 z-[95] flex items-center justify-center p-4 max-sm:items-end max-sm:p-0 bg-black/75 backdrop-blur-sm" role="presentation">
+      <section className="max-h-[88vh] max-sm:max-h-[90dvh] max-sm:rounded-b-none w-full max-w-3xl overflow-y-auto rounded-app-lg border border-sentinel-line-strong bg-sentinel-surface shadow-app-2 pb-safe" role="dialog" aria-modal="true" aria-labelledby="policy-history-title">
         <header className="sticky top-0 z-10 flex items-start justify-between border-b border-sentinel-line bg-sentinel-surface/95 px-6 py-5 backdrop-blur">
           <div>
             <h2 id="policy-history-title" className="text-lg font-semibold text-sentinel-text">Version history</h2>

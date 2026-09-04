@@ -2391,21 +2391,32 @@ tbody tr:hover {
 
   .dialog-backdrop {
     padding: 0;
-    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: stretch;
   }
 
   .dialog {
-    width: 100%;
-    max-height: calc(100dvh - 16px);
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-    border-top-left-radius: 24px;
-    border-top-right-radius: 24px;
-    overflow-y: auto;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: min(90dvh, calc(100svh - 20px)) !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 24px !important;
+    border-top-right-radius: 24px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
 
   .dialog-header {
     padding: 16px;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 10;
   }
 
   .dialog form {
@@ -2414,12 +2425,18 @@ tbody tr:hover {
   }
 
   .dialog-actions {
-    flex-direction: column;
+    flex-direction: column-reverse;
     gap: 8px;
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+    padding-top: 8px;
+    z-index: 10;
   }
 
   .dialog-actions button {
     width: 100%;
+    min-height: 44px;
     justify-content: center;
   }
 
