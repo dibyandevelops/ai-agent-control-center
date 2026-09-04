@@ -12,12 +12,14 @@ export const metadata: Metadata = {
 const dashboardViews = new Set<DashboardView>([
   "overview",
   "agents",
+  "activity",
   "approvals",
   "policies",
   "audit",
   "integrations",
   "credentials",
   "team",
+  "settings",
 ]);
 
 export default async function DashboardPage({

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   Bot,
   ClipboardCheck,
   FileClock,
@@ -25,6 +26,7 @@ export const navItems: Array<{
 }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "agents", label: "Agents", icon: Bot },
+  { id: "activity", label: "Agent Activity", icon: Activity },
   { id: "approvals", label: "Approvals", icon: ClipboardCheck },
   { id: "policies", label: "Policies", icon: Shield },
   { id: "audit", label: "Audit log", icon: FileClock },

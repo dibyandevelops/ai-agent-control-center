@@ -6,9 +6,12 @@ import {
   Bot,
   Check,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   CircleDollarSign,
   ClipboardCheck,
   Clock3,
+  Copy,
   ExternalLink,
   Eye,
   EyeOff,
@@ -23,6 +26,7 @@ import {
   ShieldCheck,
   Sparkles,
   TrendingUp,
+  User,
   X,
   XCircle,
   Zap,
@@ -246,12 +250,16 @@ export function ApprovalCard({
   approval,
   onDecision,
   canDecide,
+  detailed = false,
 }: {
   approval: Approval;
   onDecision: (approval: Approval, decision: "approved" | "denied") => Promise<void>;
   canDecide: boolean;
+  detailed?: boolean;
 }) {
   const [pendingDecision, setPendingDecision] = useState<"approved" | "denied" | null>(null);
+  const [expanded, setExpanded] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
 
   async function submitDecision(decision: "approved" | "denied") {
     if (pendingDecision) return;
@@ -263,12 +271,50 @@ export function ApprovalCard({
     }
   }
 
+  const handleCopyId = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      navigator.clipboard?.writeText(approval.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Ignore clipboard write errors
+    }
+  };
+
+  const isHighRisk = approval.risk === "high";
+
   return (
-    <article className="approval-card min-w-0 overflow-hidden">
+    <article
+      className={`approval-card min-w-0 overflow-hidden transition-all duration-200 ${
+        isHighRisk
+          ? "border-red-500/30 bg-gradient-to-b from-red-500/[0.04] to-transparent shadow-sm"
+          : ""
+      }`}
+    >
       <div className="approval-meta">
-        <Risk risk={approval.risk} />
-        <time>{displayTime(approval.requestedAt)}</time>
+        <div className="flex items-center gap-2">
+          <Risk risk={approval.risk} />
+          {isHighRisk && (
+            <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-red-500 dark:text-red-400">
+              Sign-Off Required
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCopyId}
+            title="Click to copy Request ID"
+            className="flex items-center gap-1 rounded border border-sentinel-line/80 bg-sentinel-canvas/70 px-1.5 py-0.5 font-mono text-[9px] text-sentinel-muted hover:text-sentinel-text hover:border-sentinel-line"
+          >
+            {copied ? <Check className="h-2.5 w-2.5 text-sentinel-lime" /> : <Copy className="h-2.5 w-2.5" />}
+            <span>#{approval.id.slice(0, 7)}</span>
+          </button>
+          <time className="text-[9px] text-sentinel-muted font-mono">{displayTime(approval.requestedAt)}</time>
+        </div>
       </div>
+
       <div className="approval-title">
         <span className="agent-icon">
           {approval.agentName.includes("GitHub") ? <GitBranch /> : <Bot />}
@@ -278,13 +324,25 @@ export function ApprovalCard({
           <span>{approval.request}</span>
         </div>
       </div>
+
       <dl>
         <div>
           <dt>Resource</dt>
           <dd className="min-w-0 break-words [overflow-wrap:anywhere]" title={approval.resource}>
-            {approval.resource}
+            <code className="rounded border border-sentinel-line/70 bg-sentinel-canvas/80 px-1.5 py-0.5 font-mono text-[10px] text-sentinel-text">
+              {approval.resource}
+            </code>
           </dd>
         </div>
+        {approval.requestedBy ? (
+          <div>
+            <dt>Requester</dt>
+            <dd className="min-w-0 break-words [overflow-wrap:anywhere] flex items-center gap-1 text-sentinel-text font-medium">
+              <User className="h-2.5 w-2.5 text-sentinel-muted shrink-0" />
+              <span className="truncate">{approval.requestedBy}</span>
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt>Context</dt>
           <dd className="min-w-0 break-words [overflow-wrap:anywhere]">
@@ -292,7 +350,31 @@ export function ApprovalCard({
           </dd>
         </div>
       </dl>
-      <div className="approval-actions">
+
+      {(detailed || expanded) && (
+        <div className="mb-3 rounded-lg border border-sentinel-line/60 bg-sentinel-canvas/60 p-2.5 text-[11px] space-y-1.5">
+          <div className="flex items-center justify-between text-sentinel-muted text-[10px]">
+            <span className="font-semibold text-sentinel-text">Governance & Impact Assessment</span>
+            <span className="font-mono text-[9px] text-sentinel-muted">UUID: {approval.id}</span>
+          </div>
+          <p className="text-sentinel-muted leading-relaxed text-[10px]">
+            Zero-trust policy engine intercepted this mutation because target <span className="font-mono font-medium text-sentinel-text">{approval.resource}</span> contains production-impacting permissions. Execution remains paused until an authorized reviewer signs off.
+          </p>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-sentinel-line/40">
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1 text-[11px] font-medium text-sentinel-muted hover:text-sentinel-text"
+        >
+          {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          <span>{expanded ? "Less details" : "More details"}</span>
+        </button>
+      </div>
+
+      <div className="approval-actions mt-3">
         <button
           className="primary-button"
           disabled={!canDecide || Boolean(pendingDecision)}

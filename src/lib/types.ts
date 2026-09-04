@@ -5,6 +5,7 @@ export type OperatorRole = "admin" | "approver" | "auditor";
 export type DashboardView =
   | "overview"
   | "agents"
+  | "activity"
   | "approvals"
   | "policies"
   | "audit"

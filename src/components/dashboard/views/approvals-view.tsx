@@ -95,6 +95,7 @@ export function ApprovalsView({
                 approval={approval}
                 onDecision={onDecision}
                 canDecide={canDecide}
+                detailed
               />
             ))}
           </div>

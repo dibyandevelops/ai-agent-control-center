@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   Bot,
   ClipboardCheck,
   FileClock,
@@ -46,6 +47,7 @@ import { LiveConnectionDialog } from "@/components/dashboard/dialogs/live-connec
 export type { DashboardView } from "@/lib/types";
 import { OverviewView } from "@/components/dashboard/views/overview-view";
 import { AgentsView } from "@/components/dashboard/views/agents-view";
+import { ActivityView } from "@/components/dashboard/views/activity-view";
 import { ApprovalsView } from "@/components/dashboard/views/approvals-view";
 import { PoliciesView } from "@/components/dashboard/views/policies-view";
 import { AuditView } from "@/components/dashboard/views/audit-view";
@@ -75,6 +77,7 @@ export const navItems: Array<{
 }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "agents", label: "Agents", icon: Bot },
+  { id: "activity", label: "Agent Activity", icon: Activity },
   { id: "approvals", label: "Approvals", icon: ClipboardCheck },
   { id: "policies", label: "Policies", icon: Shield },
   { id: "audit", label: "Audit log", icon: FileClock },
@@ -87,6 +90,7 @@ export const navItems: Array<{
 export const titles: Record<DashboardView, string> = {
   overview: "Control center",
   agents: "Agent registry",
+  activity: "Agent Activity & Telemetry",
   approvals: "Approval queue",
   policies: "Policy engine",
   audit: "Audit log",
@@ -828,6 +832,12 @@ export function ControlCenter({
                     ? handleUnquarantineAgent
                     : undefined
                 }
+              />
+            )}
+            {view === "activity" && (
+              <ActivityView
+                events={auditList}
+                agents={agentList}
               />
             )}
             {view === "approvals" && (
