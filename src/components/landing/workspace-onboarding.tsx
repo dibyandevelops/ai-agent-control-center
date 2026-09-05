@@ -83,12 +83,15 @@ export function WorkspaceOnboarding() {
     setSubmitting(true);
     setError("");
     try {
-      const turnstileToken =
+      const formEl = event.currentTarget;
+      const turnstileInput = formEl.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]');
+      const windowTurnstile =
         typeof window !== "undefined" && "turnstile" in window
           ? (window as unknown as { turnstile?: { getResponse?: () => string } }).turnstile?.getResponse?.()
           : undefined;
+      const turnstileToken = turnstileInput?.value || windowTurnstile || undefined;
 
-      const response = await fetch("/api/v1/onboarding/workspaces", {
+      const response = await fetch("/api/v1/onboarding", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
