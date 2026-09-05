@@ -355,7 +355,7 @@ export default function SalesAgentPage() {
         </div>
 
         {/* Input Bar */}
-        <div className="border-t border-border bg-sentinel-card/80 p-4 backdrop-blur-md">
+        <div className="border-t border-border bg-sentinel-card/90 p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -367,24 +367,25 @@ export default function SalesAgentPage() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about AI governance, calculate pricing, or book a demo..."
+              placeholder="Ask about AI governance, pricing, or demo..."
               className="flex-1 bg-transparent text-sm text-sentinel-text placeholder-sentinel-muted focus:outline-none"
               disabled={loading}
             />
             <button
               type="submit"
               disabled={!input.trim() || loading}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 text-black transition-opacity hover:opacity-90 disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 text-black transition-opacity hover:opacity-90 disabled:opacity-30 shrink-0"
+              aria-label="Send message"
             >
               <Send className="h-4 w-4" />
             </button>
           </form>
           <div className="mt-2 flex items-center justify-between text-[11px] text-sentinel-muted">
-            <span className="flex items-center gap-1">
-              <Lock className="h-3 w-3 text-emerald-400" />
-              All actions are cryptographically governed by SentinelOps
+            <span className="flex items-center gap-1 truncate text-[10px] sm:text-[11px]">
+              <Lock className="h-3 w-3 shrink-0 text-emerald-400" />
+              Cryptographically governed by SentinelOps
             </span>
-            <span>Press Enter to send</span>
+            <span className="hidden sm:inline">Press Enter to send</span>
           </div>
         </div>
       </main>

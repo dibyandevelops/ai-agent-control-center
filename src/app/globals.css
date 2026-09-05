@@ -2501,6 +2501,15 @@ tbody tr:hover {
     font-size: 12px;
   }
 
+  .page {
+    padding: 10px 8px 24px;
+  }
+
+  .table-scroll {
+    border-radius: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* Touch buttons full width where appropriate */
   .approval-actions {
     flex-direction: column;

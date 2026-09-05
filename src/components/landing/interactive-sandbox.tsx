@@ -150,13 +150,13 @@ export function InteractiveSandbox() {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-medium text-sentinel-muted mr-1">Select Scenario:</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 max-w-full no-scrollbar">
+            <span className="text-xs font-medium text-sentinel-muted mr-1 shrink-0">Select Scenario:</span>
             {scenarios.map((sc) => (
               <button
                 key={sc.id}
                 type="button"
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                className={`rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition shrink-0 whitespace-nowrap ${
                   selectedScenario.id === sc.id
                     ? "bg-emerald-600 dark:bg-sentinel-lime text-white dark:text-sentinel-canvas shadow-sm"
                     : "border border-sentinel-line bg-sentinel-surface text-sentinel-muted hover:text-sentinel-text hover:border-sentinel-line-strong"
@@ -172,7 +172,7 @@ export function InteractiveSandbox() {
         {/* Card Body: 2-Column Evaluation Simulator */}
         <div className="grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-sentinel-line">
           {/* Left Column: Synthetic Agent Action Request Payload */}
-          <div className="p-6 lg:p-8 flex flex-col justify-between space-y-6">
+          <div className="p-4 sm:p-6 lg:p-8 flex flex-col justify-between space-y-6">
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -184,20 +184,20 @@ export function InteractiveSandbox() {
                 <span className="font-mono text-[11px] text-sentinel-muted">POST /api/v1/actions/evaluate</span>
               </div>
 
-              <div className="rounded-2xl border border-sentinel-line bg-sentinel-canvas p-4 font-mono text-xs text-sentinel-text space-y-2">
+              <div className="rounded-2xl border border-sentinel-line bg-sentinel-canvas p-3 sm:p-4 font-mono text-xs text-sentinel-text space-y-2 overflow-x-auto">
                 <p className="text-sentinel-dim">{`// Inbound autonomous request`}</p>
-                <p>
+                <p className="break-all sm:break-normal">
                   <span className="text-cyan-400">&quot;agent&quot;</span>: <span className="text-amber-300">&quot;{selectedScenario.agent}&quot;</span>,
                 </p>
-                <p>
+                <p className="break-all sm:break-normal">
                   <span className="text-cyan-400">&quot;action&quot;</span>: <span className="text-amber-300">&quot;{selectedScenario.action}&quot;</span>,
                 </p>
                 <p>
                   <span className="text-cyan-400">&quot;riskLevel&quot;</span>: <span className="text-purple-400">&quot;{selectedScenario.risk}&quot;</span>,
                 </p>
-                <p>
-                  <span className="text-cyan-400">&quot;parameters&quot;</span>: {JSON.stringify(selectedScenario.payload, null, 2)}
-                </p>
+                <div className="overflow-x-auto">
+                  <span className="text-cyan-400">&quot;parameters&quot;</span>: <span className="text-sentinel-text">{JSON.stringify(selectedScenario.payload, null, 2)}</span>
+                </div>
               </div>
             </div>
 

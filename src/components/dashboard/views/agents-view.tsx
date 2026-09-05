@@ -173,11 +173,11 @@ export function AgentTable({
             <tr>
               <th>Agent</th>
               <th>Status</th>
-              <th>Owner</th>
-              <th>Last action</th>
-              <th>Permissions</th>
-              <th>Actions (7d)</th>
-              <th>Cost (MTD)</th>
+              <th className="hidden lg:table-cell">Owner</th>
+              <th className="hidden sm:table-cell">Last action</th>
+              <th className="hidden xl:table-cell">Permissions</th>
+              <th className="hidden md:table-cell">Actions (7d)</th>
+              <th className="hidden md:table-cell">Cost (MTD)</th>
               <th aria-label="Actions" />
             </tr>
           </thead>
@@ -206,13 +206,13 @@ export function AgentTable({
                   </div>
                 </td>
                 <td><Status status={agent.status} /></td>
-                <td>
+                <td className="hidden lg:table-cell">
                   <div className="owner-cell">
                     <span>{agent.owner.split(" ").map((part) => part[0]).join("")}</span>
                     <div><strong>{agent.owner}</strong><small>{agent.team}</small></div>
                   </div>
                 </td>
-                <td>
+                <td className="hidden sm:table-cell">
                   <strong className="plain-strong">{agent.lastAction}</strong>
                   <small className="cell-subtext">{agent.lastSeen}</small>
                   {executionLabel(agent.lastExecutionStatus) ? (
@@ -229,12 +229,12 @@ export function AgentTable({
                     </span>
                   ) : null}
                 </td>
-                <td>
+                <td className="hidden xl:table-cell">
                   <strong className="plain-strong">{agent.permissions[0]}</strong>
                   <small className="cell-subtext">{agent.permissions.length} scopes</small>
                 </td>
-                <td className="mono">{agent.actions.toLocaleString()}</td>
-                <td className="mono">{money(agent.cost)}</td>
+                <td className="mono hidden md:table-cell">{agent.actions.toLocaleString()}</td>
+                <td className="mono hidden md:table-cell">{money(agent.cost)}</td>
                 <td onClick={(e) => e.stopPropagation()}>
                   {(onQuarantine || onLiftQuarantine) ? (
                     <div className="flex items-center justify-end gap-1.5">

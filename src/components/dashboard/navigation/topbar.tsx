@@ -92,12 +92,12 @@ export function TopBar({
       <div className="topbar-actions">
         {operator ? (
           <button
-            className="organization-control cursor-pointer"
+            className="organization-control cursor-pointer hidden sm:flex"
             onClick={() => onSelectView("settings")}
             title="Manage organization & settings"
           >
             <Building2 className="h-4 w-4 shrink-0 text-sentinel-muted" />
-            <span className="truncate max-w-[140px] sm:max-w-[170px] text-xs font-medium">{operator.organizationName}</span>
+            <span className="truncate max-w-[120px] sm:max-w-[170px] text-xs font-medium">{operator.organizationName}</span>
             <ChevronDown className="h-3 w-3 opacity-60 shrink-0" />
           </button>
         ) : null}
@@ -158,7 +158,7 @@ export function TopBar({
         {operator ? (
           <div className="relative">
             <button
-              className="flex items-center gap-2 rounded-xl border border-sentinel-line/80 bg-sentinel-surface px-1.5 py-1 transition-all hover:border-sentinel-line-strong hover:bg-sentinel-surface-raised cursor-pointer"
+              className="flex items-center gap-1.5 sm:gap-2 rounded-xl border border-sentinel-line/80 bg-sentinel-surface px-1.5 py-1 transition-all hover:border-sentinel-line-strong hover:bg-sentinel-surface-raised cursor-pointer"
               onClick={() => setProfileMenuOpen((prev) => !prev)}
               aria-label="Operator profile menu"
               aria-expanded={profileMenuOpen}
@@ -169,10 +169,10 @@ export function TopBar({
               <span className="hidden xl:inline text-xs font-medium text-sentinel-text truncate max-w-[100px]">
                 {operator.displayName.split(" ")[0]}
               </span>
-              <span className="rounded bg-sentinel-canvas/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-sentinel-muted">
+              <span className="hidden sm:inline rounded bg-sentinel-canvas/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-sentinel-muted">
                 {operator.role}
               </span>
-              <ChevronDown className="h-3 w-3 text-sentinel-muted transition-transform duration-150" />
+              <ChevronDown className="hidden sm:inline h-3 w-3 text-sentinel-muted transition-transform duration-150" />
             </button>
 
             {profileMenuOpen && (
@@ -181,7 +181,7 @@ export function TopBar({
                   className="fixed inset-0 z-40"
                   onClick={() => setProfileMenuOpen(false)}
                 />
-                <div className="absolute right-0 top-full mt-2 z-50 w-64 rounded-2xl border border-sentinel-line bg-sentinel-surface p-2 shadow-2xl backdrop-blur-xl animate-in fade-in-50 zoom-in-95">
+                <div className="absolute right-0 top-full mt-2 z-50 w-64 max-w-[calc(100vw-24px)] rounded-2xl border border-sentinel-line bg-sentinel-surface p-2 shadow-2xl backdrop-blur-xl animate-in fade-in-50 zoom-in-95">
                   <div className="border-b border-sentinel-line/60 p-3">
                     <div className="flex items-center gap-2.5">
                       <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sentinel-lime/10 font-mono text-xs font-bold text-sentinel-lime border border-sentinel-lime/30">

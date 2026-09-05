@@ -333,13 +333,19 @@ export function AuditView({
                 <th>Agent</th>
                 <th>Action</th>
                 <th>Decision</th>
-                <th>Actor</th>
+                <th className="hidden md:table-cell">Actor</th>
                 <th>Evidence</th>
               </tr>
             </thead>
             <tbody>
               {paginatedEvents.map((event) => (
-                <tr key={event.id}>
+                <tr
+                  key={event.id}
+                  onClick={() => {
+                    if (event.requestId) onOpenDetails(event.requestId);
+                  }}
+                  className={event.requestId ? "cursor-pointer transition hover:bg-sentinel-surface-raised" : ""}
+                >
                   <td className="mono">{displayTime(event.time)}</td>
                   <td>
                     <strong className="plain-strong">{event.agent}</strong>
@@ -350,12 +356,12 @@ export function AuditView({
                       {event.result}
                     </span>
                   </td>
-                  <td>{event.actor}</td>
-                  <td>
+                  <td className="hidden md:table-cell">{event.actor}</td>
+                  <td onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-3">
                       {event.requestId ? (
                         <button
-                          className="text-button"
+                          className="text-button text-xs"
                           onClick={() => onOpenDetails(event.requestId!)}
                         >
                           View details
