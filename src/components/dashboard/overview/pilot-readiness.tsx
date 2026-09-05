@@ -7,7 +7,7 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import type { Agent, AuditEvent } from "@/lib/types";
 
 export function PilotReadiness({
@@ -27,25 +27,29 @@ export function PilotReadiness({
   onOpenIntegrations: () => void;
   onOpenPolicies: () => void;
 }) {
-  const [isDismissed, setIsDismissed] = useState<boolean>(false);
+  const [localDismissed, setLocalDismissed] = useState<boolean | null>(null);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
-  const [mounted, setMounted] = useState<boolean>(false);
 
-  useEffect(() => {
-    setMounted(true);
-    try {
-      const saved = localStorage.getItem("sentinelops_hide_launch_checklist");
-      if (saved === "true") {
-        setIsDismissed(true);
+  const isStoredDismissed = useSyncExternalStore(
+    (onStoreChange) => {
+      window.addEventListener("storage", onStoreChange);
+      return () => window.removeEventListener("storage", onStoreChange);
+    },
+    () => {
+      try {
+        return localStorage.getItem("sentinelops_hide_launch_checklist") === "true";
+      } catch {
+        return false;
       }
-    } catch {
-      // Ignore localStorage access errors
-    }
-  }, []);
+    },
+    () => false,
+  );
+
+  const isDismissed = localDismissed !== null ? localDismissed : isStoredDismissed;
 
   const toggleDismissed = () => {
     const next = !isDismissed;
-    setIsDismissed(next);
+    setLocalDismissed(next);
     try {
       localStorage.setItem("sentinelops_hide_launch_checklist", String(next));
     } catch {
@@ -103,7 +107,7 @@ export function PilotReadiness({
   ];
   const completeCount = steps.filter((step) => step.complete).length;
 
-  if (mounted && isDismissed) {
+  if (isDismissed) {
     return (
       <div className="flex items-center justify-between rounded-xl border border-sentinel-line/80 bg-sentinel-surface/60 px-3 py-1.5 text-xs text-sentinel-muted shadow-sm transition-all duration-200">
         <div className="flex items-center gap-2">

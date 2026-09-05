@@ -42,8 +42,8 @@ export function ProfileSettingsTab({
       onUpdateOperatorName(displayName.trim());
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
-    } catch (err: any) {
-      setErrorMessage(err.message || "An unexpected error occurred.");
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
       setSaving(false);
     }

@@ -225,16 +225,20 @@ export function CommandPalette({
     return [...matchingApprovals, ...navAndActions, ...matchingAgents, ...matchingPolicies];
   }, [query, quickNav, quickActions, agents, policies, approvals, onSelectView]);
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (open) {
       setQuery("");
       setSelectedIndex(0);
     }
-  }, [open]);
+  }
 
-  useEffect(() => {
+  const [prevQuery, setPrevQuery] = useState(query);
+  if (prevQuery !== query) {
+    setPrevQuery(query);
     setSelectedIndex(0);
-  }, [query]);
+  }
 
   useEffect(() => {
     if (!open) return;

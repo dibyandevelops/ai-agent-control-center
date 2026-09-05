@@ -1,13 +1,17 @@
-name: Deploy staging
+name: Deploy production
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: [Quality gate]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
 
 concurrency:
-  group: sentinelops-staging
+  group: sentinelops-production
   cancel-in-progress: false
 
 jobs:
@@ -15,10 +19,10 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
-    name: Verify and deploy staging
+    name: Verify and deploy production
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: staging
+    environment: Production
     services:
       postgres:
         image: postgres:16-alpine
@@ -42,7 +46,7 @@ jobs:
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_TELEMETRY_DISABLED: "1"
-      STAGING_BASE_URL: https://ai-agent-control-center-alpha.vercel.app
+      PRODUCTION_BASE_URL: https://sentinelops-ai.com
       DEPLOYED_COMMIT: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
     steps:
       - name: Check out repository
@@ -68,14 +72,14 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: pnpm test:e2e
 
-      - name: Apply staging database migrations
+      - name: Apply production database migrations
         env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
           DB_SSL: "true"
           DB_SSL_REJECT_UNAUTHORIZED: "true"
-        run: pnpm db:migrate && pnpm db:seed
+        run: pnpm db:migrate
 
-      - name: Deploy staging artifact to Vercel
+      - name: Deploy production artifact to Vercel
         id: deploy
         shell: bash
         run: |
@@ -93,21 +97,12 @@ jobs:
           --fail
           --retry 10
           --retry-delay 3
-          "$STAGING_BASE_URL/api/health"
-
-      - name: Run live staging approval journey
-        env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-          DB_SSL: "true"
-          DB_SSL_REJECT_UNAUTHORIZED: "true"
-          SENTINELOPS_E2E_BASE_URL: ${{ env.STAGING_BASE_URL }}
-          SENTINELOPS_E2E_EXPECT_DRY_RUN: "true"
-        run: pnpm test:e2e:staging
+          "$PRODUCTION_BASE_URL/api/health"
 
       - name: Publish deployment summary
         run: |
-          echo "## SentinelOps staging" >> "$GITHUB_STEP_SUMMARY"
-          echo "- URL: $STAGING_BASE_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "## SentinelOps production" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: $PRODUCTION_BASE_URL" >> "$GITHUB_STEP_SUMMARY"
           echo "- Deployment artifact: ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
           echo "- Commit: $DEPLOYED_COMMIT" >> "$GITHUB_STEP_SUMMARY"
           echo "- Health check: passed" >> "$GITHUB_STEP_SUMMARY"

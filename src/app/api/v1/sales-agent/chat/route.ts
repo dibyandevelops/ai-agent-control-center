@@ -310,14 +310,14 @@ export async function POST(request: NextRequest) {
       const timeMatch = text.match(/(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)\b(?:\s*(?:est|pst|cst|gmt|utc))?)/i);
 
       if (dayMatch && timeMatch) {
-        let day = dayMatch[0].trim().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+        const day = dayMatch[0].trim().replace(/\b[a-z]/g, (c) => c.toUpperCase());
         let t = timeMatch[1].trim().toUpperCase();
         if (!t.includes("EST") && !t.includes("PST") && !t.includes("UTC") && !t.includes("GMT") && !t.includes("CST")) {
           t += " EST";
         }
         requestedSlot = `${day} at ${t}`;
       } else if (dayMatch) {
-        let day = dayMatch[0].trim().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+        const day = dayMatch[0].trim().replace(/\b[a-z]/g, (c) => c.toUpperCase());
         requestedSlot = `${day} at 2:00 PM EST`;
       } else if (timeMatch) {
         let t = timeMatch[1].trim().toUpperCase();
