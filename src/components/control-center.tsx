@@ -89,10 +89,10 @@ function WorkspaceBanner({
   if (mode === "live") return null;
 
   return (
-    <div className="mx-6 mt-4 flex items-center justify-between gap-4 rounded-2xl border border-sentinel-line bg-gradient-to-r from-sentinel-surface via-sentinel-surface-raised to-sentinel-surface px-5 py-3 shadow-sm max-md:mx-4 max-md:flex-col max-md:items-start">
-      <div className="flex items-center gap-3 min-w-0">
+    <div className="mx-3 sm:mx-6 mt-3 sm:mt-4 flex items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-sentinel-line bg-gradient-to-r from-sentinel-surface via-sentinel-surface-raised to-sentinel-surface p-3.5 sm:px-5 sm:py-3 shadow-sm max-md:flex-col max-md:items-start">
+      <div className="flex items-start sm:items-center gap-3 min-w-0">
         <span
-          className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl border ${
+          className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl border mt-0.5 sm:mt-0 ${
             mode === "connecting"
               ? "border-sentinel-amber/40 bg-sentinel-amber/15 text-sentinel-amber animate-pulse"
               : "border-sentinel-line bg-sentinel-canvas text-sentinel-muted"
@@ -100,8 +100,8 @@ function WorkspaceBanner({
         >
           <PlugZap className="h-4 w-4 text-sentinel-lime" />
         </span>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
             <strong className="text-xs font-semibold text-sentinel-text">
               {mode === "connecting"
                 ? "Connecting to live enforcement workspace…"
@@ -111,7 +111,7 @@ function WorkspaceBanner({
               Demo Scenarios Active
             </span>
           </div>
-          <p className="mt-0.5 text-[11px] text-sentinel-muted truncate">
+          <p className="mt-0.5 text-[11px] text-sentinel-muted leading-relaxed break-words">
             {error ||
               "All actions and policy events are running against in-memory demo scenarios. Sign in to sync with your live database."}
           </p>
@@ -120,7 +120,7 @@ function WorkspaceBanner({
 
       <button
         type="button"
-        className="primary-button text-xs py-1.5 px-4 shrink-0 shadow-sm"
+        className="primary-button text-xs py-2 sm:py-1.5 px-4 shrink-0 shadow-sm max-md:w-full max-md:justify-center"
         onClick={onConnect}
       >
         <PlugZap2 className="h-3.5 w-3.5" />

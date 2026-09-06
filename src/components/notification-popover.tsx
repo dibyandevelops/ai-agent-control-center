@@ -64,7 +64,7 @@ export function NotificationPopover({
         role="presentation"
       />
       <div
-        className="absolute right-0 top-12 z-[120] w-[92vw] sm:w-[420px] max-w-[440px] rounded-2xl border border-sentinel-border bg-sentinel-surface shadow-2xl animate-dialog-in overflow-hidden"
+        className="fixed inset-x-3 top-16 sm:absolute sm:inset-auto sm:right-0 sm:top-12 z-[120] sm:w-[420px] sm:max-w-[440px] max-h-[calc(100vh-80px)] rounded-2xl border border-sentinel-border bg-sentinel-surface shadow-2xl animate-dialog-in overflow-hidden flex flex-col"
         role="dialog"
         aria-modal="true"
         aria-labelledby="notification-center-title"
@@ -163,11 +163,11 @@ export function NotificationPopover({
                                   : "bg-sentinel-accent"
                             }`}
                           />
-                          <strong className="truncate text-sentinel-text font-semibold text-xs">
+                          <strong className="text-sentinel-text font-semibold text-xs leading-snug break-words">
                             {approval.request}
                           </strong>
                         </div>
-                        <p className="mt-0.5 text-[11px] text-sentinel-muted truncate">
+                        <p className="mt-0.5 text-[11px] text-sentinel-muted leading-tight break-words">
                           {approval.agentName} • {approval.resource}
                         </p>
                       </div>
@@ -176,7 +176,7 @@ export function NotificationPopover({
                       </span>
                     </div>
 
-                    <div className="rounded-lg border border-sentinel-border/50 bg-sentinel-surface p-2 text-[10px] text-sentinel-muted font-mono truncate">
+                    <div className="rounded-lg border border-sentinel-border/50 bg-sentinel-surface p-2 text-[10px] text-sentinel-muted font-mono leading-relaxed break-words">
                       Context: <span className="text-sentinel-text">{approval.context}</span>
                     </div>
 
