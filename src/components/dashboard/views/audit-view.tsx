@@ -329,7 +329,7 @@ export function AuditView({
           <table>
             <thead>
               <tr>
-                <th>Timestamp</th>
+                <th className="hidden sm:table-cell">Timestamp</th>
                 <th>Agent</th>
                 <th>Action</th>
                 <th>Decision</th>
@@ -346,11 +346,13 @@ export function AuditView({
                   }}
                   className={event.requestId ? "cursor-pointer transition hover:bg-sentinel-surface-raised" : ""}
                 >
-                  <td className="mono">{displayTime(event.time)}</td>
+                  <td className="mono hidden sm:table-cell">{displayTime(event.time)}</td>
                   <td>
-                    <strong className="plain-strong">{event.agent}</strong>
+                    <strong className="plain-strong text-xs">{event.agent}</strong>
                   </td>
-                  <td>{event.action}</td>
+                  <td className="text-xs">
+                    <div className="line-clamp-2 max-w-[140px] sm:max-w-none">{event.action}</div>
+                  </td>
                   <td>
                     <span className={`decision decision-${event.result.toLowerCase()}`}>
                       {event.result}
@@ -358,35 +360,35 @@ export function AuditView({
                   </td>
                   <td className="hidden md:table-cell">{event.actor}</td>
                   <td onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       {event.requestId ? (
                         <button
-                          className="text-button text-xs"
+                          className="text-button text-xs font-semibold py-1 px-1.5"
                           onClick={() => onOpenDetails(event.requestId!)}
                         >
-                          View details
+                          <span className="hidden sm:inline">View details</span>
+                          <span className="sm:hidden">View</span>
                         </button>
                       ) : null}
                       {event.externalReference?.startsWith("https://github.com/") ? (
                         <a
-                          className="text-button"
+                          className="text-button text-xs"
                           href={event.externalReference}
                           target="_blank"
                           rel="noreferrer"
                           aria-label="Open external GitHub evidence"
                         >
-                          <ExternalLink className="h-3.5 w-3.5" /> GitHub
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">GitHub</span>
                         </a>
                       ) : event.externalReference?.startsWith("dry-run://") ? (
                         <span
-                          className="font-mono text-[10px] text-sentinel-muted"
-                          title={event.externalReference}
+                          className="mono text-[10px] text-sentinel-muted"
+                          title="No external write was performed"
                         >
-                          Dry-run evidence
+                          dry-run
                         </span>
-                      ) : event.requestId ? null : (
-                        <span className="text-sentinel-muted">Recorded</span>
-                      )}
+                      ) : null}
                     </div>
                   </td>
                 </tr>

@@ -103,29 +103,21 @@ export function TopBar({
         ) : null}
 
         <button
-          className="command-control hidden md:flex w-48 lg:w-56 xl:w-64 items-center justify-between cursor-pointer"
-          onClick={onOpenCommandPalette}
-          aria-label="Search or run command"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <Search className="h-3.5 w-3.5 shrink-0 text-sentinel-muted" />
-            <span className="truncate whitespace-nowrap text-xs text-sentinel-muted">
-              <span className="hidden lg:inline">Search or run command…</span>
-              <span className="lg:hidden">Search…</span>
-            </span>
-          </div>
-          <kbd className="shrink-0 font-mono text-[10px] flex items-center gap-0.5 ml-1">
-            <Command className="h-2.5 w-2.5" />K
-          </kbd>
-        </button>
-
-        <button
-          className="icon-button md:hidden"
+          className="command-control flex items-center justify-between cursor-pointer max-md:w-9 max-md:h-9 max-md:p-0 max-md:justify-center md:w-48 lg:w-56 xl:w-64 shrink-0"
           onClick={onOpenCommandPalette}
           aria-label="Search or run command"
           title="Search (⌘K)"
         >
-          <Search className="h-4 w-4" />
+          <div className="flex items-center gap-2 min-w-0">
+            <Search className="h-3.5 w-3.5 shrink-0 text-sentinel-muted" />
+            <span className="truncate whitespace-nowrap text-xs text-sentinel-muted hidden md:inline">
+              <span className="hidden lg:inline">Search or run command…</span>
+              <span className="lg:hidden">Search…</span>
+            </span>
+          </div>
+          <kbd className="hidden md:flex shrink-0 font-mono text-[10px] items-center gap-0.5 ml-1">
+            <Command className="h-2.5 w-2.5" />K
+          </kbd>
         </button>
 
         <ThemeToggle />
@@ -252,11 +244,12 @@ export function TopBar({
         ) : (
           <button
             type="button"
-            className="primary-button text-xs py-1.5 px-3.5 flex items-center gap-1.5 shadow-sm cursor-pointer"
+            className="primary-button text-xs py-1.5 px-2.5 sm:px-3.5 flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0"
             onClick={onOpenConnect}
           >
-            <PlugZap className="h-3.5 w-3.5" />
-            <span>Connect / Sign In</span>
+            <PlugZap className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Connect / Sign In</span>
+            <span className="sm:hidden">Sign In</span>
           </button>
         )}
       </div>

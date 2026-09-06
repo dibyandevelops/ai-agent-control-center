@@ -124,44 +124,45 @@ export default function SalesAgentPage() {
   return (
     <div className="flex h-screen flex-col bg-sentinel-canvas font-sentinel text-sentinel-text">
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-border/80 bg-sentinel-card/60 px-6 backdrop-blur-md">
-        <div className="flex items-center gap-3">
+      <header className="flex h-14 sm:h-16 shrink-0 items-center justify-between border-b border-border/80 bg-sentinel-card/80 px-3 sm:px-6 backdrop-blur-md gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <Link
             href="/dashboard"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-sentinel-canvas/80 text-sentinel-muted transition-colors hover:text-sentinel-text"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-sentinel-canvas/80 text-sentinel-muted transition-colors hover:text-sentinel-text"
             title="Return to Control Center"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-400 font-bold text-black shadow-sm">
+          <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-400 font-bold text-xs sm:text-sm text-black shadow-sm">
             SO
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-semibold tracking-tight text-sentinel-text">
-                Orkestrate Sales Assistant
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h1 className="text-xs sm:text-sm font-semibold tracking-tight text-sentinel-text truncate">
+                <span className="hidden sm:inline">Orkestrate </span>Sales Assistant
               </h1>
-              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                Governed Agent
+              <span className="hidden xs:inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.2 text-[9px] sm:text-[10px] font-medium text-emerald-400 shrink-0">
+                Governed
               </span>
             </div>
-            <p className="text-[11px] text-sentinel-muted">
-              Live Policy Guardrails • 4-Eyes Approvals • SHA-256 Audit Trail
+            <p className="text-[10px] sm:text-[11px] text-sentinel-muted truncate">
+              Live Policy Guardrails • 4-Eyes Approvals
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400 sm:flex">
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="hidden items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400 lg:flex">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
             Control Plane Active
           </div>
           <Link
             href="/dashboard"
-            className="flex items-center gap-1.5 rounded-lg border border-border bg-sentinel-soft px-3 py-1.5 text-xs font-medium text-sentinel-text transition-colors hover:bg-sentinel-soft/80"
+            className="flex items-center gap-1 rounded-lg border border-border bg-sentinel-soft px-2.5 sm:px-3 py-1.5 text-xs font-medium text-sentinel-text transition-colors hover:bg-sentinel-soft/80"
           >
-            <span>Control Center</span>
-            <ExternalLink className="h-3 w-3 text-sentinel-muted" />
+            <span className="hidden sm:inline">Control Center</span>
+            <span className="sm:hidden">Dashboard</span>
+            <ExternalLink className="h-3 w-3 text-sentinel-muted shrink-0" />
           </Link>
         </div>
       </header>
