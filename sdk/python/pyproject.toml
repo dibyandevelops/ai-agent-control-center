@@ -4,16 +4,16 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sentinelops-ai"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python SDK for SentinelOps — human-in-the-loop governance for AI agents."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
 authors = [
-    { name = "Orkestrate", email = "founders@orkestrate.ai" },
+    { name = "SentinelOps", email = "iruka@sentinelops-ai.com" },
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -22,10 +22,11 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries",
     "Topic :: Security",
 ]
-keywords = ["ai", "governance", "agents", "sentinelops", "compliance", "audit"]
+keywords = ["ai", "governance", "agents", "sentinelops", "langchain", "compliance", "audit"]
 dependencies = [
     "httpx>=0.25",
 ]
@@ -36,12 +37,15 @@ dev = [
     "respx>=0.21",
     "pytest-cov>=4.0",
 ]
+langchain = [
+    "langchain-core>=0.1",
+]
 
 [project.urls]
-Homepage = "https://trysentinelops.com"
-Documentation = "https://trysentinelops.com/docs"
-Repository = "https://github.com/orkestrate/sentinelops-python"
-Issues = "https://github.com/orkestrate/sentinelops-python/issues"
+Homepage = "https://sentinelops-ai.com"
+Documentation = "https://sentinelops-ai.com/docs/connecting-agents"
+Repository = "https://github.com/dibyandevelops/ai-agent-control-center"
+Issues = "https://github.com/dibyandevelops/ai-agent-control-center/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["sentinelops"]

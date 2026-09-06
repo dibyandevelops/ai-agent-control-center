@@ -2,7 +2,7 @@
 
 Quick start::
 
-    from sentinelops import SentinelOps
+    from sentinelops import SentinelOps, govern_action
 
     sentinel = SentinelOps(api_key="sop_live_...")
 
@@ -16,11 +16,18 @@ Quick start::
     if decision.approved:
         # safe to proceed
         ...
+
+LangChain integration::
+
+    from sentinelops.langchain import SentinelOpsCallbackHandler
+
+    handler = SentinelOpsCallbackHandler(client=sentinel)
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from .client import SentinelOps
+from .decorators import govern_action
 from .exceptions import (
     ActionBlockedError,
     ApprovalTimeoutError,
@@ -31,10 +38,13 @@ from .exceptions import (
     ServerError,
     ValidationError,
 )
+from .langchain import SentinelOpsCallbackHandler
 from .models import Decision, Execution
 
 __all__ = [
     "SentinelOps",
+    "govern_action",
+    "SentinelOpsCallbackHandler",
     "Decision",
     "Execution",
     "SentinelOpsError",

@@ -53,7 +53,7 @@ from .models import Decision
 
 __all__ = ["SentinelOps"]
 
-_DEFAULT_BASE_URL = "https://trysentinelops.com"
+_DEFAULT_BASE_URL = "https://sentinelops-ai.com"
 _DEFAULT_TIMEOUT = 30.0
 
 
@@ -67,7 +67,7 @@ class SentinelOps:
         ``SENTINELOPS_API_KEY`` environment variable is used.
     base_url : str, optional
         Base URL of the SentinelOps instance.  Defaults to
-        ``https://trysentinelops.com``.  Override for self-hosted or local
+        ``https://sentinelops-ai.com``.  Override for self-hosted or local
         development (e.g. ``http://localhost:3000``).
     timeout : float, optional
         HTTP request timeout in seconds.  Defaults to 30.

@@ -12,16 +12,22 @@ async function postSlackText(input: {
   eventType: SlackEventType;
   severity: SlackSeverity;
   text: string;
+  blocks?: Array<Record<string, unknown>>;
   connectionId?: string;
 }) {
   const targets = await resolveSlackDeliveryTargets(input);
   if (targets.length === 0) return { delivered: false, reason: "not_configured", deliveredCount: 0 };
 
   const deliveries = await Promise.all(targets.map(async (target) => {
+    const payload: Record<string, unknown> = { text: input.text };
+    if (input.blocks && input.blocks.length > 0) {
+      payload.blocks = input.blocks;
+    }
+
     const response = await fetch(target.webhookUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text: input.text }),
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(5_000),
     });
     const result = {
@@ -68,17 +74,82 @@ export async function notifySlackOfApproval(input: {
   resource: string;
   risk: "low" | "medium" | "high";
 }) {
+  const riskEmoji = input.risk === "high" ? "🚨" : input.risk === "medium" ? "⚠️" : "🛡️";
+  const portalUrl = process.env.NEXT_PUBLIC_APP_URL || "https://sentinelops-ai.com";
+  const approvalUrl = `${portalUrl}/dashboard?view=approvals`;
+  const evidenceUrl = `${portalUrl}/dashboard?view=audit&eventId=${encodeURIComponent(input.requestId)}`;
+
+  const blocks: Array<Record<string, unknown>> = [
+    {
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: `${riskEmoji} SentinelOps Human-in-the-Loop Gate`,
+        emoji: true,
+      },
+    },
+    {
+      type: "section",
+      fields: [
+        {
+          type: "mrkdwn",
+          text: `*Agent:*\n${input.agentName}`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Risk Level:*\n\`${input.risk.toUpperCase()}\``,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Action:*\n\`${input.action}\``,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Target Resource:*\n\`${input.resource}\``,
+        },
+      ],
+    },
+    {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: `🔒 *Request ID:* \`${input.requestId}\` • Cryptographically signed four-eyes gate`,
+        },
+      ],
+    },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "✅ Review & Authorize",
+            emoji: true,
+          },
+          style: "primary",
+          url: approvalUrl,
+        },
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "🔍 View Audit Evidence",
+            emoji: true,
+          },
+          url: evidenceUrl,
+        },
+      ],
+    },
+  ];
+
   return postSlackText({
     organizationId: input.organizationId,
     eventType: "action.approval_requested",
     severity: input.risk,
-    text: [
-      `SentinelOps approval required: ${input.action}`,
-      `Agent: ${input.agentName}`,
-      `Resource: ${input.resource}`,
-      `Risk: ${input.risk}`,
-      `Request: ${input.requestId}`,
-    ].join("\n"),
+    text: `${riskEmoji} SentinelOps approval required for ${input.agentName}: ${input.action} on ${input.resource} (${approvalUrl})`,
+    blocks,
   });
 }
 
