@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Script from "next/script";
 import { ArrowRight, Building2, Check, LoaderCircle, Mail, ShieldAlert, ShieldCheck } from "lucide-react";
-import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { shouldBypassTurnstile } from "@/lib/turnstile-host";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
@@ -21,6 +21,13 @@ interface InvitationInfo {
   expiresAt: string;
 }
 
+interface TurnstileApi {
+  render: (container: HTMLElement, options: Record<string, unknown>) => string;
+  reset: (widgetId?: string) => void;
+  remove: (widgetId: string) => void;
+  getResponse: (widgetId?: string) => string;
+}
+
 export function WorkspaceOnboarding() {
   const [form, setForm] = useState({ organizationName: "", displayName: "", email: "", password: "" });
   const [error, setError] = useState("");
@@ -29,6 +36,11 @@ export function WorkspaceOnboarding() {
   const [resendEmail, setResendEmail] = useState("");
   const [resendStatus, setResendStatus] = useState<string | null>(null);
   const [resendBusy, setResendBusy] = useState(false);
+
+  // Turnstile state and refs
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // Invitation state
   const [invitationToken, setInvitationToken] = useState<string | null>(null);
@@ -45,6 +57,54 @@ export function WorkspaceOnboarding() {
     getClientSnapshot,
     getServerSnapshot,
   );
+
+  const turnstileSiteKey =
+    isClient && !shouldBypassTurnstile(typeof window !== "undefined" ? window.location.hostname : "", process.env.NODE_ENV)
+      ? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+      : undefined;
+
+  const renderTurnstile = useCallback(() => {
+    if (typeof window === "undefined" || !turnstileSiteKey || !turnstileContainerRef.current) return;
+    const turnstile = (window as unknown as { turnstile?: TurnstileApi }).turnstile;
+    if (!turnstile) return;
+
+    if (turnstileWidgetIdRef.current) {
+      try {
+        turnstile.remove(turnstileWidgetIdRef.current);
+      } catch {
+        // Ignored
+      }
+      turnstileWidgetIdRef.current = null;
+    }
+
+    try {
+      turnstileContainerRef.current.innerHTML = "";
+      const widgetId = turnstile.render(turnstileContainerRef.current, {
+        sitekey: turnstileSiteKey,
+        theme: "auto",
+        action: "workspace_onboarding",
+        callback: (token: string) => {
+          setTurnstileToken(token);
+          setError("");
+        },
+        "expired-callback": () => {
+          setTurnstileToken(null);
+        },
+        "error-callback": () => {
+          setTurnstileToken(null);
+        },
+      });
+      turnstileWidgetIdRef.current = widgetId;
+    } catch (err) {
+      console.warn("[Turnstile] Render warning:", err);
+    }
+  }, [turnstileSiteKey]);
+
+  useEffect(() => {
+    if (turnstileSiteKey && typeof window !== "undefined" && "turnstile" in window) {
+      renderTurnstile();
+    }
+  }, [turnstileSiteKey, renderTurnstile]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -80,27 +140,48 @@ export function WorkspaceOnboarding() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitting(true);
     setError("");
-    try {
-      const formEl = event.currentTarget;
-      const turnstileInput = formEl.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]');
-      const windowTurnstile =
-        typeof window !== "undefined" && "turnstile" in window
-          ? (window as unknown as { turnstile?: { getResponse?: () => string } }).turnstile?.getResponse?.()
-          : undefined;
-      const turnstileToken = turnstileInput?.value || windowTurnstile || undefined;
 
+    // If Turnstile is active, ensure we have a valid token before submitting
+    let activeToken = turnstileToken;
+    if (turnstileSiteKey && !activeToken) {
+      const turnstile = typeof window !== "undefined" ? (window as unknown as { turnstile?: TurnstileApi }).turnstile : undefined;
+      const responseToken =
+        turnstile?.getResponse?.(turnstileWidgetIdRef.current ?? undefined) ||
+        turnstileContainerRef.current?.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')?.value;
+      if (responseToken) {
+        activeToken = responseToken;
+        setTurnstileToken(responseToken);
+      } else {
+        setError("Please complete the human verification checkbox before continuing.");
+        return;
+      }
+    }
+
+    setSubmitting(true);
+    try {
       const response = await fetch("/api/v1/onboarding", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           ...form,
-          turnstileToken: typeof turnstileToken === "string" ? turnstileToken : undefined,
+          turnstileToken: typeof activeToken === "string" && activeToken ? activeToken : undefined,
         }),
       });
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
-      if (!response.ok) throw new Error(payload.error || "Workspace creation failed.");
+      if (!response.ok) {
+        // Reset turnstile on failure so user can immediately retry
+        if (typeof window !== "undefined" && "turnstile" in window && turnstileWidgetIdRef.current) {
+          try {
+            const turnstile = (window as unknown as { turnstile?: TurnstileApi }).turnstile;
+            turnstile?.reset?.(turnstileWidgetIdRef.current);
+            setTurnstileToken(null);
+          } catch {
+            // Ignored
+          }
+        }
+        throw new Error(payload.error || "Workspace creation failed.");
+      }
       setVerificationSent(true);
     } catch (value) {
       setError(value instanceof Error ? value.message : "Workspace creation failed.");
@@ -156,11 +237,6 @@ export function WorkspaceOnboarding() {
     }
   }
 
-  const turnstileSiteKey =
-    isClient && !shouldBypassTurnstile(window.location.hostname, process.env.NODE_ENV)
-      ? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
-      : undefined;
-
   return (
     <main className="min-h-screen bg-sentinel-canvas px-4 py-12 font-sentinel text-sentinel-text sm:px-6">
       <div className="mx-auto max-w-5xl">
@@ -198,39 +274,91 @@ export function WorkspaceOnboarding() {
                 <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-sentinel-lime" />
                 <div>
                   <strong className="text-xs font-bold text-sentinel-text">Pre-Configured Policy Blueprints</strong>
-                  <p className="text-xs text-sentinel-muted mt-0.5">Production release approval, financial threshold ceilings, and PII egress guards.</p>
+                  <p className="text-xs text-sentinel-muted mt-0.5">Production templates for funds transfer, DB mutations, and GitHub releases.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3.5 rounded-2xl border border-sentinel-line bg-sentinel-surface p-4 shadow-sm">
+                <Check className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-sentinel-lime" />
+                <div>
+                  <strong className="text-xs font-bold text-sentinel-text">Instant SDK Integration</strong>
+                  <p className="text-xs text-sentinel-muted mt-0.5">Two lines of code for LangChain, Python decorators, or REST webhooks.</p>
                 </div>
               </div>
             </div>
           </section>
 
-          <section className="rounded-3xl border border-sentinel-line bg-sentinel-surface p-7 sm:p-9 shadow-xl">
+          <section className="rounded-3xl border border-sentinel-line bg-sentinel-surface p-6 sm:p-8 shadow-xl">
+            {isInvalidVerification ? (
+              <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-800 dark:text-amber-300">
+                <div className="flex items-center gap-2 font-bold">
+                  <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  <span>Invalid or expired verification link</span>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-amber-700/90 dark:text-amber-300/90">
+                  This activation link is either invalid or has already expired. If your workspace was not verified, request a new link below.
+                </p>
+
+                <form className="mt-4 flex flex-col sm:flex-row gap-2" onSubmit={handleResendVerification}>
+                  <input
+                    required
+                    type="email"
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    placeholder="Enter your registration email"
+                    className="h-10 flex-1 rounded-xl border border-amber-500/30 bg-sentinel-canvas px-3 text-xs text-sentinel-text outline-none focus:border-amber-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={resendBusy}
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-amber-600 px-4 text-xs font-semibold text-white transition hover:bg-amber-500 disabled:opacity-50"
+                  >
+                    {resendBusy ? "Sending…" : "Resend Link"}
+                  </button>
+                </form>
+                {resendStatus ? (
+                  <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium">{resendStatus}</p>
+                ) : null}
+              </div>
+            ) : null}
+
             {invitationToken ? (
               invitationLoading ? (
-                <div className="py-12 text-center text-sm text-sentinel-muted">
-                  <LoaderCircle className="mx-auto h-6 w-6 animate-spin text-emerald-600 dark:text-sentinel-lime" />
-                  <p className="mt-3">Validating your invitation…</p>
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <LoaderCircle className="h-8 w-8 animate-spin text-emerald-600 dark:text-sentinel-lime" />
+                  <p className="mt-4 text-sm font-semibold text-sentinel-muted">Validating invitation credentials…</p>
                 </div>
               ) : invitationAccepted ? (
-                <div className="py-8 text-center">
-                  <ShieldCheck className="mx-auto h-10 w-10 text-emerald-600 dark:text-sentinel-lime" />
+                <div className="text-center py-8">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-sentinel-lime border border-emerald-500/20">
+                    <Check className="h-7 w-7" />
+                  </div>
                   <h2 className="mt-5 text-2xl font-bold">Invitation accepted!</h2>
                   <p className="mt-3 text-sm leading-6 text-sentinel-muted">
-                    Your account is active. You can now sign in to access the control center.
+                    Your operator account has been created for <strong className="text-sentinel-text">{invitationInfo?.organizationName}</strong>. You can now sign in to your dashboard.
                   </p>
-                  <div className="mt-6">
-                    <Link href="/dashboard" className="primary-button inline-flex justify-center">
-                      Sign in to dashboard
-                    </Link>
-                  </div>
+                  <Link
+                    href="/dashboard"
+                    className="primary-button mt-6 inline-flex w-full justify-center text-sm font-bold py-3.5 shadow-md shadow-emerald-500/20 dark:shadow-sentinel-lime/20"
+                  >
+                    <span>Sign in to Dashboard</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </div>
               ) : invitationInfo ? (
                 <>
-                  <h2 className="text-2xl font-bold">Join {invitationInfo.organizationName}</h2>
+                  <h2 className="text-2xl font-bold">Accept team invitation</h2>
                   <p className="mt-2 text-sm text-sentinel-muted">
-                    You are accepting an invitation for <strong className="text-sentinel-text">{invitationInfo.email}</strong> as an <strong className="text-emerald-700 dark:text-sentinel-lime uppercase">{invitationInfo.role}</strong>.
+                    You have been invited to join <strong className="text-sentinel-text">{invitationInfo.organizationName}</strong> as an <strong className="text-sentinel-text uppercase text-xs tracking-wider">{invitationInfo.role}</strong>.
                   </p>
                   <form className="mt-7 space-y-4" onSubmit={submitAcceptInvitation}>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-sentinel-muted">
+                      Email Address
+                      <input
+                        disabled
+                        value={invitationInfo.email}
+                        className="mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas/50 px-3.5 text-sm text-sentinel-muted outline-none cursor-not-allowed"
+                      />
+                    </label>
                     <label className="block text-xs font-bold uppercase tracking-wider text-sentinel-muted">
                       Your name
                       <input
@@ -238,12 +366,11 @@ export function WorkspaceOnboarding() {
                         value={acceptDisplayName}
                         onChange={(e) => setAcceptDisplayName(e.target.value)}
                         className="mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 text-sm text-sentinel-text outline-none focus:border-emerald-500 dark:focus:border-sentinel-lime focus:ring-2 focus:ring-emerald-500/20"
-                        placeholder="Jane Doe"
-                        autoFocus
+                        placeholder="Sarah Connor"
                       />
                     </label>
                     <label className="block text-xs font-bold uppercase tracking-wider text-sentinel-muted">
-                      Set your password
+                      Choose Password
                       <input
                         required
                         type="password"
@@ -256,67 +383,34 @@ export function WorkspaceOnboarding() {
                     </label>
                     {error ? <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs font-semibold text-red-600 dark:text-red-400">{error}</p> : null}
                     <button className="primary-button mt-2 w-full justify-center text-sm font-bold py-3.5 shadow-md shadow-emerald-500/20 dark:shadow-sentinel-lime/20" disabled={submitting}>
-                      {submitting ? <LoaderCircle className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />}
-                      {submitting ? "Joining workspace…" : "Accept invitation & create account"}
+                      {submitting ? <LoaderCircle className="animate-spin h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+                      {submitting ? "Joining organization…" : "Join organization"}
                     </button>
                   </form>
                 </>
               ) : (
-                <div className="py-8 text-center">
-                  <ShieldAlert className="mx-auto h-10 w-10 text-sentinel-red" />
+                <div className="text-center py-8">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+                    <ShieldAlert className="h-7 w-7" />
+                  </div>
                   <h2 className="mt-5 text-2xl font-bold">Invalid invitation</h2>
                   <p className="mt-3 text-sm leading-6 text-sentinel-muted">
-                    {error || "This invitation link is invalid, expired, or has already been accepted."}
+                    {error || "This invitation link is invalid or has expired. Please request a new invitation from your administrator."}
                   </p>
-                  <div className="mt-6">
-                    <Link href="/get-started" className="secondary-button inline-flex">
-                      Create new workspace
-                    </Link>
-                  </div>
-                </div>
-              )
-            ) : isInvalidVerification ? (
-              <div className="py-6">
-                <div className="text-center">
-                  <ShieldAlert className="mx-auto h-10 w-10 text-amber-500 dark:text-sentinel-amber" />
-                  <h2 className="mt-4 text-2xl font-bold">Verification link expired or invalid</h2>
-                  <p className="mt-2 text-sm text-sentinel-muted">
-                    The email verification link has expired or was already used. Enter your work email below to receive a new link.
-                  </p>
-                </div>
-                <form className="mt-6 space-y-4" onSubmit={handleResendVerification}>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-sentinel-muted">
-                    Work email
-                    <input
-                      required
-                      type="email"
-                      value={resendEmail}
-                      onChange={(e) => setResendEmail(e.target.value)}
-                      className="mt-2 h-11 w-full rounded-xl border border-sentinel-line bg-sentinel-canvas px-3.5 text-sm text-sentinel-text outline-none focus:border-emerald-500 dark:focus:border-sentinel-lime focus:ring-2 focus:ring-emerald-500/20"
-                      placeholder="name@company.com"
-                    />
-                  </label>
-                  {resendStatus ? (
-                    <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs font-semibold text-emerald-700 dark:text-sentinel-lime">
-                      {resendStatus}
-                    </p>
-                  ) : null}
-                  {error ? <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs font-semibold text-red-600 dark:text-red-400">{error}</p> : null}
-                  <button className="primary-button w-full justify-center text-sm font-bold py-3.5 shadow-md shadow-emerald-500/20 dark:shadow-sentinel-lime/20" disabled={resendBusy || !resendEmail}>
-                    {resendBusy ? <LoaderCircle className="animate-spin h-4 w-4" /> : <Mail className="h-4 w-4" />}
-                    {resendBusy ? "Sending link…" : "Resend verification link"}
-                  </button>
-                </form>
-                <div className="mt-6 text-center text-sm">
-                  <Link href="/get-started" className="text-emerald-700 dark:text-sentinel-lime font-semibold hover:underline">
-                    Back to create workspace
+                  <Link
+                    href="/"
+                    className="primary-button mt-6 inline-flex w-full justify-center text-sm font-bold py-3.5"
+                  >
+                    <span>Return to Home</span>
                   </Link>
                 </div>
-              </div>
+              )
             ) : verificationSent ? (
-              <div className="py-8 text-center">
-                <ShieldCheck className="mx-auto h-10 w-10 text-emerald-600 dark:text-sentinel-lime" />
-                <h2 className="mt-5 text-2xl font-bold">Check your work email</h2>
+              <div className="text-center py-8">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-sentinel-lime border border-emerald-500/20">
+                  <Mail className="h-7 w-7" />
+                </div>
+                <h2 className="mt-5 text-2xl font-bold">Check your email</h2>
                 <p className="mt-3 text-sm leading-6 text-sentinel-muted">
                   We sent a one-time verification link to <strong className="text-sentinel-text">{form.email}</strong>. Open it within 24 hours to activate your workspace, then sign in.
                 </p>
@@ -373,9 +467,19 @@ export function WorkspaceOnboarding() {
                   </label>
                   {turnstileSiteKey ? (
                     <div className="rounded-xl border border-sentinel-line bg-sentinel-canvas p-3">
-                      <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
-                      <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="auto" data-action="workspace_onboarding" />
-                      <p className="mt-2 text-xs text-sentinel-muted">Human verification protects workspace creation.</p>
+                      <Script
+                        id="cf-turnstile-script"
+                        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+                        strategy="afterInteractive"
+                        onLoad={renderTurnstile}
+                      />
+                      <div
+                        ref={turnstileContainerRef}
+                        className="flex min-h-[65px] items-center justify-center overflow-hidden"
+                      />
+                      <p className="mt-2 text-center text-xs text-sentinel-muted">
+                        Human verification protects workspace creation.
+                      </p>
                     </div>
                   ) : null}
                   {error ? <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs font-semibold text-red-600 dark:text-red-400">{error}</p> : null}

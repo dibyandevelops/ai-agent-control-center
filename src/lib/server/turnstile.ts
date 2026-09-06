@@ -8,8 +8,50 @@ type TurnstileResult =
   | { enabled: false; valid: true }
   | { enabled: true; valid: boolean; configured: boolean };
 
-function getRequestAddress(request: NextRequest) {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
+function getRequestAddress(request: NextRequest): string | undefined {
+  return (
+    request.headers.get("cf-connecting-ip")?.trim() ||
+    request.headers.get("x-real-ip")?.trim() ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    undefined
+  );
+}
+
+async function callTurnstileSiteverify(
+  secret: string,
+  token: string,
+  remoteIp?: string,
+): Promise<{ ok: boolean; success: boolean; errorCodes?: string[] }> {
+  const body = new URLSearchParams({
+    secret,
+    response: token,
+  });
+  if (remoteIp) {
+    body.set("remoteip", remoteIp);
+  }
+
+  try {
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body,
+      cache: "no-store",
+      signal: AbortSignal.timeout(5_000),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      success?: boolean;
+      "error-codes"?: string[];
+    } | null;
+
+    return {
+      ok: response.ok,
+      success: payload?.success === true,
+      errorCodes: payload?.["error-codes"],
+    };
+  } catch (error) {
+    console.error("[Turnstile] Network error contacting Cloudflare siteverify", error);
+    return { ok: false, success: false, errorCodes: ["network-error"] };
+  }
 }
 
 export async function verifyTurnstile(
@@ -25,24 +67,30 @@ export async function verifyTurnstile(
   if (!env.TURNSTILE_SECRET_KEY) return { enabled: true, valid: false, configured: false };
   if (!token) return { enabled: true, valid: false, configured: true };
 
-  const body = new URLSearchParams({
-    secret: env.TURNSTILE_SECRET_KEY,
-    response: token,
-  });
   const remoteIp = getRequestAddress(request);
-  if (remoteIp) body.set("remoteip", remoteIp);
 
-  try {
-    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body,
-      cache: "no-store",
-      signal: AbortSignal.timeout(5_000),
-    });
-    const payload = (await response.json().catch(() => null)) as { success?: boolean } | null;
-    return { enabled: true, configured: true, valid: response.ok && payload?.success === true };
-  } catch {
-    return { enabled: true, configured: true, valid: false };
+  // Attempt verification with remoteIp
+  let verification = await callTurnstileSiteverify(env.TURNSTILE_SECRET_KEY, token, remoteIp);
+
+  // Cloudflare docs: If remoteip causes false-negative mismatches behind CDNs/proxies,
+  // retry without remoteip to prevent blocking legitimate enterprise users.
+  if (!verification.success && remoteIp) {
+    const retryWithoutIp = await callTurnstileSiteverify(env.TURNSTILE_SECRET_KEY, token);
+    if (retryWithoutIp.success) {
+      verification = retryWithoutIp;
+    }
   }
+
+  if (!verification.success) {
+    console.warn("[Turnstile] Verification rejected by Cloudflare", {
+      hostname: request.nextUrl.hostname,
+      errorCodes: verification.errorCodes,
+    });
+  }
+
+  return {
+    enabled: true,
+    configured: true,
+    valid: verification.ok && verification.success,
+  };
 }
