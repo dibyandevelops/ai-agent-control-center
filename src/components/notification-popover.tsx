@@ -12,6 +12,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import { createPortal } from "react-dom";
 import React, { useState } from "react";
 import type { Approval, Agent, DashboardView } from "@/lib/types";
 
@@ -41,7 +42,7 @@ export function NotificationPopover({
   const [activeTab, setActiveTab] = useState<NotificationTab>("approvals");
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   const pendingApprovals = approvals.filter((a) => a.status === "pending");
   const totalPending = pendingApprovals.length + quarantinedAgents.length;
@@ -56,15 +57,15 @@ export function NotificationPopover({
     }
   }
 
-  return (
+  return createPortal(
     <>
       <div
-        className="fixed inset-0 z-[110] bg-black/20 backdrop-blur-[2px]"
+        className="fixed inset-0 z-[110] bg-black/40 backdrop-blur-[2px]"
         onClick={onClose}
         role="presentation"
       />
       <div
-        className="fixed inset-x-3 top-16 sm:absolute sm:inset-auto sm:right-0 sm:top-12 z-[120] sm:w-[420px] sm:max-w-[440px] max-h-[calc(100vh-80px)] rounded-2xl border border-sentinel-border bg-sentinel-surface shadow-2xl animate-dialog-in overflow-hidden flex flex-col"
+        className="fixed inset-x-3 top-16 z-[120] max-h-[calc(100dvh-80px)] sm:inset-auto sm:right-6 sm:top-16 sm:w-[420px] sm:max-w-[440px] rounded-2xl border border-sentinel-border bg-sentinel-surface shadow-2xl animate-dialog-in overflow-hidden flex flex-col"
         role="dialog"
         aria-modal="true"
         aria-labelledby="notification-center-title"
@@ -298,6 +299,7 @@ export function NotificationPopover({
           </span>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
