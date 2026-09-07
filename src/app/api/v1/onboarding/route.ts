@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (getServerEnv().SELF_SERVICE_SIGNUP_ENABLED !== "true") {
       return NextResponse.json({ error: "Self-service onboarding is not enabled for this environment." }, { status: 403 });
     }
-    if (!onboardingEmailConfigured()) {
+    if (!onboardingEmailConfigured() && process.env.NODE_ENV === "production") {
       return NextResponse.json({ error: "Workspace onboarding email is not configured for this environment." }, { status: 503 });
     }
     const input = schema.parse(await request.json());
@@ -45,6 +45,15 @@ export async function POST(request: NextRequest) {
       token: created.verificationToken,
     });
     if (!delivery.delivered) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`[Onboarding] Dev email notice: ${delivery.reason}. Verification token: ${created.verificationToken}`);
+        return NextResponse.json({
+          organization: { id: created.organizationId, name: created.organizationName },
+          verification: "dev_logged",
+          devToken: created.verificationToken,
+          devVerificationUrl: `/api/v1/onboarding/verify?token=${created.verificationToken}`,
+        }, { status: 202 });
+      }
       return NextResponse.json({ error: "Workspace created, but the verification email could not be delivered. Contact support to resend it." }, { status: 503 });
     }
     return NextResponse.json({ organization: { id: created.organizationId, name: created.organizationName }, verification: "sent" }, { status: 202 });
