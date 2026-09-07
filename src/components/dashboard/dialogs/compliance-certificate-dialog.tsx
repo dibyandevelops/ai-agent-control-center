@@ -18,6 +18,9 @@ interface ComplianceCertificateDialogProps {
   data: ComplianceExportPackage | null;
   loading: boolean;
   onDownload: () => void;
+  errorMessage?: string | null;
+  isDemo?: boolean;
+  onConnectLive?: () => void;
 }
 
 export function ComplianceCertificateDialog({
@@ -26,6 +29,9 @@ export function ComplianceCertificateDialog({
   data,
   loading,
   onDownload,
+  errorMessage,
+  isDemo = false,
+  onConnectLive,
 }: ComplianceCertificateDialogProps) {
   const [copiedDigest, setCopiedDigest] = useState(false);
 
@@ -53,18 +59,31 @@ export function ComplianceCertificateDialog({
           <X className="h-5 w-5" />
         </button>
 
-        <div className="flex items-center gap-3 pb-4 border-b border-sentinel-line">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-sentinel-lime border border-emerald-500/20">
-            <Award className="h-6 w-6" />
+        <div className="flex items-center justify-between pb-4 border-b border-sentinel-line pr-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-sentinel-lime border border-emerald-500/20">
+              <Award className="h-6 w-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-sentinel-text">
+                SOC 2 & ISO 27001 Compliance Certificate
+              </h2>
+              <p className="text-xs text-sentinel-muted">
+                Cryptographically signed attestation and tamper-evident hash evidence
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-sentinel-text">
-              SOC 2 & ISO 27001 Compliance Certificate
-            </h2>
-            <p className="text-xs text-sentinel-muted">
-              Cryptographically signed attestation and tamper-evident hash evidence
-            </p>
-          </div>
+          {certificate ? (
+            isDemo ? (
+              <span className="hidden sm:inline-flex rounded-full bg-amber-500/10 border border-amber-500/25 px-2.5 py-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider shrink-0">
+                Demo Preview
+              </span>
+            ) : (
+              <span className="hidden sm:inline-flex rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 text-[10px] font-bold text-emerald-600 dark:text-sentinel-lime uppercase tracking-wider shrink-0">
+                Live Attestation
+              </span>
+            )
+          ) : null}
         </div>
 
         {loading ? (
@@ -216,8 +235,30 @@ export function ComplianceCertificateDialog({
             </div>
           </div>
         ) : (
-          <div className="py-12 text-center text-xs text-red-500">
-            Failed to load compliance certificate. Please ensure your account has Auditor or Admin privileges.
+          <div className="py-12 text-center space-y-4">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-sentinel-text">Authentication Required</h3>
+              <p className="text-xs text-sentinel-muted max-w-md mx-auto leading-relaxed">
+                {errorMessage || "You must be signed in to a live workspace with an Auditor or Admin account to export live cryptographic compliance certificates."}
+              </p>
+            </div>
+            {onConnectLive ? (
+              <div className="pt-2 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onConnectLive();
+                  }}
+                  className="primary-button text-xs font-bold"
+                >
+                  Sign in to Live Workspace
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
       </div>

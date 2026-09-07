@@ -93,7 +93,7 @@ describe("Approval Decision Undo Flow", () => {
     // Optimistically updated immediately
     expect(setApprovalList).toHaveBeenCalledTimes(1);
     expect(approvalList[0].status).toBe("approved");
-    expect(activeToast?.actionLabel).toBe("Undo");
+    expect((activeToast as { actionLabel?: string } | null)?.actionLabel).toBe("Undo");
     expect(mockFetch).not.toHaveBeenCalled();
 
     // Fast-forward 2 seconds - still in grace period
@@ -170,14 +170,14 @@ describe("Approval Decision Undo Flow", () => {
     decide(sampleApproval, "denied");
 
     expect(approvalList[0].status).toBe("denied");
-    expect(activeToast?.actionLabel).toBe("Undo");
+    expect((activeToast as { actionLabel?: string } | null)?.actionLabel).toBe("Undo");
 
     // Advance 2 seconds
     vi.advanceTimersByTime(2000);
     expect(mockFetch).not.toHaveBeenCalled();
 
     // User clicks Undo!
-    activeToast?.onAction?.();
+    (activeToast as { onAction?: () => void } | null)?.onAction?.();
 
     // Verify approvalList is reverted back to "pending"
     expect(approvalList[0].status).toBe("pending");

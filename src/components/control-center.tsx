@@ -434,8 +434,13 @@ export function ControlCenter({
             {view === "audit" && (
               <AuditView
                 audit={auditList}
+                live={workspaceMode === "live"}
                 onOpenDetails={setSelectedRequestId}
                 initialEventId={initialAuditEventId}
+                onOpenConnect={() => {
+                  setWorkspaceError("");
+                  setConnectOpen(true);
+                }}
               />
             )}
             {view === "integrations" && (
