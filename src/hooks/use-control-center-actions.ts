@@ -392,14 +392,14 @@ export function useControlCenterActions({
     }
   }
 
-  async function connectLiveWorkspace(email: string, password: string) {
+  async function connectLiveWorkspace(email: string, password: string, turnstileToken?: string) {
     setConnectLoading(true);
     setWorkspaceError("");
     try {
       const response = await fetch("/api/v1/session", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, turnstileToken }),
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) {

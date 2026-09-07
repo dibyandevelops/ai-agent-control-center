@@ -8,10 +8,12 @@ import {
 import { getPool } from "@/lib/server/db";
 import { getServerEnv } from "@/lib/server/env";
 import { apiError } from "@/lib/server/http";
+import { verifyTurnstile } from "@/lib/server/turnstile";
 
 const sessionSchema = z.object({
   email: z.string().email(),
   password: z.string().min(12).max(256),
+  turnstileToken: z.string().trim().min(1).max(2048).optional(),
 });
 
 export async function GET() {
@@ -40,6 +42,13 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const input = sessionSchema.parse(await request.json());
+    const humanVerification = await verifyTurnstile(request, input.turnstileToken);
+    if (humanVerification.enabled && !humanVerification.valid) {
+      return NextResponse.json(
+        { error: "Human verification failed. Please complete the security check." },
+        { status: 403 },
+      );
+    }
     const operator = await loginOperator(input.email, input.password);
     if (!operator) {
       return NextResponse.json(

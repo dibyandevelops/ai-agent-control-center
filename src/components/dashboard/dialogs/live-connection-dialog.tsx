@@ -13,10 +13,23 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import Script from "next/script";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { shouldBypassTurnstile } from "@/lib/turnstile-host";
 import { BrandMark } from "../navigation/sidebar";
 
 export type DialogMode = "signin" | "register" | "forgot" | "invite";
+
+interface TurnstileApi {
+  render: (container: HTMLElement, options: Record<string, unknown>) => string;
+  reset: (widgetId?: string) => void;
+  remove: (widgetId: string) => void;
+  getResponse: (widgetId?: string) => string;
+}
+
+const subscribeToClient = () => () => undefined;
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 export function LiveConnectionDialog({
   open,
@@ -31,7 +44,7 @@ export function LiveConnectionDialog({
   loading: boolean;
   error: string;
   onClose: () => void;
-  onConnect: (email: string, password: string) => Promise<void>;
+  onConnect: (email: string, password: string, turnstileToken?: string) => Promise<void>;
   onSso: (email: string) => Promise<void>;
   initialMode?: DialogMode;
 }) {
@@ -67,6 +80,71 @@ export function LiveConnectionDialog({
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState(false);
 
+  // Cloudflare Turnstile state
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  const isClient = useSyncExternalStore(
+    subscribeToClient,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
+
+  const turnstileSiteKey =
+    isClient &&
+    !shouldBypassTurnstile(
+      typeof window !== "undefined" ? window.location.hostname : "",
+      process.env.NODE_ENV,
+    )
+      ? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+      : undefined;
+
+  const renderTurnstile = useCallback(() => {
+    if (typeof window === "undefined" || !turnstileSiteKey || !turnstileContainerRef.current) {
+      return;
+    }
+    const turnstile = (window as unknown as { turnstile?: TurnstileApi }).turnstile;
+    if (!turnstile) return;
+
+    if (turnstileWidgetIdRef.current) {
+      try {
+        turnstile.remove(turnstileWidgetIdRef.current);
+      } catch {
+        // Ignored
+      }
+      turnstileWidgetIdRef.current = null;
+    }
+
+    try {
+      turnstileContainerRef.current.innerHTML = "";
+      const widgetId = turnstile.render(turnstileContainerRef.current, {
+        sitekey: turnstileSiteKey,
+        theme: "auto",
+        action: mode === "register" ? "workspace_registration" : "operator_signin",
+        callback: (token: string) => {
+          setTurnstileToken(token);
+          clearErrors();
+        },
+        "expired-callback": () => {
+          setTurnstileToken(null);
+        },
+        "error-callback": () => {
+          setTurnstileToken(null);
+        },
+      });
+      turnstileWidgetIdRef.current = widgetId;
+    } catch (err) {
+      console.warn("[Turnstile] Render warning:", err);
+    }
+  }, [turnstileSiteKey, mode]);
+
+  useEffect(() => {
+    if (open && turnstileSiteKey && typeof window !== "undefined" && "turnstile" in window) {
+      renderTurnstile();
+    }
+  }, [open, mode, turnstileSiteKey, renderTurnstile]);
+
   if (!open) return null;
 
   function clearErrors() {
@@ -77,12 +155,13 @@ export function LiveConnectionDialog({
 
   function handleModeSwitch(newMode: DialogMode) {
     clearErrors();
+    setTurnstileToken(null);
     setMode(newMode);
   }
 
   async function handleSignIn(event: React.FormEvent) {
     event.preventDefault();
-    await onConnect(email, password);
+    await onConnect(email, password, turnstileToken || undefined);
   }
 
   async function handleForgot(event: React.FormEvent) {
@@ -119,6 +198,7 @@ export function LiveConnectionDialog({
           displayName: regDisplayName.trim(),
           email: regEmail.trim(),
           password: regPassword,
+          turnstileToken: turnstileToken || undefined,
         }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
@@ -127,6 +207,15 @@ export function LiveConnectionDialog({
         devVerificationUrl?: string;
       };
       if (!response.ok) {
+        if (typeof window !== "undefined" && "turnstile" in window && turnstileWidgetIdRef.current) {
+          try {
+            const turnstile = (window as unknown as { turnstile?: TurnstileApi }).turnstile;
+            turnstile?.reset?.(turnstileWidgetIdRef.current);
+            setTurnstileToken(null);
+          } catch {
+            // Ignored
+          }
+        }
         throw new Error(payload.error || "Workspace registration failed.");
       }
       setRegSuccess({
@@ -309,6 +398,25 @@ export function LiveConnectionDialog({
               />
             </label>
 
+            {/* Turnstile Bot Protection */}
+            {turnstileSiteKey ? (
+              <div className="rounded-xl border border-[var(--border)] bg-black/10 p-2.5 dark:bg-white/[0.03]">
+                <Script
+                  id="cf-turnstile-script"
+                  src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+                  strategy="afterInteractive"
+                  onLoad={renderTurnstile}
+                />
+                <div
+                  ref={turnstileContainerRef}
+                  className="flex min-h-[65px] items-center justify-center overflow-hidden"
+                />
+                <p className="mt-1 text-center text-[10px] text-sentinel-muted">
+                  Protected by Cloudflare Turnstile human verification
+                </p>
+              </div>
+            ) : null}
+
             {error ? (
               <div className="security-note !border-sentinel-red/40 !bg-sentinel-red/10">
                 <ShieldAlert />
@@ -487,6 +595,25 @@ export function LiveConnectionDialog({
                     Must be at least 12 characters. Stored using argon2id cryptographic hashing.
                   </span>
                 </label>
+
+                {/* Turnstile Bot Protection */}
+                {turnstileSiteKey ? (
+                  <div className="rounded-xl border border-[var(--border)] bg-black/10 p-2.5 dark:bg-white/[0.03]">
+                    <Script
+                      id="cf-turnstile-script"
+                      src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+                      strategy="afterInteractive"
+                      onLoad={renderTurnstile}
+                    />
+                    <div
+                      ref={turnstileContainerRef}
+                      className="flex min-h-[65px] items-center justify-center overflow-hidden"
+                    />
+                    <p className="mt-1 text-center text-[10px] text-sentinel-muted">
+                      Human verification protects workspace creation
+                    </p>
+                  </div>
+                ) : null}
 
                 {regError ? (
                   <div className="security-note !border-sentinel-red/40 !bg-sentinel-red/10">
