@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>SentinelOps - Partner Executive Briefing & Non-Technical Guide</title>
+<title>SentinelOps - Partner & Investor Executive Briefing</title>
 <style>
   @page {
     size: letter;
-    margin: 18mm 18mm 18mm 18mm;
+    margin: 16mm 16mm 16mm 16mm;
     @bottom-right {
       content: counter(page);
     }
@@ -21,8 +21,8 @@
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: #1e293b;
-    line-height: 1.55;
-    font-size: 10.5pt;
+    line-height: 1.52;
+    font-size: 10pt;
     margin: 0;
     padding: 0;
   }
@@ -30,8 +30,8 @@
   /* Cover Header */
   .cover {
     border-bottom: 3px solid #10b981;
-    padding-bottom: 20px;
-    margin-bottom: 24px;
+    padding-bottom: 16px;
+    margin-bottom: 18px;
   }
   .brand-badge {
     display: inline-block;
@@ -44,37 +44,94 @@
     letter-spacing: 0.08em;
     padding: 4px 10px;
     border-radius: 9999px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
   h1 {
-    font-size: 24pt;
+    font-size: 22pt;
     font-weight: 800;
     color: #0f172a;
     line-height: 1.15;
-    margin: 0 0 6px 0;
+    margin: 0 0 4px 0;
     letter-spacing: -0.02em;
   }
   .subtitle {
-    font-size: 12pt;
+    font-size: 11pt;
     color: #475569;
-    margin: 0 0 14px 0;
+    margin: 0 0 12px 0;
     font-weight: 400;
   }
   .meta-bar {
     display: flex;
     justify-content: space-between;
-    font-size: 8.5pt;
+    font-size: 8pt;
     color: #64748b;
     border-top: 1px solid #e2e8f0;
-    padding-top: 8px;
+    padding-top: 6px;
+  }
+
+  /* One-Minute Quick Summary Box */
+  .executive-summary-box {
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border: 1.5px solid #10b981;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin: 16px 0 22px 0;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.08);
+  }
+  .summary-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .summary-badge {
+    background: #10b981;
+    color: #ffffff;
+    font-size: 7.5pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .summary-title {
+    font-size: 11pt;
+    font-weight: 800;
+    color: #064e3b;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .summary-card {
+    background: #ffffff;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .summary-card h4 {
+    margin: 0 0 4px 0;
+    font-size: 8.5pt;
+    font-weight: 800;
+    color: #047857;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .summary-card p {
+    margin: 0;
+    font-size: 8.5pt;
+    color: #1f2937;
+    line-height: 1.4;
   }
 
   /* Typography */
   h2 {
-    font-size: 14pt;
+    font-size: 13pt;
     font-weight: 700;
     color: #0f172a;
-    margin-top: 24px;
+    margin-top: 22px;
     margin-bottom: 8px;
     border-bottom: 1.5px solid #e2e8f0;
     padding-bottom: 4px;
@@ -82,28 +139,28 @@
     page-break-after: avoid;
   }
   h3 {
-    font-size: 11pt;
+    font-size: 10.5pt;
     font-weight: 700;
     color: #1e293b;
-    margin-top: 16px;
-    margin-bottom: 6px;
+    margin-top: 14px;
+    margin-bottom: 5px;
     page-break-after: avoid;
   }
   p {
-    margin: 0 0 10px 0;
+    margin: 0 0 9px 0;
   }
   strong {
     color: #0f172a;
   }
 
-  /* Callout & Highlight Boxes */
+  /* Callouts */
   .callout {
     background: #f8fafc;
     border-left: 4px solid #3b82f6;
-    padding: 10px 14px;
-    border-radius: 0 8px 8px 0;
-    margin: 12px 0;
-    font-size: 10pt;
+    padding: 9px 13px;
+    border-radius: 0 6px 6px 0;
+    margin: 11px 0;
+    font-size: 9.5pt;
   }
   .callout-warning {
     background: #fffbeb;
@@ -122,12 +179,12 @@
   .diagram-box {
     background: #0f172a;
     color: #f8fafc;
-    padding: 14px 18px;
+    padding: 12px 16px;
     border-radius: 8px;
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-    font-size: 8.5pt;
-    line-height: 1.45;
-    margin: 14px 0;
+    font-size: 8pt;
+    line-height: 1.42;
+    margin: 12px 0;
     white-space: pre;
     overflow-x: hidden;
     page-break-inside: avoid;
@@ -135,18 +192,18 @@
   .diagram-title {
     color: #34d399;
     font-weight: bold;
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    font-size: 8pt;
+    font-size: 7.5pt;
   }
 
   /* Tables */
   table {
     width: 100%;
     border-collapse: collapse;
-    margin: 12px 0 16px 0;
-    font-size: 9pt;
+    margin: 10px 0 14px 0;
+    font-size: 8.5pt;
     page-break-inside: avoid;
   }
   th {
@@ -154,14 +211,14 @@
     color: #0f172a;
     font-weight: 700;
     text-align: left;
-    padding: 7px 10px;
+    padding: 6px 9px;
     border-bottom: 2px solid #cbd5e1;
-    font-size: 8.5pt;
+    font-size: 8pt;
     text-transform: uppercase;
     letter-spacing: 0.03em;
   }
   td {
-    padding: 7px 10px;
+    padding: 6px 9px;
     border-bottom: 1px solid #e2e8f0;
     vertical-align: top;
   }
@@ -172,33 +229,88 @@
   /* Two Column Layout */
   .grid-2 {
     display: flex;
-    gap: 14px;
-    margin: 12px 0;
+    gap: 12px;
+    margin: 11px 0;
     page-break-inside: avoid;
   }
   .col {
     flex: 1;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    padding: 12px;
-    border-radius: 8px;
+    padding: 10px 12px;
+    border-radius: 6px;
   }
   .col h4 {
-    margin: 0 0 6px 0;
-    font-size: 10pt;
+    margin: 0 0 4px 0;
+    font-size: 9.5pt;
     color: #0f172a;
+  }
+
+  /* Timeline / Roadmap Styling */
+  .roadmap-phase {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #10b981;
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    page-break-inside: avoid;
+  }
+  .phase-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .phase-title {
+    font-size: 11pt;
+    font-weight: 800;
+    color: #0f172a;
+  }
+  .phase-timing {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: #059669;
+    background: #ecfdf5;
+    padding: 2px 8px;
+    border-radius: 9999px;
+  }
+  .phase-objective {
+    font-size: 9pt;
+    color: #334155;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .phase-deliverables {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 8.5pt;
+    color: #475569;
+  }
+  .phase-deliverables li {
+    margin-bottom: 3px;
+  }
+  .kpi-tag {
+    display: inline-block;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 7.5pt;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 6px;
   }
 
   /* Q&A Section */
   .qa-item {
-    margin-bottom: 14px;
+    margin-bottom: 12px;
     page-break-inside: avoid;
   }
   .question {
     font-weight: 700;
     color: #0f172a;
-    font-size: 10pt;
-    margin-bottom: 4px;
+    font-size: 9.5pt;
+    margin-bottom: 3px;
     display: flex;
     gap: 6px;
   }
@@ -208,9 +320,9 @@
     font-weight: 800;
   }
   .answer {
-    padding-left: 20px;
+    padding-left: 18px;
     color: #334155;
-    font-size: 9.5pt;
+    font-size: 9pt;
   }
 
   .page-break {
@@ -222,55 +334,77 @@
 
 <!-- COVER / HEADER -->
 <div class="cover">
-  <div class="brand-badge">Executive Partner Briefing • Confidential</div>
+  <div class="brand-badge">Strategic Partner & Investor Briefing • 2026 Edition</div>
   <h1>SentinelOps Control Center</h1>
   <div class="subtitle">The Executive Guide to Autonomous AI Governance: Why AI Agents Need a Control Center</div>
   <div class="meta-bar">
-    <span><strong>Target Audience:</strong> Executive Leadership, Strategic Partners, Non-Technical Decision Makers</span>
-    <span><strong>Published:</strong> September 2026</span>
-    <span><strong>Version:</strong> 2.4 Enterprise</span>
+    <span><strong>Target Audience:</strong> Non-Technical Partners, Executive Leadership, Investors</span>
+    <span><strong>Status:</strong> Active Commercial Expansion</span>
+    <span><strong>Confidentiality:</strong> Strategic Briefing</span>
+  </div>
+</div>
+
+<!-- ONE QUICK SUMMARY ON TOP -->
+<div class="executive-summary-box">
+  <div class="summary-header">
+    <span class="summary-badge">Executive Briefing</span>
+    <span class="summary-title">One-Minute Executive Summary (TL;DR)</span>
+  </div>
+  <div class="summary-grid">
+    <div class="summary-card">
+      <h4>1. The Trillion-Dollar Problem</h4>
+      <p>Companies are giving autonomous AI agents "digital hands" (passwords, bank access, database credentials) to do real work. But when an AI misunderstands an instruction, it can wipe databases, leak customer PII, or wire company money with zero human oversight.</p>
+    </div>
+    <div class="summary-card">
+      <h4>2. What SentinelOps Is</h4>
+      <p>SentinelOps is the <strong>"Air Traffic Control & Dual-Key Vault"</strong> for AI. It intercepts high-stakes AI actions, checks company rules in &lt;20ms, sends 1-click human approvals with a 5-second Undo safety net, and automatically generates verifiable SOC 2 audit certificates.</p>
+    </div>
+    <div class="summary-card">
+      <h4>3. The Investment Opportunity</h4>
+      <p>Just as every enterprise computer needed a firewall in the 1990s and every web app needed Cloudflare in the 2010s, every company deploying AI agents <em>must</em> have an enforcement gateway. SentinelOps is positioned to be the category-defining governance standard.</p>
+    </div>
   </div>
 </div>
 
 <!-- PART 1: THE BASICS -->
 <h2>Part 1: The Basics — What is an "AI Agent" in Plain English?</h2>
-<p>To understand why SentinelOps exists, it is helpful to look at how Artificial Intelligence has transformed in the workplace over the past few years:</p>
+<p>To understand why SentinelOps is essential, it helps to see how technology has evolved in three distinct chapters:</p>
 
 <div class="diagram-box">
-<div class="diagram-title">Visual Tree: The 3 Generations of Business Technology</div>
-Stage 1: Search Engines (Google)
- └─> "Here is where the information is located."
-     (User reads it, user does all the work. Zero operational risk.)
+<div class="diagram-title">Visual Tree: The 3 Generations of Business Software</div>
+Stage 1: Search Engines (Google, Bing)
+ └──> "Here is where the information is located on the internet."
+      (You read it, you do 100% of the actual work. Zero operational danger.)
 
-Stage 2: Chatbots & Assistants (ChatGPT, Claude)
- └─> "Here is a drafted email, summary, or report."
-     (User reviews the text and clicks 'Send'. Moderate risk.)
+Stage 2: Conversational Chatbots (ChatGPT, Claude)
+ └──> "Here is a drafted email, contract summary, or piece of writing."
+      (You inspect the text, copy/paste it, and click 'Send'. Moderate risk.)
 
-Stage 3: Autonomous AI Agents (Current Era)
- └─> "I logged into the database, exported 10,000 payroll records, 
-      and initiated a cloud server deployment on your behalf."
-     (The AI is given digital hands and system access. HIGH OPERATIONAL RISK!)
+Stage 3: Autonomous AI Agents (Current Era — The SentinelOps Frontier)
+ └──> "I logged into the corporate database, exported 10,000 payroll records, 
+       and executed a live cloud server deployment on your behalf."
+      (The AI is given employee credentials and acts on its own. CRITICAL RISK!)
 </div>
 
 <div class="callout callout-success">
-  <strong>The Key Distinction:</strong>
-  Chatbots <em>talk</em> to you. AI Agents <em>take actions for you</em>. An AI Agent is software that has been given passwords, API credentials, and the authority to modify company data, send money, update customer records, and deploy code without a human pressing the buttons.
+  <strong>The Fundamental Rule:</strong>
+  Chatbots <em>talk to you</em>. AI Agents <em>act for you</em>. When an AI Agent makes a mistake, it doesn't just produce a silly sentence on your screen—it changes real records, moves real company dollars, or deletes live databases.
 </div>
 
 <!-- PART 2: THE PROBLEM -->
-<h2>Part 2: The Problem — Why Autonomous AI Terrifies Enterprises</h2>
-<p>Companies are eager to deploy AI agents because they work 24/7, never sleep, and can do the work of a 20-person team in minutes. However, giving an AI agent unrestricted access to company systems creates an immediate existential danger:</p>
+<h2>Part 2: The Problem — Why Autonomous AI Terrifies Enterprise Leaders</h2>
+<p>Companies are eager to deploy AI agents because they work 24/7 without fatigue and can execute the workload of an entire department. But enterprise leaders (CEOs, Chief Security Officers, Legal Counsel) are slamming the brakes due to three core realities:</p>
 
 <div class="grid-2">
   <div class="col">
-    <h4>The "Super-Intern" Analogy</h4>
-    <p>Imagine hiring an extraordinarily brilliant intern. They have read every textbook and work at lightning speed. But on day one, you hand them the master keys to the bank vault, write-access to every customer credit card, and root passwords to all servers.</p>
-    <p>Even if they are well-intentioned, sooner or later an honest misunderstanding or bad instruction will cause a multimillion-dollar disaster.</p>
+    <h4>The "Super-Intern with Master Keys" Metaphor</h4>
+    <p>Imagine hiring an extraordinarily brilliant intern who has read every business textbook and works at superhuman speed. On day one, you hand them the master keys to the bank vault, write-access to customer credit cards, and admin passwords to company servers.</p>
+    <p>Even if they are completely well-intentioned, sooner or later an honest misunderstanding or ambiguous instruction will trigger a multimillion-dollar disaster.</p>
   </div>
   <div class="col">
-    <h4>Why Firewalls & Antivirus Can't Help</h4>
-    <p>Traditional cybersecurity tools are built to keep <em>outside hackers out</em>. They look for suspicious login attempts from foreign IP addresses.</p>
-    <p>They are completely blind to an <em>inside AI agent</em> that already possesses valid employee credentials, logged into the internal system, and executed a catastrophic data export because it misinterpreted an English sentence.</p>
+    <h4>Why Traditional Antivirus & Firewalls Fail</h4>
+    <p>Cybersecurity tools (firewalls, anti-malware) are built to stop <em>outsiders breaking in</em>. They look for unknown foreign IP addresses or malware signatures.</p>
+    <p>They are completely blind to an <em>inside AI agent</em> that already possesses valid employee credentials, logged into the internal system legitimately, and deleted the customer database because it misunderstood an English sentence.</p>
   </div>
 </div>
 
@@ -279,25 +413,25 @@ Stage 3: Autonomous AI Agents (Current Era)
   <thead>
     <tr>
       <th style="width: 25%;">Domain</th>
-      <th style="width: 35%;">What the Agent was Told to Do</th>
+      <th style="width: 35%;">What the Agent was Asked to Do</th>
       <th style="width: 40%;">What Happened Without SentinelOps</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td><strong>Financial Operations</strong></td>
-      <td>"Prepare quarterly bonus payouts for regional directors."</td>
-      <td>Agent hallucinated payroll IDs and wired $480,000 directly to unverified personal vendor accounts with no way to recall the wire.</td>
+      <td>"Calculate and disburse quarterly contractor bonus payouts."</td>
+      <td>The agent hallucinated vendor account IDs and wired $480,000 to unverified foreign bank accounts with no legal recall ability.</td>
     </tr>
     <tr>
       <td><strong>Customer Privacy (GDPR/HIPAA)</strong></td>
-      <td>"Analyze churn risk for high-value enterprise accounts."</td>
-      <td>Agent dumped 50,000 raw customer records containing Social Security Numbers into a public AI testing bucket.</td>
+      <td>"Analyze churn patterns for high-value enterprise accounts."</td>
+      <td>The agent dumped 50,000 raw customer records containing Social Security Numbers into a public cloud testing folder.</td>
     </tr>
     <tr>
       <td><strong>Cloud Infrastructure</strong></td>
-      <td>"Clean up obsolete cloud resources to reduce AWS costs."</td>
-      <td>Agent mistakenly flagged the active production database as 'idle' and deleted it in the middle of a Friday business afternoon.</td>
+      <td>"Clean up idle cloud servers to reduce annual infrastructure spend."</td>
+      <td>The agent mistakenly classified the primary production database as 'idle' and deleted it in the middle of a Friday business afternoon.</td>
     </tr>
   </tbody>
 </table>
@@ -306,45 +440,45 @@ Stage 3: Autonomous AI Agents (Current Era)
 
 <!-- PART 3: THE SOLUTION -->
 <h2>Part 3: The Solution — How SentinelOps Solves This</h2>
-<p><strong>SentinelOps is the Enterprise Enforcement Gateway & Control Center for Autonomous AI.</strong></p>
-<p>Just as airports require <strong>Air Traffic Control</strong> to ensure fast planes don't collide, and banks require <strong>Dual-Key Vaults</strong> where two managers must turn keys simultaneously before the vault opens, SentinelOps sits between all autonomous AI agents and your company's crown jewels.</p>
+<p><strong>SentinelOps is the Enterprise Enforcement Gateway and Control Center for Autonomous AI.</strong></p>
+<p>Just as airports require <strong>Air Traffic Control</strong> to ensure planes navigate safely without collisions, and nuclear submarines require <strong>Dual-Key Vaults</strong> where two officers must turn keys simultaneously before a launch, SentinelOps sits between all autonomous AI agents and your company's crown jewels.</p>
 
 <div class="diagram-box">
-<div class="diagram-title">Architecture: The SentinelOps Enforcement Gateway</div>
-   [ Autonomous AI Agents ] (LangChain, OpenAI, Internal Bots)
+<div class="diagram-title">System Architecture: The SentinelOps Safety Gateway</div>
+   [ Autonomous AI Agents ] (LangChain, OpenAI, Claude, Internal Bots)
              │
-             ▼  (Attempts an action: e.g., "Export Customer Records")
+             ▼  (Attempts an action: e.g., "Export 2,500 Customer Records")
    ┌─────────────────────────────────────────────────────────────┐
    │                  SENTINELOPS CONTROL GATEWAY                 │
    │                                                             │
    │  1. Check Company Rules  ──> Is destination approved?       │
-   │                              Is volume under threshold?     │
+   │                              Is volume under safe limit?    │
    │                                                             │
-   │  2. Decide Action:                                          │
-   │     • Green (Safe)   ──> AUTO-ALLOW (sub-20ms speed)        │
+   │  2. Deterministic Decision:                                 │
+   │     • Green (Safe)   ──> AUTO-ALLOW (&lt;20ms speed)           │
    │     • Amber (Risky)  ──> DISPATCH TO HUMAN APPROVER         │
-   │     • Red (Illegal)  ──> BLOCK & ISOLATE                    │
+   │     • Red (Illegal)  ──> BLOCK & QUARANTINE AGENT           │
    └──────────────────────────────┬──────────────────────────────┘
                                   │
          ┌────────────────────────┴────────────────────────┐
          ▼                                                 ▼
 [ 5-Second Interactive Undo ]               [ Cryptographic Attestation ]
-Slack / Mobile / Web Notification           Mathematical SOC 2 / ISO 27001
-Allows human manager to approve             hash proof generated instantly 
-or hit 'UNDO' if clicked by mistake.        for auditors & regulators.
+Instant Slack & Web Notification            Mathematical SOC 2 & ISO 27001
+Allows human manager to approve or          proof generated in one click 
+hit 'UNDO' if clicked by mistake.           for regulators and auditors.
 </div>
 
 <h3>The 4 Core Safety Pillars</h3>
 <ol>
-  <li><strong>Deterministic Policy Guardrails (The Rules of the Road)</strong>: Unlike AI prompts that can be tricked by hackers, SentinelOps rules are mathematically rigid. If corporate policy says <em>"No export over 500 records without VP approval,"</em> no amount of prompt trickery can bypass it.</li>
-  <li><strong>Interactive Human-in-the-Loop with 5-Second Undo</strong>: Risky actions alert designated managers on Slack or their dashboard. If a manager accidentally clicks 'Approve' while tired or distracted, our patent-pending 5-second interactive grace period lets them hit <strong>UNDO</strong> before any command touches the backend.</li>
-  <li><strong>Cryptographic Black Box Flight Recorder (SOC 2 / ISO 27001)</strong>: Every single action, approval, and decision is locked into a tamper-evident cryptographic hash chain. With one click, compliance officers can download an audit certificate proving zero data tampering.</li>
-  <li><strong>Instant Fleet Quarantine (The Emergency Kill-Switch)</strong>: If an agent begins behaving erratically or an integration is compromised, administrators can isolate that agent with a single click, revoking write-access across all corporate systems in real time.</li>
+  <li><strong>Deterministic Policy Guardrails (The Rules of the Road)</strong>: Unlike AI prompts that can be tricked by clever wording, SentinelOps rules are mathematically rigid. If company policy states <em>"No export over 500 records without VP approval,"</em> no AI agent can bypass it.</li>
+  <li><strong>Interactive Human-in-the-Loop with 5-Second Undo</strong>: High-stakes operations alert managers on Slack or their dashboard. If a manager accidentally clicks 'Approve' while distracted, our 5-second interactive grace period lets them click <strong>UNDO</strong> before any command touches the backend.</li>
+  <li><strong>Cryptographic Black Box Flight Recorder (SOC 2 / ISO 27001)</strong>: Every single action, approval, and decision is locked into a tamper-evident SHA-256 cryptographic chain. Regulators and auditors receive mathematical proof that records were never altered or deleted.</li>
+  <li><strong>Fleet Emergency Kill-Switch (Quarantine)</strong>: If an agent begins behaving erratically or an integration is compromised, administrators can isolate that agent in one click, revoking write-access across all corporate systems in real time.</li>
 </ol>
 
-<!-- PART 4: COMMERCIAL & PARTNER OPPORTUNITY -->
-<h2>Part 4: Commercial & Partner Value Proposition</h2>
-<p>For strategic partners (software consultancies, systems integrators, SaaS platforms, compliance auditors), SentinelOps is a massive revenue and adoption accelerator:</p>
+<!-- PART 4: COMMERCIAL VALUE -->
+<h2>Part 4: Commercial Value & Partner Revenue Model</h2>
+<p>For strategic partners (software consultancies, systems integrators, SaaS platforms, compliance auditors), SentinelOps is an immediate revenue and adoption accelerator:</p>
 
 <table>
   <thead>
@@ -356,18 +490,18 @@ or hit 'UNDO' if clicked by mistake.        for auditors & regulators.
   </thead>
   <tbody>
     <tr>
-      <td><strong>AI Solution Consultancies</strong></td>
-      <td>Clients want AI, but legal, security, and compliance teams kill deals before signing.</td>
-      <td>Bundling SentinelOps satisfies security objections immediately—reducing enterprise sales cycles from 9 months to 3 weeks.</td>
+      <td><strong>AI Consultancies & Solution Providers</strong></td>
+      <td>Enterprise clients want AI, but legal and compliance teams stall high-ticket deals indefinitely.</td>
+      <td>Bundling SentinelOps eliminates security objections, accelerating enterprise AI contracts from 9 months to 3 weeks.</td>
     </tr>
     <tr>
       <td><strong>SaaS Platforms & Integrators</strong></td>
-      <td>Need to offer 'enterprise-ready' governance without spending 18 months building internal tools.</td>
-      <td>White-label or resell SentinelOps to earn recurring ARR rev-share plus lucrative implementation services.</td>
+      <td>Need to offer 'enterprise-grade' AI governance without spending 18+ months building internal tools.</td>
+      <td>Earn recurring software revenue-share and high-margin consulting retainers configuring custom governance templates.</td>
     </tr>
     <tr>
       <td><strong>Compliance & Risk Auditors</strong></td>
-      <td>Auditing autonomous AI systems currently requires hundreds of hours of manual screenshot chasing.</td>
+      <td>Auditing autonomous AI currently requires hundreds of hours of manual screenshot chasing.</td>
       <td>SentinelOps provides one-click cryptographic attestation certificates, automating audit evidence collection by 80%.</td>
     </tr>
   </tbody>
@@ -375,8 +509,59 @@ or hit 'UNDO' if clicked by mistake.        for auditors & regulators.
 
 <div class="page-break"></div>
 
-<!-- PART 5: FREQUENTLY ASKED QUESTIONS -->
-<h2>Part 5: Frequently Asked Questions (Partner Q&A)</h2>
+<!-- PART 5: DETAILED 3-6 MONTH EXECUTION PLAN -->
+<h2>Part 5: Investment-Grade Execution Plan (Next 3 to 6 Months)</h2>
+<p>SentinelOps is moving at high velocity. The following operational roadmap outlines our strategic product milestones, commercial go-to-market targets, and institutional growth trajectory over the next 3 to 6 months:</p>
+
+<div class="roadmap-phase">
+  <div class="phase-header">
+    <span class="phase-title">Phase 1: Universal Gateway Connectors & Enterprise IdP Federation</span>
+    <span class="phase-timing">Months 1 – 2 (Days 1 – 60)</span>
+  </div>
+  <div class="phase-objective">Objective: Make SentinelOps plug-and-play into 90% of the world's autonomous agent frameworks and enterprise security stacks.</div>
+  <ul class="phase-deliverables">
+    <li><strong>Universal Agent SDK Connectors</strong>: One-line governance wrappers for LangChain, CrewAI, AutoGPT, Microsoft AutoGen, Vercel AI SDK, and AWS Bedrock.</li>
+    <li><strong>Enterprise Single Sign-On (SSO) & Directory Sync</strong>: Production SAML 2.0 and SCIM directory provisioning for Okta, Microsoft Entra ID (Azure AD), and Google Workspace.</li>
+    <li><strong>Cloudflare Turnstile Bot Fortress</strong>: Complete bot mitigation on sign-in and workspace registration to eliminate credential-stuffing and tenant exhaustion.</li>
+    <li><strong>Interactive Slack & Microsoft Teams Approval Apps</strong>: Bi-directional chat apps enabling managers to approve, reject, or undo agent actions directly within corporate messaging channels.</li>
+  </ul>
+  <span class="kpi-tag">Milestone KPI: 15 Enterprise Pilot Signups • Sub-15ms Gateway Latency • Zero-Touch SSO Rollout</span>
+</div>
+
+<div class="roadmap-phase">
+  <div class="phase-header">
+    <span class="phase-title">Phase 2: Autonomous Threat Containment & Automated Compliance Sync</span>
+    <span class="phase-timing">Months 3 – 4 (Days 61 – 120)</span>
+  </div>
+  <div class="phase-objective">Objective: Evolve from passive rule evaluation into active, autonomous containment and real-time auditor integration.</div>
+  <ul class="phase-deliverables">
+    <li><strong>Autonomous Heuristic Anomaly Quarantine</strong>: Machine-speed behavioral detection that automatically freezes an agent if its transaction frequency, volume, or target endpoints deviate from baseline.</li>
+    <li><strong>Automated Compliance Evidence Pipeline (Vanta / Drata)</strong>: Direct API connectors streaming cryptographic SHA-256 attestation packages into major governance platforms for continuous SOC 2 Type II, ISO 27001, and EU AI Act readiness.</li>
+    <li><strong>Hardware Security Module (HSM) Cryptographic Attestation</strong>: Cloud KMS and HSM hardware-signed digital certificates that satisfy military-grade non-repudiation standards.</li>
+    <li><strong>Granular 4-Eyes Governance with Emergency Bypass Auditing</strong>: Advanced policy workflows requiring two authorized executive signatures for production financial and code operations.</li>
+  </ul>
+  <span class="kpi-tag">Milestone KPI: 35 Live Enterprise Fleets • 1-Click Vanta/Drata Certified Partner Integration</span>
+</div>
+
+<div class="roadmap-phase">
+  <div class="phase-header">
+    <span class="phase-title">Phase 3: Governance Template Marketplace & Commercial Scale</span>
+    <span class="phase-timing">Months 5 – 6 (Days 121 – 180)</span>
+  </div>
+  <div class="phase-objective">Objective: Establish SentinelOps as the de facto industry standard for AI governance and achieve institutional Series A readiness.</div>
+  <ul class="phase-deliverables">
+    <li><strong>SentinelOps Governance Policy Marketplace</strong>: Pre-packaged compliance templates for specific verticals: <em>Fintech Vault</em>, <em>HIPAA Healthcare Shield</em>, <em>DevOps Release Guard</em>, and <em>EU AI Act Compliance Pack</em>.</li>
+    <li><strong>Certified AI Governance Partner Network (CAGP)</strong>: Formal tiering program for global systems integrators (Bain AI, Accenture, Slalom, Deloitte) with co-selling referral commissions and certified implementation playbooks.</li>
+    <li><strong>Multi-Region Global Gateway Mesh</strong>: Distributed edge enforcement across North America, Europe, and Asia-Pacific ensuring &lt;5ms policy latency for international corporate deployments.</li>
+    <li><strong>Commercial Scale & Institutional Financing</strong>: Expand enterprise design partners to 50+ enterprise fleets, reach $1.5M ARR milestone, and finalize institutional Series A investment round.</li>
+  </ul>
+  <span class="kpi-tag">Milestone KPI: $1.5M ARR Target • 50+ Enterprise Customers • Tier-1 Certified Partner Ecosystem</span>
+</div>
+
+<div class="page-break"></div>
+
+<!-- PART 6: FREQUENTLY ASKED QUESTIONS -->
+<h2>Part 6: Frequently Asked Questions (Partner & Investor Q&A)</h2>
 
 <div class="qa-item">
   <div class="question">Why can't an enterprise just have their internal developers write basic safety code?</div>
@@ -404,22 +589,21 @@ or hit 'UNDO' if clicked by mistake.        for auditors & regulators.
 </div>
 
 <div class="qa-item">
-  <div class="question">How long does a customer rollout take?</div>
-  <div class="answer">A live enterprise workspace can be provisioned in under 5 minutes using self-service onboarding or Corporate SAML SSO (Okta/Azure AD). Connecting an existing AI agent requires adding under 10 lines of code via our official SDKs. Most enterprise pilots achieve full production governance within 2 weeks.</div>
+  <div class="question">How defensible is SentinelOps against big tech platforms (e.g. OpenAI or Microsoft)?</div>
+  <div class="answer">Enterprises never trust a model vendor (like OpenAI or Microsoft) to independently audit and restrict itself. Furthermore, enterprises deploy heterogeneous fleets mixing OpenAI, Claude, internal custom models, and open-source tools. SentinelOps serves as the neutral, cross-platform third-party auditor and enforcement authority that enterprise compliance departments demand.</div>
 </div>
 
-<!-- PART 6: 3-PHASE FORWARD ROADMAP -->
-<h2>Part 6: Forward-Looking Rollout & Partnership Plan</h2>
-<div class="diagram-box">
-<div class="diagram-title">Partnership Onboarding & Execution Roadmap</div>
-[ Phase 1: Pilot & Discovery ]       -->  [ Phase 2: Tailored Deployment ]   -->  [ Phase 3: Fleet Expansion ]
-Duration: Weeks 1-2                      Duration: Weeks 3-4                      Duration: Month 2+
-• Access to SentinelOps Sandbox          • Connect corporate Slack & SSO          • Scale governance across all units
-• Agent inventory & risk audit           • Tailor SOC 2 / ISO guardrails          • Joint Go-To-Market co-selling
-• Zero-commitment proof-of-value         • Run simulated rogue-agent drill        • Continuous SIEM security streaming
-</div>
+<!-- FOOTER & CONTACT -->
+<h2>Part 7: Engagement & Leadership Contact</h2>
+<p>SentinelOps is actively onboarding strategic design partners, technology integrators, and strategic capital partners.</p>
 
-<p><strong>Next Steps:</strong> To schedule a live demonstration, explore sandbox access, or review commercial partnership agreements, please contact the SentinelOps Partner Solutions Group at <strong>partners@sentinelops-ai.com</strong>.</p>
+<div class="callout callout-success">
+  <strong>Executive Leadership Contact:</strong>
+  To arrange a live technical demonstration, access private sandbox credentials, or discuss strategic partner / investment terms, please connect directly with the executive leadership team:<br><br>
+  • <strong>Web Portal:</strong> https://sentinelops-ai.com<br>
+  • <strong>Interactive Sandbox:</strong> https://sentinelops-ai.com/dashboard<br>
+  • <strong>Direct Executive Channel:</strong> Inquiries are managed directly via executive scheduling with the founding leadership team.
+</div>
 
 </body>
 </html>
