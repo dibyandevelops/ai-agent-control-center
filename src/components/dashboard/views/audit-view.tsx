@@ -2,6 +2,7 @@
 
 import {
   ArrowDownToLine,
+  Award,
   Clock3,
   ExternalLink,
   Filter,
@@ -14,6 +15,8 @@ import React, { useMemo, useState } from "react";
 import type { AuditEvent } from "@/lib/types";
 import { TablePagination } from "@/components/table-pagination";
 import { MfaVerificationDialog } from "@/components/mfa-verification-dialog";
+import { ComplianceCertificateDialog } from "../dialogs/compliance-certificate-dialog";
+import type { ComplianceExportPackage } from "@/lib/server/compliance-export";
 import {
   displayTime,
   EmptyState,
@@ -41,6 +44,9 @@ export function AuditView({
   const [digestMfaPrompt, setDigestMfaPrompt] = useState(false);
   const [integrityError, setIntegrityError] = useState("");
   const [referenceTime] = useState(() => Date.now());
+  const [complianceDialogOpen, setComplianceDialogOpen] = useState(false);
+  const [complianceData, setComplianceData] = useState<ComplianceExportPackage | null>(null);
+  const [complianceLoading, setComplianceLoading] = useState(false);
   const [integrity, setIntegrity] = useState<{
     verified: boolean;
     eventsChecked: number;
@@ -49,6 +55,28 @@ export function AuditView({
     firstInvalidEventId: string | null;
     checkedAt: string;
   } | null>(null);
+
+  async function openComplianceCertificate() {
+    setComplianceDialogOpen(true);
+    if (!complianceData) {
+      setComplianceLoading(true);
+      try {
+        const res = await fetch("/api/v1/compliance/export");
+        if (res.ok) {
+          const json = await res.json();
+          setComplianceData(json);
+        }
+      } catch (err) {
+        console.error("Failed to fetch compliance certificate", err);
+      } finally {
+        setComplianceLoading(false);
+      }
+    }
+  }
+
+  function downloadCompliancePackage() {
+    window.location.href = "/api/v1/compliance/export?download=true";
+  }
 
   const securityEvents = useMemo(
     () => audit.filter((event) => /^(operator\.|identity\.|api_key\.|github_app\.|slack\.)/.test(event.action)),
@@ -163,6 +191,13 @@ export function AuditView({
           </button>
           <button
             className="secondary-button justify-center"
+            onClick={openComplianceCertificate}
+          >
+            <Award className="h-4 w-4 text-emerald-600 dark:text-sentinel-lime" />
+            <span>Compliance Certificate</span>
+          </button>
+          <button
+            className="secondary-button justify-center"
             onClick={() => void testSecurityDigestDelivery()}
             disabled={testingDelivery}
           >
@@ -212,6 +247,15 @@ export function AuditView({
                 ? ` First invalid event: ${integrity.firstInvalidEventId}.`
                 : " Every event hash and previous-hash link is intact."}
             </p>
+            {integrity.verified ? (
+              <button
+                onClick={openComplianceCertificate}
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-sentinel-lime hover:underline"
+              >
+                <Award className="h-3.5 w-3.5" />
+                <span>View & Download Signed SOC 2 Attestation Package</span>
+              </button>
+            ) : null}
           </div>
         </section>
       ) : integrityError ? (
@@ -413,6 +457,14 @@ export function AuditView({
           itemLabel="events"
         />
       </section>
+
+      <ComplianceCertificateDialog
+        isOpen={complianceDialogOpen}
+        onClose={() => setComplianceDialogOpen(false)}
+        data={complianceData}
+        loading={complianceLoading}
+        onDownload={downloadCompliancePackage}
+      />
     </main>
   );
 }
