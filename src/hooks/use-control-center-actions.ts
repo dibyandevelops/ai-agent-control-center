@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   Agent,
   Approval,
@@ -40,6 +40,27 @@ export function useControlCenterActions({
   setConnectOpen,
 }: UseControlCenterActionsOptions) {
   const [connectLoading, setConnectLoading] = useState(false);
+  const pendingDecisionsRef = useRef<
+    Map<
+      string,
+      {
+        timeoutId: ReturnType<typeof setTimeout>;
+        commit: () => Promise<void>;
+      }
+    >
+  >(new Map());
+
+  // Cleanup: flush any pending decisions on unmount
+  useEffect(() => {
+    const active = pendingDecisionsRef.current;
+    return () => {
+      active.forEach((item) => {
+        clearTimeout(item.timeoutId);
+        void item.commit();
+      });
+      active.clear();
+    };
+  }, []);
 
   async function registerAgent(newAgent: Agent) {
     if (workspaceMode === "live") {
@@ -72,36 +93,98 @@ export function useControlCenterActions({
     decision: "approved" | "denied",
     reason?: string,
   ) {
-    if (workspaceMode === "live") {
-      const response = await fetch(`/api/v1/actions/${approval.id}/decision`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          decision,
-          reason:
-            reason ||
-            `${decision === "approved" ? "Approved" : "Denied"} via Operator Dashboard`,
-        }),
-      });
-      if (!response.ok) {
-        const err = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error || "Decision failed");
-      }
-      await refreshLiveWorkspace();
-    } else {
-      setApprovalList((prev) =>
-        prev.map((item) =>
-          item.id === approval.id
-            ? { ...item, status: decision === "approved" ? "approved" : "denied" }
-            : item,
-        ),
-      );
+    // 1. If this action was already queued in a pending grace period, clear its previous timer
+    const existing = pendingDecisionsRef.current.get(approval.id);
+    if (existing) {
+      clearTimeout(existing.timeoutId);
+      pendingDecisionsRef.current.delete(approval.id);
     }
-    setToast(
-      decision === "approved"
-        ? `Approved: ${approval.request}`
-        : `Denied: ${approval.request}`,
+
+    // 2. Optimistic UI update: instantly update list state so the UI responds immediately (<20ms)
+    setApprovalList((prev) =>
+      prev.map((item) =>
+        item.id === approval.id
+          ? { ...item, status: decision === "approved" ? "approved" : "denied" }
+          : item,
+      ),
     );
+
+    // 3. Define commit handler to finalize the decision to the backend
+    const commit = async () => {
+      pendingDecisionsRef.current.delete(approval.id);
+      if (workspaceMode === "live") {
+        try {
+          const response = await fetch(`/api/v1/actions/${approval.id}/decision`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              decision,
+              reason:
+                reason ||
+                `${decision === "approved" ? "Approved" : "Denied"} via Operator Dashboard`,
+            }),
+          });
+          if (!response.ok) {
+            const err = (await response.json().catch(() => ({}))) as { error?: string };
+            throw new Error(err.error || "Decision failed");
+          }
+          await refreshLiveWorkspace();
+        } catch (err) {
+          // Revert optimistic update on backend error
+          setApprovalList((prev) =>
+            prev.map((item) =>
+              item.id === approval.id
+                ? { ...item, status: "pending" }
+                : item,
+            ),
+          );
+          setToast({
+            message: err instanceof Error ? err.message : "Failed to record decision.",
+            type: "error",
+            durationMs: 5000,
+          });
+        }
+      }
+    };
+
+    // 4. Schedule commit at the end of the 5-second grace period
+    const timeoutId = setTimeout(() => {
+      void commit();
+    }, 5000);
+
+    pendingDecisionsRef.current.set(approval.id, {
+      timeoutId,
+      commit,
+    });
+
+    // 5. Present interactive Undo toast with 5-second countdown progress bar
+    setToast({
+      id: `decision-${approval.id}`,
+      message: `${decision === "approved" ? "Approved" : "Denied"}: ${approval.request}`,
+      type: decision === "approved" ? "success" : "warning",
+      durationMs: 5000,
+      actionLabel: "Undo",
+      onAction: () => {
+        const pending = pendingDecisionsRef.current.get(approval.id);
+        if (pending) {
+          clearTimeout(pending.timeoutId);
+          pendingDecisionsRef.current.delete(approval.id);
+        }
+        // Rollback optimistic state back to pending
+        setApprovalList((prev) =>
+          prev.map((item) =>
+            item.id === approval.id
+              ? { ...item, status: "pending" }
+              : item,
+          ),
+        );
+        setToast({
+          message: `Undone. "${approval.request}" remains pending review.`,
+          type: "info",
+          durationMs: 3500,
+        });
+      },
+    });
   }
 
   async function decideReleaseGovernance(

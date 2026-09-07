@@ -89,12 +89,15 @@ export function OverviewView({
     approval: Approval,
     decision: "approved" | "denied",
   ) => {
+    if (onDecision) {
+      await onDecision(approval, decision);
+      return;
+    }
     try {
       await decideApproval(approval, decision);
     } catch {
       // Handled in mutation
     }
-    await onDecision?.(approval, decision);
   };
 
   return (

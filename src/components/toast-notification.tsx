@@ -39,6 +39,7 @@ export function ToastNotification({ toast, onClose }: ToastNotificationProps) {
 
   useEffect(() => {
     if (!toastData) return;
+    setProgress(100);
 
     const intervalTime = 50;
     const decrement = (intervalTime / duration) * 100;
