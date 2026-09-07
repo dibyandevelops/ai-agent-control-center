@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import React, { useState } from "react";
 import { BrandMark } from "@/components/dashboard/navigation/sidebar";
+import { InteractivePolicySandbox } from "@/components/landing/interactive-policy-sandbox";
 
 export default function ConnectingAgentsDocPage() {
   const [selectedLang, setSelectedLang] = useState<"python" | "node" | "curl">("python");
@@ -113,55 +114,38 @@ def broadcast_deal_close(customer_name: str, deal_size_usd: float):
 # Calling this automatically performs evaluate -> poll -> execute -> report_outcome
 broadcast_deal_close(customer_name="Acme Corp", deal_size_usd=120000)`;
 
-  const nodeSnippet = `// TypeScript / Node.js Fetch Integration
-const BASE_URL = process.env.SENTINELOPS_BASE_URL || "https://sentinelops.dev";
-const API_KEY = process.env.SENTINELOPS_AGENT_API_KEY;
+  const nodeSnippet = `// Install official SDK: npm install @sentinelops/sdk
+import { SentinelOps } from "@sentinelops/sdk";
 
-// 1. Evaluate policy before executing action
-const response = await fetch(\`\${BASE_URL}/api/v1/actions/evaluate\`, {
-  method: "POST",
-  headers: {
-    "Authorization": \`Bearer \${API_KEY}\`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    idempotencyKey: \`action-\${Date.now()}\`,
-    agent: {
-      externalId: "customer-support-bot",
-      name: "Customer Support Agent",
-      ownerEmail: "engineering@company.com",
-      team: "Customer Experience",
-      provider: "Anthropic"
-    },
-    action: "stripe.charges.refund",
-    resource: "stripe/ch_3MtwLwLkdIwHu7ix28a30q",
-    environment: "production",
-    context: {
-      amount: 450,
-      currency: "USD",
-      reason: "duplicate_charge"
-    }
-  })
+// 1. Initialize client
+const sentinel = new SentinelOps({
+  apiKey: process.env.SENTINELOPS_API_KEY, // Or pass directly
 });
 
-const decision = await response.json();
-console.log("Decision status:", decision.status); // "allowed" | "pending_approval" | "blocked"
+// 2. Evaluate policy before executing any consequential action
+const decision = await sentinel.evaluate({
+  agentId: "customer-support-bot",
+  action: "stripe.charges.refund",
+  resource: "stripe/ch_3MtwLwLkdIwHu7ix28a30q",
+  environment: "production",
+  riskHint: "medium",
+  context: { amount: 450, currency: "USD", reason: "duplicate_charge" },
+});
 
-if (decision.status === "allowed") {
-  // Execute charge refund in Stripe...
-  
-  // Report outcome back to audit log
-  await fetch(\`\${BASE_URL}/api/v1/actions/\${decision.requestId}/outcome\`, {
-    method: "POST",
-    headers: {
-      "Authorization": \`Bearer \${API_KEY}\`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      status: "succeeded",
-      summary: "Refund processed successfully"
-    })
-  });
+if (decision.allowed) {
+  // Safe to execute immediately
+  await stripe.refunds.create({ charge: "ch_3MtwLwLkdIwHu7ix28a30q" });
+  await sentinel.reportOutcome(decision.requestId, { status: "succeeded" });
+} else if (decision.pending) {
+  // Consequential action halted for 4-Eyes dual approval in Slack / Dashboard
+  console.log("Awaiting human review in Slack (#sec-approvals)...");
+  const approved = await sentinel.pollApproval(decision.requestId);
+  if (approved.allowed) {
+    await stripe.refunds.create({ charge: "ch_3MtwLwLkdIwHu7ix28a30q" });
+    await sentinel.reportOutcome(decision.requestId, { status: "succeeded" });
+  }
+} else {
+  console.error("Action blocked by Zero-Trust policy:", decision.reason);
 }`;
 
   const curlSnippet = `# 1. Intercept & Evaluate Mutation via REST API
@@ -292,6 +276,11 @@ curl -X POST "https://sentinelops.dev/api/v1/actions/evaluate" \\
               High-risk mutations trigger approval queues for authorized reviewers. All execution outcomes are sealed in a SHA-256 hash chain.
             </p>
           </div>
+        </section>
+
+        {/* Live Interactive Zero-Trust Policy Sandbox */}
+        <section className="mt-10">
+          <InteractivePolicySandbox />
         </section>
 
         {/* Code Snippets & Language Selector */}
