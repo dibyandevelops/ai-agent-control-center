@@ -6,7 +6,6 @@ import {
   Check,
   Copy,
   Download,
-  FileCheck2,
   Lock,
   ShieldCheck,
   X,

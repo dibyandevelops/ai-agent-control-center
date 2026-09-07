@@ -1,0 +1,53 @@
+{
+  "name": "@sentinelops/sdk",
+  "version": "0.2.0",
+  "description": "Enterprise AI-agent control plane & zero-trust policy gateway SDK for Node.js and TypeScript",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./vercel-ai": {
+      "import": "./dist/vercel-ai.mjs",
+      "require": "./dist/vercel-ai.js",
+      "types": "./dist/vercel-ai.d.ts"
+    },
+    "./langchain": {
+      "import": "./dist/langchain.mjs",
+      "require": "./dist/langchain.js",
+      "types": "./dist/langchain.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/vercel-ai.ts src/langchain.ts --format cjs,esm --dts",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "security",
+    "governance",
+    "guardrails",
+    "langchain",
+    "vercel-ai",
+    "zero-trust",
+    "hitl",
+    "soc2"
+  ],
+  "author": "Iruka <iruka@sentinelops-ai.com>",
+  "license": "Apache-2.0",
+  "homepage": "https://www.sentinelops-ai.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dibyandevelops/ai-agent-control-center.git"
+  }
+}
