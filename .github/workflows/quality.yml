@@ -62,5 +62,20 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      - name: Build TypeScript SDK (@sentinelops/sdk)
+        run: pnpm exec tsc -p sdk/typescript/tsconfig.json
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Python SDK quality gate
+        run: |
+          cd sdk/python
+          pip install --upgrade pip
+          pip install hatchling pytest respx pytest-cov httpx
+          pytest tests
+
       - name: Isolated enterprise journey
         run: pnpm test:e2e
