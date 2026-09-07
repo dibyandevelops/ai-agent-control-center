@@ -7,6 +7,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState, useSyncExternalSto
 import { shouldBypassTurnstile } from "@/lib/turnstile-host";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
+import { InteractivePolicySandbox } from "@/components/landing/interactive-policy-sandbox";
 
 const subscribeToClient = () => () => undefined;
 const getClientSnapshot = () => true;
@@ -497,6 +498,32 @@ export function WorkspaceOnboarding() {
               </>
             )}
           </section>
+        </div>
+
+        {/* Live Interactive Policy Simulator Preview */}
+        <div className="mt-16 pt-12 border-t border-sentinel-line">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-sentinel-lime">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Live Zero-Trust Engine
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight mt-1 text-sentinel-text">
+                Test the Policy Engine in Real-Time
+              </h2>
+              <p className="text-xs text-sentinel-muted mt-1 max-w-xl">
+                Experience sub-20ms policy enforcement, Slack 4-Eyes cryptographic approvals, and immutable SHA-256 seal generation before creating your workspace.
+              </p>
+            </div>
+            <Link
+              href="/docs/connecting-agents"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-sentinel-lime hover:underline transition shrink-0"
+            >
+              <span>Explore Developer Docs</span>
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <InteractivePolicySandbox />
         </div>
       </div>
     </main>
