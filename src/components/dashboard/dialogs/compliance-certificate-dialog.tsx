@@ -7,6 +7,8 @@ import {
   Copy,
   Download,
   Lock,
+  RefreshCw,
+  ShieldAlert,
   ShieldCheck,
   X,
 } from "lucide-react";
@@ -19,8 +21,10 @@ interface ComplianceCertificateDialogProps {
   loading: boolean;
   onDownload: () => void;
   errorMessage?: string | null;
+  errorType?: "auth" | "forbidden" | "server" | null;
   isDemo?: boolean;
   onConnectLive?: () => void;
+  onRetry?: () => void;
 }
 
 export function ComplianceCertificateDialog({
@@ -30,8 +34,10 @@ export function ComplianceCertificateDialog({
   loading,
   onDownload,
   errorMessage,
+  errorType = "auth",
   isDemo = false,
   onConnectLive,
+  onRetry,
 }: ComplianceCertificateDialogProps) {
   const [copiedDigest, setCopiedDigest] = useState(false);
 
@@ -236,17 +242,36 @@ export function ComplianceCertificateDialog({
           </div>
         ) : (
           <div className="py-12 text-center space-y-4">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-              <ShieldCheck className="h-6 w-6" />
+            <div
+              className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full border ${
+                errorType === "server"
+                  ? "bg-red-500/10 text-red-500 border-red-500/20"
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+              }`}
+            >
+              {errorType === "server" ? (
+                <ShieldAlert className="h-6 w-6" />
+              ) : (
+                <ShieldCheck className="h-6 w-6" />
+              )}
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-sentinel-text">Authentication Required</h3>
+              <h3 className="text-sm font-bold text-sentinel-text">
+                {errorType === "auth"
+                  ? "Authentication Required"
+                  : errorType === "forbidden"
+                  ? "Auditor or Admin Role Required"
+                  : "Unable to Generate Compliance Certificate"}
+              </h3>
               <p className="text-xs text-sentinel-muted max-w-md mx-auto leading-relaxed">
-                {errorMessage || "You must be signed in to a live workspace with an Auditor or Admin account to export live cryptographic compliance certificates."}
+                {errorMessage ||
+                  (errorType === "auth"
+                    ? "You must be signed in to a live workspace with an Auditor or Admin account to export live cryptographic compliance certificates."
+                    : "An error occurred while generating the compliance certificate.")}
               </p>
             </div>
-            {onConnectLive ? (
-              <div className="pt-2 flex justify-center">
+            <div className="pt-2 flex items-center justify-center gap-2.5">
+              {errorType === "auth" && onConnectLive ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -257,8 +282,25 @@ export function ComplianceCertificateDialog({
                 >
                   Sign in to Live Workspace
                 </button>
-              </div>
-            ) : null}
+              ) : null}
+              {errorType === "server" && onRetry ? (
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="primary-button text-xs font-bold"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span>Retry Export</span>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={onClose}
+                className="secondary-button text-xs font-medium"
+              >
+                Close
+              </button>
+            </div>
           </div>
         )}
       </div>

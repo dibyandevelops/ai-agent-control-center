@@ -116,6 +116,7 @@ export function AuditView({
   const [complianceData, setComplianceData] = useState<ComplianceExportPackage | null>(null);
   const [complianceLoading, setComplianceLoading] = useState(false);
   const [complianceError, setComplianceError] = useState<string | null>(null);
+  const [complianceErrorType, setComplianceErrorType] = useState<"auth" | "forbidden" | "server" | null>(null);
   const [integrity, setIntegrity] = useState<{
     verified: boolean;
     eventsChecked: number;
@@ -128,6 +129,7 @@ export function AuditView({
   async function openComplianceCertificate() {
     setComplianceDialogOpen(true);
     setComplianceError(null);
+    setComplianceErrorType(null);
 
     if (live) {
       if (!complianceData) {
@@ -138,21 +140,26 @@ export function AuditView({
             const json = await res.json();
             setComplianceData(json);
             setComplianceError(null);
+            setComplianceErrorType(null);
           } else {
             const err = (await res.json().catch(() => ({}))) as { error?: string };
             if (res.status === 401) {
+              setComplianceErrorType("auth");
               setComplianceError(
                 "You are not authenticated in a live workspace. Please sign in with your Administrator or Auditor credentials."
               );
             } else if (res.status === 403) {
+              setComplianceErrorType("forbidden");
               setComplianceError(
                 "Auditor or Administrator privileges required. Your current operator role does not have permission to export compliance certificates."
               );
             } else {
+              setComplianceErrorType("server");
               setComplianceError(err.error || "Failed to load compliance certificate from server.");
             }
           }
         } catch (err) {
+          setComplianceErrorType("server");
           setComplianceError(
             err instanceof Error ? err.message : "Network error fetching compliance certificate."
           );
@@ -579,8 +586,13 @@ export function AuditView({
         data={complianceData}
         loading={complianceLoading}
         errorMessage={complianceError}
+        errorType={complianceErrorType}
         isDemo={!live}
         onConnectLive={onOpenConnect}
+        onRetry={() => {
+          setComplianceData(null);
+          void openComplianceCertificate();
+        }}
         onDownload={downloadCompliancePackage}
       />
     </main>

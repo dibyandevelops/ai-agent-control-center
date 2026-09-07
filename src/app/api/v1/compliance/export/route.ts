@@ -152,8 +152,8 @@ export async function GET(request: NextRequest) {
           o1.email as delegator_email,
           o2.email as delegatee_email
         from approver_delegations d
-        left join operator_accounts o1 on o1.id = d.delegator_operator_id
-        left join operator_accounts o2 on o2.id = d.delegatee_operator_id
+        left join operators o1 on o1.id = d.delegator_operator_id
+        left join operators o2 on o2.id = d.delegatee_operator_id
         where d.organization_id = $1
         order by d.created_at desc
         limit 50
