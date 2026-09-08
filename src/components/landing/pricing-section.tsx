@@ -16,7 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
-import { StripeCheckoutDialog } from "@/components/pricing/stripe-checkout-dialog";
+import { LemonSqueezyCheckoutDialog } from "@/components/pricing/lemon-squeezy-checkout-dialog";
 
 export function PricingSection() {
   const router = useRouter();
@@ -71,8 +71,8 @@ export function PricingSection() {
       a: "SentinelOps integrates Cloudflare Turnstile bot verification on sign-in and workspace creation modals to eliminate automated credential stuffing without degrading the developer experience.",
     },
     {
-      q: "How does subscription billing and invoicing work?",
-      a: "All subscriptions, instant prorated upgrades, plan changes, and itemized tax receipts are managed directly through our self-serve control plane with full support for credit cards, ACH, and Net-30 purchase orders for Enterprise.",
+      q: "How does Lemon Squeezy subscription billing and international tax work?",
+      a: "All subscriptions, prorated upgrades, and localized tax invoicing are processed securely through Lemon Squeezy as our Merchant of Record. They automatically calculate and remit Australian GST, US sales tax, and EU VAT, while supporting credit cards, Apple Pay, PayPal, and bank transfers worldwide.",
     },
   ];
 
@@ -372,9 +372,9 @@ export function PricingSection() {
         </div>
       </div>
 
-      {/* Checkout Modal */}
+      {/* Lemon Squeezy Checkout Modal */}
       {checkoutPlan && (
-        <StripeCheckoutDialog
+        <LemonSqueezyCheckoutDialog
           open={Boolean(checkoutPlan)}
           planCode={checkoutPlan}
           billingInterval={billingInterval}
