@@ -15,7 +15,7 @@ import {
 import Link from "next/link";
 import React, { useState } from "react";
 import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
-import { ChargebeeCheckoutDialog } from "@/components/pricing/chargebee-checkout-dialog";
+import { StripeCheckoutDialog } from "@/components/pricing/stripe-checkout-dialog";
 
 export function PricingSection() {
   const [billingInterval, setBillingInterval] = useState<"month" | "year">("year");
@@ -48,8 +48,8 @@ export function PricingSection() {
       a: "SentinelOps integrates Cloudflare Turnstile bot verification on sign-in and workspace creation modals to eliminate automated credential stuffing without degrading the developer experience.",
     },
     {
-      q: "How does Chargebee subscription billing and invoicing work?",
-      a: "All subscriptions, prorated upgrades, and automated tax invoices are processed securely via Chargebee. We support credit/debit cards, SEPA, ACH wire transfers, and Net-30 purchase orders for Enterprise.",
+      q: "How does subscription billing and invoicing work?",
+      a: "All subscriptions, instant prorated upgrades, plan changes, and itemized tax receipts are managed directly through our self-serve control plane with full support for credit cards, ACH, and Net-30 purchase orders for Enterprise.",
     },
   ];
 
@@ -67,7 +67,7 @@ export function PricingSection() {
           Predictable Control. Zero Risk.
         </h2>
         <p className="mt-4 text-base sm:text-lg text-sentinel-muted leading-relaxed">
-          Start for free with your first 5 AI agents, then scale securely with automated Chargebee billing or tailored enterprise agreements.
+          Start for free with your first 5 AI agents, then scale securely with self-serve billing or tailored enterprise agreements.
         </p>
 
         {/* Billing Cycle Switcher */}
@@ -152,7 +152,7 @@ export function PricingSection() {
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-sentinel-text">Team Pro</h3>
               <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 dark:border-sentinel-lime/40 dark:bg-sentinel-lime/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-sentinel-lime">
-                Chargebee Direct
+                Self-Serve Upgrade
               </span>
             </div>
             <p className="mt-2 text-xs text-sentinel-muted leading-relaxed">
@@ -185,7 +185,7 @@ export function PricingSection() {
             className="primary-button mt-8 w-full justify-center py-3.5 text-xs font-bold shadow-lg shadow-emerald-500/25 dark:shadow-sentinel-lime/25"
             onClick={() => setCheckoutPlan("pro")}
           >
-            <Zap className="h-4 w-4" /> Subscribe with Chargebee
+            <Zap className="h-4 w-4" /> Upgrade to Team Pro
           </button>
         </div>
 
@@ -223,7 +223,7 @@ export function PricingSection() {
             className="secondary-button mt-8 w-full justify-center py-3 text-xs font-bold hover:border-cyan-500/60"
             onClick={() => setCheckoutPlan("enterprise")}
           >
-            Upgrade via Chargebee <ArrowRight className="h-3.5 w-3.5" />
+            Upgrade to Enterprise <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
@@ -235,7 +235,7 @@ export function PricingSection() {
             <Lock className="h-4 w-4" />
             <strong className="text-xs font-bold text-sentinel-text">PCI-DSS Level 1</strong>
           </div>
-          <p className="text-[10px] text-sentinel-muted">Direct Chargebee Tokenization</p>
+          <p className="text-[10px] text-sentinel-muted">Encrypted Tokenization</p>
         </div>
         <div className="space-y-1">
           <div className="flex items-center justify-center gap-1.5 text-emerald-600 dark:text-sentinel-lime">
@@ -349,12 +349,12 @@ export function PricingSection() {
         </div>
       </div>
 
-      {/* Chargebee Checkout Modal */}
+      {/* Checkout Modal */}
       {checkoutPlan && (
-        <ChargebeeCheckoutDialog
+        <StripeCheckoutDialog
           open={Boolean(checkoutPlan)}
-          initialPlan={checkoutPlan}
-          initialInterval={billingInterval}
+          planCode={checkoutPlan}
+          billingInterval={billingInterval}
           onClose={() => setCheckoutPlan(null)}
           onSuccess={() => {
             setCheckoutPlan(null);

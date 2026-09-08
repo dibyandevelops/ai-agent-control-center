@@ -2,8 +2,7 @@
 
 import {
   Building2,
-  FileCheck2,
-  KeyRound,
+  CreditCard,
   Shield,
   User,
   UsersRound,
@@ -13,8 +12,9 @@ import type { DashboardView, OperatorIdentity } from "@/lib/types";
 import { ProfileSettingsTab } from "../settings/profile-settings-tab";
 import { OrganizationSettingsTab } from "../settings/organization-settings-tab";
 import { GovernanceSettingsTab } from "../settings/governance-settings-tab";
+import { SubscriptionSettingsTab } from "../settings/subscription-settings-tab";
 
-type SettingsTab = "profile" | "organization" | "governance";
+type SettingsTab = "profile" | "organization" | "billing" | "governance";
 
 export function SettingsView({
   operator,
@@ -40,6 +40,7 @@ export function SettingsView({
   const tabs: Array<{ id: SettingsTab; label: string; icon: typeof User }> = [
     { id: "profile", label: "My Profile", icon: User },
     { id: "organization", label: "Organization & Security", icon: Building2 },
+    { id: "billing", label: "Subscription & Billing", icon: CreditCard },
     { id: "governance", label: "Audit & Governance", icon: Shield },
   ];
 
@@ -49,7 +50,7 @@ export function SettingsView({
         <div>
           <h2>Workspace & Account Settings</h2>
           <p className="text-xs text-sentinel-muted mt-1">
-            Configure your operator credentials, organization workspace security, and compliance policies.
+            Configure your operator credentials, organization workspace security, subscriptions, and compliance policies.
           </p>
         </div>
 
@@ -103,6 +104,13 @@ export function SettingsView({
             operator={operator}
             canManage={canManageOperators}
             onUpdateOrgName={onUpdateOrgName}
+          />
+        )}
+
+        {activeTab === "billing" && (
+          <SubscriptionSettingsTab
+            operator={operator}
+            canManage={canManageOperators}
           />
         )}
 
