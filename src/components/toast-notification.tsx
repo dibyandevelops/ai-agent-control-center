@@ -8,7 +8,7 @@ import {
   ShieldAlert,
   X,
 } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -43,21 +43,20 @@ function ToastCard({ toastData, onClose }: { toastData: ToastData; onClose: () =
   const [progress, setProgress] = useState(100);
 
   const duration = toastData.durationMs ?? 4200;
+  const elapsedRef = useRef(0);
 
   useEffect(() => {
-    const intervalTime = 50;
-    const decrement = (intervalTime / duration) * 100;
+    if (paused) return;
 
+    const intervalTime = 50;
     const timer = setInterval(() => {
-      if (!paused) {
-        setProgress((prev) => {
-          if (prev <= 0) {
-            clearInterval(timer);
-            onClose();
-            return 0;
-          }
-          return Math.max(0, prev - decrement);
-        });
+      elapsedRef.current += intervalTime;
+      const remainingPct = Math.max(0, 100 - (elapsedRef.current / duration) * 100);
+      setProgress(remainingPct);
+
+      if (remainingPct <= 0) {
+        clearInterval(timer);
+        onClose();
       }
     }, intervalTime);
 
