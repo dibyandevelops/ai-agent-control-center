@@ -100,6 +100,12 @@ export function LiveConnectionDialog({
       ? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
       : undefined;
 
+  const clearErrors = useCallback(() => {
+    setForgotError("");
+    setRegError("");
+    setInviteError("");
+  }, []);
+
   const renderTurnstile = useCallback(() => {
     if (typeof window === "undefined" || !turnstileSiteKey || !turnstileContainerRef.current) {
       return;
@@ -137,7 +143,7 @@ export function LiveConnectionDialog({
     } catch (err) {
       console.warn("[Turnstile] Render warning:", err);
     }
-  }, [turnstileSiteKey, mode]);
+  }, [turnstileSiteKey, mode, clearErrors]);
 
   useEffect(() => {
     if (open && turnstileSiteKey && typeof window !== "undefined" && "turnstile" in window) {
@@ -146,12 +152,6 @@ export function LiveConnectionDialog({
   }, [open, mode, turnstileSiteKey, renderTurnstile]);
 
   if (!open) return null;
-
-  function clearErrors() {
-    setForgotError("");
-    setRegError("");
-    setInviteError("");
-  }
 
   function handleModeSwitch(newMode: DialogMode) {
     clearErrors();

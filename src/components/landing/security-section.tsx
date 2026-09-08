@@ -2,7 +2,6 @@ import {
   ArrowDown,
   Bot,
   Check,
-  CircleDollarSign,
   ClipboardCheck,
   Fingerprint,
   Lock,
@@ -10,9 +9,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Timer,
-  UserRoundCheck,
   X,
-  Zap,
 } from "lucide-react";
 import { Reveal } from "./reveal";
 import { SectionHeader } from "./ui";

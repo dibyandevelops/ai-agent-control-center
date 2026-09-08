@@ -27,20 +27,24 @@ interface ToastNotificationProps {
 }
 
 export function ToastNotification({ toast, onClose }: ToastNotificationProps) {
-  const [paused, setPaused] = useState(false);
-  const [progress, setProgress] = useState(100);
-
   const toastData = useMemo<ToastData | null>(() => {
     if (!toast) return null;
     return typeof toast === "string" ? { message: toast, type: "success" } : toast;
   }, [toast]);
 
-  const duration = toastData?.durationMs ?? 4200;
+  if (!toastData) return null;
+
+  const key = toastData.id || toastData.message;
+  return <ToastCard key={key} toastData={toastData} onClose={onClose} />;
+}
+
+function ToastCard({ toastData, onClose }: { toastData: ToastData; onClose: () => void }) {
+  const [paused, setPaused] = useState(false);
+  const [progress, setProgress] = useState(100);
+
+  const duration = toastData.durationMs ?? 4200;
 
   useEffect(() => {
-    if (!toastData) return;
-    setProgress(100);
-
     const intervalTime = 50;
     const decrement = (intervalTime / duration) * 100;
 
@@ -58,9 +62,7 @@ export function ToastNotification({ toast, onClose }: ToastNotificationProps) {
     }, intervalTime);
 
     return () => clearInterval(timer);
-  }, [toastData, paused, duration, onClose]);
-
-  if (!toastData) return null;
+  }, [paused, duration, onClose]);
 
   const type = toastData.type || "success";
 
