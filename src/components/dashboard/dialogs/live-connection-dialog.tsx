@@ -415,7 +415,12 @@ export function LiveConnectionDialog({
                   Protected by Cloudflare Turnstile human verification
                 </p>
               </div>
-            ) : null}
+            ) : (
+              <div className="flex items-center justify-center gap-1.5 py-1 text-[11px] font-mono text-sentinel-muted">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/80 inline-block" />
+                <span>Dev mode · Bot verification bypassed</span>
+              </div>
+            )}
 
             {error ? (
               <div className="security-note !border-sentinel-red/40 !bg-sentinel-red/10">
@@ -613,7 +618,12 @@ export function LiveConnectionDialog({
                       Human verification protects workspace creation
                     </p>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="flex items-center justify-center gap-1.5 py-1 text-[11px] font-mono text-sentinel-muted">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/80 inline-block" />
+                    <span>Dev mode · Bot verification bypassed</span>
+                  </div>
+                )}
 
                 {regError ? (
                   <div className="security-note !border-sentinel-red/40 !bg-sentinel-red/10">

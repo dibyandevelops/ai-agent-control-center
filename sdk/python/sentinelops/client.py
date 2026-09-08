@@ -40,6 +40,7 @@ import httpx
 
 from .exceptions import (
     ActionBlockedError,
+    AgentQuarantinedError,
     ApprovalTimeoutError,
     AuthenticationError,
     ConflictError,
@@ -295,6 +296,8 @@ class SentinelOps:
             raise NotFoundError(error_message)
         if response.status_code == 409:
             raise ConflictError(error_message)
+        if response.status_code == 423:
+            raise AgentQuarantinedError(error_message, request_id=body.get("requestId"))
         if response.status_code >= 500:
             raise ServerError(error_message)
 

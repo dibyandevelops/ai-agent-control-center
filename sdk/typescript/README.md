@@ -289,6 +289,8 @@ curl -s -H "Authorization: Bearer sop_live_your_key" \
 ## Security & Compliance Standard
 
 - **Sub-20ms Evaluation SLA**: Distributed in-memory policy lookup engine designed for production request pipelines without introducing user-visible latency.
+- **Interactive 5-Second Undo Grace Period**: Human approvals/rejections in Slack and the web console include an optimistic 5s reversible grace window to prevent accidental tool execution.
+- **Emergency Quarantine Kill-Switch**: Strip permissions from rogue or compromised agents across the fleet in <4ms without redeploying code.
 - **Four-Eyes Dual Control (HITL)**: Enforces dual-authorization where dangerous agent actions halt until a distinct human reviewer approves.
 - **SOC 2 Type II & ISO 27001 Annex A.12**: Complete cryptographic verification certificate available via `/api/v1/compliance/export`.
 

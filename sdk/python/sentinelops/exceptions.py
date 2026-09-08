@@ -62,6 +62,14 @@ class ActionBlockedError(SentinelOpsError):
         self.reason = reason
 
 
+class AgentQuarantinedError(SentinelOpsError):
+    """Raised when the agent is under emergency fleet quarantine (HTTP 423)."""
+
+    def __init__(self, message: str = "Agent is quarantined by security team.", request_id: str | None = None):
+        super().__init__(message, status_code=423)
+        self.request_id = request_id
+
+
 class ServerError(SentinelOpsError):
     """Raised when the SentinelOps API returns an unexpected server error (HTTP 5xx)."""
 

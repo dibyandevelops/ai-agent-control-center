@@ -4,21 +4,17 @@ import {
   ArrowLeft,
   Bot,
   Check,
-  ChevronRight,
   Code2,
   Copy,
-  ExternalLink,
   FileCode,
   KeyRound,
   Layers,
   Lock,
-  Play,
-  RefreshCw,
-  Shield,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
   Terminal,
+  Timer,
 } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
@@ -275,6 +271,39 @@ curl -X POST "https://sentinelops.dev/api/v1/actions/evaluate" \\
             <p className="mt-1 text-xs text-sentinel-muted leading-relaxed">
               High-risk mutations trigger approval queues for authorized reviewers. All execution outcomes are sealed in a SHA-256 hash chain.
             </p>
+          </div>
+        </section>
+
+        {/* Safety Net & Quarantine Feature Banners */}
+        <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-3">
+            <span className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
+              <Timer className="h-4 w-4" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-bold text-sentinel-text">Interactive 5-Second Undo Grace Period</h4>
+                <span className="font-mono text-[9px] uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold">Safety Net</span>
+              </div>
+              <p className="mt-1 text-[11px] text-sentinel-muted leading-relaxed">
+                When reviewers approve or deny actions in Slack or the web console, SentinelOps maintains an optimistic 5-second reversible window. The SDK&apos;s <code className="text-emerald-600 dark:text-sentinel-lime">sentinel.poll()</code> guarantees the grace window elapses before returning <code className="text-emerald-600 dark:text-sentinel-lime">approved=True</code>.
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4 flex items-start gap-3">
+            <span className="p-2 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 shrink-0">
+              <ShieldAlert className="h-4 w-4" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-bold text-sentinel-text">Emergency Fleet Quarantine Engine</h4>
+                <span className="font-mono text-[9px] uppercase px-1.5 py-0.5 rounded bg-red-500/20 text-red-700 dark:text-red-300 font-semibold">Sub-4ms Kill-Switch</span>
+              </div>
+              <p className="mt-1 text-[11px] text-sentinel-muted leading-relaxed">
+                Security operators can immediately quarantine rogue or compromised agents from the dashboard. Quarantined agents have all permissions revoked at the API gateway layer, raising <code className="text-red-600 dark:text-red-400">AgentQuarantinedError</code> (HTTP 423) in &lt;4ms.
+              </p>
+            </div>
           </div>
         </section>
 

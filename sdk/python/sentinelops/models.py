@@ -50,6 +50,9 @@ class Decision:
     replayed: bool = False
     """True if this was an idempotent replay of a previous evaluation."""
 
+    sha256_seal: str | None = None
+    """Cryptographic SHA-256 seal anchoring this action decision in the audit chain."""
+
     execution: Execution = field(default_factory=lambda: Execution(status="not_started"))
     """Current execution state (populated after report_outcome)."""
 
@@ -73,7 +76,17 @@ class Decision:
     @property
     def blocked(self) -> bool:
         """Whether the action was blocked by policy or denied by a reviewer."""
-        return self.status in ("blocked", "denied")
+        return self.status in ("blocked", "denied", "quarantined")
+
+    @property
+    def quarantined(self) -> bool:
+        """Whether the agent is currently under emergency quarantine."""
+        return self.status == "quarantined" or "quarantine" in self.reason.lower()
+
+    @property
+    def undo_window_seconds(self) -> int:
+        """Remaining seconds in the interactive undo grace period (0 if sealed)."""
+        return int(self.raw.get("undoWindowSeconds", 0))
 
     @classmethod
     def from_api_response(cls, data: dict[str, Any]) -> Decision:
@@ -95,6 +108,7 @@ class Decision:
             action=data.get("action", ""),
             resource=data.get("resource", ""),
             replayed=data.get("replayed", False),
+            sha256_seal=data.get("sha256Seal") or data.get("auditSeal"),
             execution=execution,
             raw=data,
         )

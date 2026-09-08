@@ -7,6 +7,8 @@ import respx
 from sentinelops import (
     SentinelOps,
     Decision,
+    ActionBlockedError,
+    AgentQuarantinedError,
     AuthenticationError,
     ValidationError,
     NotFoundError,
@@ -177,6 +179,23 @@ def test_evaluate_validation_error(mock_api, client):
             agent_id="test", agent_name="Test", action="x", resource="y",
         )
     assert len(exc_info.value.issues) == 1
+
+
+def test_evaluate_quarantined_error(mock_api, client):
+    """A 423 raises AgentQuarantinedError when agent is quarantined."""
+    mock_api.post("/api/v1/actions/evaluate").mock(
+        return_value=httpx.Response(423, json={
+            "error": "Agent is under emergency quarantine kill-switch.",
+            "requestId": "req-quarantine-999"
+        })
+    )
+
+    with pytest.raises(AgentQuarantinedError) as exc_info:
+        client.evaluate(
+            agent_id="compromised-bot", agent_name="Rogue Agent", action="drop_db", resource="prod",
+        )
+    assert exc_info.value.status_code == 423
+    assert exc_info.value.request_id == "req-quarantine-999"
 
 
 def test_evaluate_server_error(mock_api, client):

@@ -30,6 +30,7 @@ from .client import SentinelOps
 from .decorators import govern_action
 from .exceptions import (
     ActionBlockedError,
+    AgentQuarantinedError,
     ApprovalTimeoutError,
     AuthenticationError,
     ConflictError,
@@ -54,5 +55,6 @@ __all__ = [
     "ConflictError",
     "ApprovalTimeoutError",
     "ActionBlockedError",
+    "AgentQuarantinedError",
     "ServerError",
 ]

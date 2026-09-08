@@ -118,11 +118,33 @@ Report the execution result back to SentinelOps.
 | Property | Type | Description |
 |---|---|---|
 | `request_id` | `str` | Unique action request ID |
-| `status` | `str` | `allowed`, `pending`, `approved`, `denied`, `blocked` |
+| `status` | `str` | `allowed`, `pending`, `approved`, `denied`, `blocked`, `quarantined` |
 | `approved` | `bool` | `True` if safe to execute |
 | `pending` | `bool` | `True` if awaiting human review |
 | `blocked` | `bool` | `True` if denied or blocked |
+| `quarantined` | `bool` | `True` if agent is isolated under emergency fleet quarantine |
+| `undo_window_seconds` | `int` | Reversible undo grace period (0 when irreversibly dispatched) |
+| `sha256_seal` | `str \| None` | Immutable SHA-256 audit anchor for SOC 2 & ISO 27001 proof |
 | `reason` | `str` | Why the decision was made |
+
+## Advanced Governance Features
+
+### 1. Emergency Fleet Quarantine Kill-Switch
+When security teams isolate a rogue or compromised agent from the SentinelOps control plane, all tool calls are blocked in **<4ms** at the gateway layer. The Python SDK raises `AgentQuarantinedError`:
+
+```python
+from sentinelops import SentinelOps, AgentQuarantinedError
+
+try:
+    decision = sentinel.evaluate(agent_id="scraper-bot", action="export_db")
+except AgentQuarantinedError as e:
+    # Agent permissions have been stripped by security operators
+    logger.critical("Agent is quarantined by SentinelOps! Request %s", e.request_id)
+```
+
+### 2. Interactive 5-Second Undo Grace Period
+When an operator approves an action in Slack or the web dashboard, SentinelOps holds execution in a 5-second reversible buffer. `sentinel.poll()` automatically ensures the undo window has safely elapsed before returning `decision.approved = True`, guaranteeing downstream tools never trigger on accidental clicks.
+
 ## Examples
 
 The SDK includes production-ready example scripts in the `examples/` directory:

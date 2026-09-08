@@ -279,7 +279,7 @@ export function ApprovalDemo() {
                   style={{ width: `${(undoCountdown / 5) * 100}%` }}
                 />
               </div>
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={handleUndo}
