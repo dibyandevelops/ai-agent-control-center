@@ -16,7 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
-import { LemonSqueezyCheckoutDialog } from "@/components/pricing/lemon-squeezy-checkout-dialog";
+import { DodoPaymentsCheckoutDialog } from "@/components/pricing/dodo-payments-checkout-dialog";
 
 export function PricingSection() {
   const router = useRouter();
@@ -372,9 +372,9 @@ export function PricingSection() {
         </div>
       </div>
 
-      {/* Lemon Squeezy Checkout Modal */}
+      {/* Dodo Payments Checkout Modal */}
       {checkoutPlan && (
-        <LemonSqueezyCheckoutDialog
+        <DodoPaymentsCheckoutDialog
           open={Boolean(checkoutPlan)}
           planCode={checkoutPlan}
           billingInterval={billingInterval}
