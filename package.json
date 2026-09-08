@@ -21,7 +21,8 @@
     "operator:create": "node --env-file-if-exists=.env.local scripts/create-operator.mjs",
     "demo": "node --env-file-if-exists=.env.local scripts/demo-runner.mjs",
     "demo:reset": "node --env-file-if-exists=.env.local scripts/seed.mjs",
-    "demo:release": "node --env-file-if-exists=.env.local examples/dry-run-release-agent.mjs"
+    "demo:release": "node --env-file-if-exists=.env.local examples/dry-run-release-agent.mjs",
+    "test:lemonsqueezy": "node --env-file-if-exists=.env.local scripts/test-lemonsqueezy-webhook.mjs"
   },
   "dependencies": {
     "@node-saml/node-saml": "5.1.0",
