@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  ArrowRight,
   Check,
   CheckCircle2,
   CreditCard,
@@ -11,6 +12,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import React, { useState } from "react";
 import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
 
@@ -36,6 +38,7 @@ export function StripeCheckoutDialog({
   const [couponCode, setCouponCode] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [requiresAuth, setRequiresAuth] = useState(false);
   const [error, setError] = useState("");
   const [completed, setCompleted] = useState(false);
   const [receiptId, setReceiptId] = useState("");
@@ -62,6 +65,7 @@ export function StripeCheckoutDialog({
     e.preventDefault();
     setLoading(true);
     setError("");
+    setRequiresAuth(false);
 
     try {
       const generatedReceipt = `rec_stripe_${Date.now().toString(36)}`;
@@ -81,12 +85,9 @@ export function StripeCheckoutDialog({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        // If not logged in or in demo sandbox mode, provide graceful simulated success
         if (res.status === 401 || res.status === 403) {
-          await new Promise((r) => setTimeout(r, 900));
-          setReceiptId(generatedReceipt);
-          setCompleted(true);
-          onSuccess?.(plan.name);
+          setRequiresAuth(true);
+          setError("Workspace account required before activating a subscription.");
           return;
         }
         throw new Error(data.error || "Payment processing failed.");
@@ -295,18 +296,37 @@ export function StripeCheckoutDialog({
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="primary-button w-full justify-center text-sm py-3.5 font-bold shadow-lg shadow-sentinel-lime/20"
-            >
-              {loading ? (
-                <RotateCcw className="animate-spin h-4 w-4" />
-              ) : (
-                <Lock className="h-4 w-4" />
-              )}
-              {loading ? "Authorizing with Stripe…" : `Pay $${billedAmount} with Stripe`}
-            </button>
+            {requiresAuth ? (
+              <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 dark:border-sentinel-lime/40 dark:bg-sentinel-lime/10 p-4 space-y-2.5 text-center">
+                <Sparkles className="h-5 w-5 text-emerald-600 dark:text-sentinel-lime mx-auto" />
+                <div>
+                  <h4 className="text-xs font-bold text-sentinel-text">Administrator Account Required</h4>
+                  <p className="text-[11px] text-sentinel-muted mt-0.5">
+                    To activate {plan.name}, create your organization and secure your admin credentials first.
+                  </p>
+                </div>
+                <Link
+                  href={`/get-started?plan=${planCode}&interval=${billingInterval}`}
+                  onClick={onClose}
+                  className="primary-button w-full justify-center text-xs py-2.5 flex items-center gap-1.5"
+                >
+                  Continue to Workspace Setup <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            ) : (
+              <button
+                type="submit"
+                disabled={loading}
+                className="primary-button w-full justify-center text-sm py-3.5 font-bold shadow-lg shadow-sentinel-lime/20"
+              >
+                {loading ? (
+                  <RotateCcw className="animate-spin h-4 w-4" />
+                ) : (
+                  <Lock className="h-4 w-4" />
+                )}
+                {loading ? "Authorizing with Stripe…" : `Pay $${billedAmount} with Stripe`}
+              </button>
+            )}
 
             <div className="flex items-center justify-center gap-2 text-[10px] text-sentinel-dim">
               <ShieldCheck className="h-3.5 w-3.5 text-sentinel-lime" />

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import Script from "next/script";
-import { ArrowRight, Building2, Check, LoaderCircle, Mail, ShieldAlert, ShieldCheck } from "lucide-react";
+import { ArrowRight, Building2, Check, LoaderCircle, Mail, ShieldAlert, ShieldCheck, Sparkles } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { shouldBypassTurnstile } from "@/lib/turnstile-host";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandLogo } from "@/components/brand-logo";
 import { InteractivePolicySandbox } from "@/components/landing/interactive-policy-sandbox";
+import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
 
 const subscribeToClient = () => () => undefined;
 const getClientSnapshot = () => true;
@@ -31,6 +32,8 @@ interface TurnstileApi {
 
 export function WorkspaceOnboarding() {
   const [form, setForm] = useState({ organizationName: "", displayName: "", email: "", password: "" });
+  const [selectedPlan, setSelectedPlan] = useState<PlanCode>("pilot");
+  const [selectedInterval, setSelectedInterval] = useState<"month" | "year">("month");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
@@ -112,6 +115,15 @@ export function WorkspaceOnboarding() {
       const params = new URLSearchParams(window.location.search);
       const token = params.get("invitation");
       const verif = params.get("verification");
+      const planParam = params.get("plan");
+      const intervalParam = params.get("interval");
+
+      if (planParam === "pro" || planParam === "enterprise" || planParam === "pilot") {
+        setSelectedPlan(planParam);
+      }
+      if (intervalParam === "year" || intervalParam === "month") {
+        setSelectedInterval(intervalParam);
+      }
 
       if (verif === "invalid") {
         setIsInvalidVerification(true);
@@ -166,6 +178,8 @@ export function WorkspaceOnboarding() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           ...form,
+          planCode: selectedPlan,
+          billingInterval: selectedInterval,
           turnstileToken: typeof activeToken === "string" && activeToken ? activeToken : undefined,
         }),
       });
@@ -289,6 +303,30 @@ export function WorkspaceOnboarding() {
           </section>
 
           <section className="rounded-3xl border border-sentinel-line bg-sentinel-surface p-6 sm:p-8 shadow-xl">
+            {selectedPlan !== "pilot" && (
+              <div className="mb-6 rounded-2xl border border-emerald-500/30 dark:border-sentinel-lime/30 bg-emerald-500/10 dark:bg-sentinel-lime/10 p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-sentinel-lime flex items-center justify-center shrink-0">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-sentinel-text flex items-center gap-1.5">
+                      <span>{planCatalog[selectedPlan].name} Workspace Activation</span>
+                      <span className="text-[10px] rounded-full bg-emerald-600 dark:bg-sentinel-lime text-white dark:text-sentinel-canvas font-black px-2 py-0.2 uppercase">
+                        Selected
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-sentinel-muted mt-0.5">
+                      {selectedInterval === "year" ? "Billed Annually (Save 20%)" : "Billed Monthly"} • {planCatalog[selectedPlan].agents ?? "Unlimited"} Agents & {planCatalog[selectedPlan].auditRetentionDays}-day retention
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs font-mono font-bold text-emerald-600 dark:text-sentinel-lime shrink-0">
+                  ${selectedInterval === "year" ? planCatalog[selectedPlan].priceAnnual : planCatalog[selectedPlan].priceMonthly}/mo
+                </span>
+              </div>
+            )}
+
             {isInvalidVerification ? (
               <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm text-amber-800 dark:text-amber-300">
                 <div className="flex items-center gap-2 font-bold">

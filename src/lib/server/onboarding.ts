@@ -5,6 +5,7 @@ import { withTransaction } from "./db";
 import { ConflictError } from "./errors";
 import { hashPassword } from "./password";
 import { createOnboardingVerificationToken } from "./onboarding-email";
+import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
 
 const defaultPolicies = [
   {
@@ -54,12 +55,19 @@ export async function createSelfServiceOrganization(input: {
   displayName: string;
   email: string;
   password: string;
+  planCode?: PlanCode;
+  billingInterval?: "month" | "year";
 }) {
   const email = input.email.trim().toLowerCase();
   const domain = email.split("@")[1];
   const passwordHash = await hashPassword(input.password);
   const baseSlug = organizationSlug(input.organizationName.trim());
   const verification = createOnboardingVerificationToken();
+
+  const planCode: PlanCode = (input.planCode && planCatalog[input.planCode]) ? input.planCode : "pilot";
+  const billingInterval: "month" | "year" = input.billingInterval === "year" ? "year" : "month";
+  const planConfig = planCatalog[planCode];
+  const retentionDays = planConfig.auditRetentionDays;
 
   const created = await withTransaction(async (client) => {
     const existingOperator = await client.query<{ id: string }>(
@@ -74,12 +82,37 @@ export async function createSelfServiceOrganization(input: {
     for (let suffix = 0; suffix < 20; suffix += 1) {
       const slug = suffix === 0 ? baseSlug : `${baseSlug}-${suffix + 1}`;
       const organization = await client.query<{ id: string; name: string }>(
-        `insert into organizations (name, slug) values ($1, $2)
+        `insert into organizations (name, slug, plan_code, audit_retention_days)
+         values ($1, $2, $3, $4)
          on conflict (slug) do nothing returning id, name`,
-        [input.organizationName.trim(), slug],
+        [input.organizationName.trim(), slug, planCode, retentionDays],
       );
       if (!organization.rows[0]) continue;
       const organizationId = organization.rows[0].id;
+
+      // Initialize billing account with selected tier
+      const periodEndsAt = new Date();
+      periodEndsAt.setDate(periodEndsAt.getDate() + (billingInterval === "year" ? 365 : 30));
+      await client.query(
+        `insert into organization_billing_accounts (
+           organization_id,
+           provider,
+           provider_customer_id,
+           subscription_status,
+           billing_interval,
+           current_period_ends_at,
+           updated_at
+         ) values ($1, 'stripe', $2, $3, $4, $5, now())
+         on conflict (organization_id) do nothing`,
+        [
+          organizationId,
+          `cus_sentinel_${organizationId.slice(0, 8)}`,
+          planCode === "pilot" ? "not_configured" : "active",
+          billingInterval,
+          planCode === "pilot" ? null : periodEndsAt,
+        ],
+      );
+
       await client.query(
         `insert into organization_identity_settings (organization_id, allowed_email_domains)
          values ($1, $2::text[])`,

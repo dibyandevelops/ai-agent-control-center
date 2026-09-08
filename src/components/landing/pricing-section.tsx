@@ -13,14 +13,37 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
 import { StripeCheckoutDialog } from "@/components/pricing/stripe-checkout-dialog";
 
 export function PricingSection() {
+  const router = useRouter();
   const [billingInterval, setBillingInterval] = useState<"month" | "year">("year");
   const [checkoutPlan, setCheckoutPlan] = useState<PlanCode | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  async function handlePlanClick(plan: PlanCode) {
+    if (plan === "pilot") {
+      router.push("/get-started");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/v1/session/profile");
+      if (res.ok) {
+        // Logged-in operator -> open modal to upgrade active workspace
+        setCheckoutPlan(plan);
+        return;
+      }
+    } catch {
+      // Fallback to onboarding
+    }
+
+    // Unauthenticated user -> redirect to workspace creation with selected tier
+    router.push(`/get-started?plan=${plan}&interval=${billingInterval}`);
+  }
 
   const faqs = [
     {
@@ -183,7 +206,7 @@ export function PricingSection() {
           <button
             type="button"
             className="primary-button mt-8 w-full justify-center py-3.5 text-xs font-bold shadow-lg shadow-emerald-500/25 dark:shadow-sentinel-lime/25"
-            onClick={() => setCheckoutPlan("pro")}
+            onClick={() => void handlePlanClick("pro")}
           >
             <Zap className="h-4 w-4" /> Upgrade to Team Pro
           </button>
@@ -221,7 +244,7 @@ export function PricingSection() {
           <button
             type="button"
             className="secondary-button mt-8 w-full justify-center py-3 text-xs font-bold hover:border-cyan-500/60"
-            onClick={() => setCheckoutPlan("enterprise")}
+            onClick={() => void handlePlanClick("enterprise")}
           >
             Upgrade to Enterprise <ArrowRight className="h-3.5 w-3.5" />
           </button>
