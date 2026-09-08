@@ -60,6 +60,55 @@ export function IntelligenceSection() {
             <span>Environment <strong>Production</strong></span>
             <span>Policy <strong>FIN-07</strong></span>
           </div>
+
+          {/* Universal Agent Framework & SIEM Streaming Grid */}
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="rounded-2xl border border-sentinel-line bg-sentinel-canvas/70 p-6">
+              <span className="font-mono text-[10px] uppercase font-bold text-emerald-700 dark:text-sentinel-lime tracking-wider block mb-2">
+                Universal SDKs
+              </span>
+              <h4 className="text-base font-bold text-sentinel-text mb-2">Drop-in Framework Connectors</h4>
+              <p className="text-xs text-sentinel-muted leading-relaxed mb-4">
+                Wrap your agent tools in 3 lines of code using our official Python (<code className="text-[11px] text-emerald-600 dark:text-sentinel-lime">sentinelops-ai</code>) and TypeScript (<code className="text-[11px] text-emerald-600 dark:text-sentinel-lime">@sentinelops/sdk</code>) libraries.
+              </p>
+              <div className="flex flex-wrap gap-2 text-[10px] font-mono text-sentinel-muted">
+                <span className="rounded bg-sentinel-surface px-2 py-1 border border-sentinel-line">LangChain</span>
+                <span className="rounded bg-sentinel-surface px-2 py-1 border border-sentinel-line">Vercel AI SDK</span>
+                <span className="rounded bg-sentinel-surface px-2 py-1 border border-sentinel-line">CrewAI</span>
+                <span className="rounded bg-sentinel-surface px-2 py-1 border border-sentinel-line">AutoGPT</span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-sentinel-line bg-sentinel-canvas/70 p-6">
+              <span className="font-mono text-[10px] uppercase font-bold text-emerald-700 dark:text-sentinel-lime tracking-wider block mb-2">
+                Telemetry Forwarding
+              </span>
+              <h4 className="text-base font-bold text-sentinel-text mb-2">Real-Time SIEM Streaming</h4>
+              <p className="text-xs text-sentinel-muted leading-relaxed mb-4">
+                Stream cryptographic audit logs and approval events directly to your enterprise SIEM pipeline in sub-second batches with automatic retry queues.
+              </p>
+              <div className="flex flex-wrap gap-2 text-[10px] font-mono text-sentinel-muted">
+                <span className="rounded bg-sentinel-surface px-2 py-1 border border-sentinel-line">Datadog Logs API</span>
+                <span className="rounded bg-sentinel-surface px-2 py-1 border border-sentinel-line">Splunk HEC</span>
+                <span className="rounded bg-sentinel-surface px-2 py-1 border border-sentinel-line">HTTPS Webhooks</span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-sentinel-line bg-sentinel-canvas/70 p-6">
+              <span className="font-mono text-[10px] uppercase font-bold text-emerald-700 dark:text-sentinel-lime tracking-wider block mb-2">
+                Release Drift Protection
+              </span>
+              <h4 className="text-base font-bold text-sentinel-text mb-2">4-Eyes GitHub Release Governance</h4>
+              <p className="text-xs text-sentinel-muted leading-relaxed mb-4">
+                Enforce dual-signoff on production GitHub releases, block unverified release drafts, and record tamper-evident deployment attestations.
+              </p>
+              <div className="flex flex-wrap gap-2 text-[10px] font-mono text-sentinel-muted">
+                <span className="rounded bg-sentinel-surface px-2 py-1 border border-sentinel-line">Draft Interception</span>
+                <span className="rounded bg-sentinel-surface px-2 py-1 border border-sentinel-line">Dual Approval</span>
+                <span className="rounded bg-sentinel-surface px-2 py-1 border border-sentinel-line">Drift Alerting</span>
+              </div>
+            </div>
+          </div>
         </Reveal>
       </section>
 

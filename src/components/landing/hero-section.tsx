@@ -31,7 +31,7 @@ export function HeroSection() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 dark:bg-sentinel-lime opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 dark:bg-sentinel-lime" />
           </span>
-          <span>SentinelOps v2.4 · Zero-Trust AI Agent Governance</span>
+          <span>SentinelOps v2.5 · 5s Undo Grace · SOC 2 Attestation · Turnstile Bot Defense</span>
         </div>
 
         <h1 className="m-0 max-w-[660px] text-[clamp(58px,5.35vw,90px)] font-black leading-[0.96] tracking-[-0.065em] max-xl:text-[clamp(52px,5vw,68px)] max-[760px]:text-[clamp(47px,14vw,65px)] max-[760px]:leading-[0.99]">
@@ -43,8 +43,7 @@ export function HeroSection() {
         </h1>
         <p className="mt-[34px] max-w-[590px] text-[clamp(16px,1.25vw,20px)] leading-[1.65] text-sentinel-muted max-[760px]:mt-[26px] max-[760px]:text-[15px]">
           Discover every agent, enforce policy before execution, route
-          consequential actions for human approval, and preserve audit-ready
-          evidence.
+          consequential actions for human approval with 5-second undo grace, and generate cryptographic audit certificates.
         </p>
         <div className="mt-[34px] flex items-center gap-4 max-[760px]:mt-[27px] max-[760px]:grid">
           <Link href="/get-started" className="inline-flex min-h-[54px] items-center justify-center gap-[22px] whitespace-nowrap rounded-full border border-emerald-500 dark:border-sentinel-lime bg-emerald-500 dark:bg-sentinel-lime px-[27px] text-sm font-bold text-white dark:text-[#091004] shadow-md transition hover:-translate-y-0.5 max-[760px]:w-full max-[760px]:min-h-[52px] [&_svg]:h-[17px] [&_svg]:w-[17px]">
@@ -64,11 +63,12 @@ export function HeroSection() {
 
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-sentinel-muted pt-4 border-t border-sentinel-line">
           <span className="flex items-center gap-1.5 text-sentinel-text font-semibold">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-sentinel-lime" /> Audit-ready evidence
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-sentinel-lime" /> SOC 2 & ISO 27001 Proofs
           </span>
-          <span>• Sub-20ms policy SLA</span>
-          <span>• SHA-256 sealed logs</span>
-          <span>• SOC2 & ISO 27001</span>
+          <span>• 5-Sec Undo Grace</span>
+          <span>• Sub-20ms Policy SLA</span>
+          <span>• Cloudflare Turnstile</span>
+          <span>• LangChain & CrewAI SDKs</span>
         </div>
       </div>
       <div className="relative z-[2] min-w-0 [perspective:1300px] max-lg:mt-2.5 max-[760px]:hidden">

@@ -90,6 +90,21 @@ const scenarios: Scenario[] = [
     policyTriggered: "Autonomous Refund Ceiling > $1,000 (POL-003)",
     latencyMs: 16,
   },
+  {
+    id: "sc-quarantine",
+    name: "Quarantined Agent Kill-Switch",
+    agent: "Unverified Scraping Bot",
+    action: "database.drop_collection",
+    risk: "high",
+    payload: {
+      targetCluster: "prod-atlas-main",
+      command: "drop_all_user_indices",
+      quarantineStatus: "active_kill_switch",
+    },
+    decision: "block",
+    policyTriggered: "Emergency Fleet Quarantine Kill-Switch (SEC-009)",
+    latencyMs: 4,
+  },
 ];
 
 export function InteractiveSandbox() {

@@ -11,9 +11,11 @@ import {
   Landmark,
   RotateCcw,
   ShieldAlert,
+  ShieldCheck,
+  Timer,
   X,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RiskBadge } from "./ui";
 
 type Decision = "pending" | "approved" | "denied";
@@ -76,9 +78,27 @@ const evidenceRow =
 export function ApprovalDemo() {
   const [activeId, setActiveId] = useState<ScenarioId>("finance");
   const [decision, setDecision] = useState<Decision>("pending");
+  const [undoCountdown, setUndoCountdown] = useState<number | null>(null);
+  const [wasUndone, setWasUndone] = useState(false);
+
   const scenario = scenarios[activeId];
   const Icon = scenario.icon;
   const finalDecision = scenario.automatic ? "denied" : decision;
+
+  // 5-second undo grace period countdown timer
+  useEffect(() => {
+    if (undoCountdown === null || undoCountdown <= 0) return;
+    const timer = setInterval(() => {
+      setUndoCountdown((prev) => {
+        if (prev === null || prev <= 1) {
+          clearInterval(timer);
+          return 0; // sealed
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [undoCountdown]);
 
   const steps = useMemo(
     () => [
@@ -94,6 +114,8 @@ export function ApprovalDemo() {
   function selectScenario(id: ScenarioId) {
     setActiveId(id);
     setDecision("pending");
+    setUndoCountdown(null);
+    setWasUndone(false);
     if (demoContainerRef.current) {
       const rect = demoContainerRef.current.getBoundingClientRect();
       if (rect.top < 80 || rect.bottom > window.innerHeight) {
@@ -102,8 +124,26 @@ export function ApprovalDemo() {
     }
   }
 
+  function handleTriggerDecision(choice: "approved" | "denied") {
+    setDecision(choice);
+    setWasUndone(false);
+    // Start 5-second undo grace period
+    setUndoCountdown(5);
+  }
+
+  function handleUndo() {
+    setDecision("pending");
+    setUndoCountdown(null);
+    setWasUndone(true);
+  }
+
+  function handleSealNow() {
+    setUndoCountdown(0);
+  }
+
   function downloadEvidence() {
     const evidence = {
+      attestationStandard: "SOC 2 Type II & ISO/IEC 27001",
       requestId: `req-${activeId}-2026-0727`,
       agent: scenario.agent,
       action: scenario.action,
@@ -111,6 +151,19 @@ export function ApprovalDemo() {
       environment: scenario.environment,
       decision: finalDecision,
       reviewer: finalDecision === "denied" && scenario.automatic ? "SentinelOps policy engine" : "Finance Lead",
+      merkleRootHash: "sha256-8f2a910d65b70c3e98124efaa2b4c6e8",
+      tamperEvidence: {
+        anomaliesDetected: 0,
+        chainIntegrityVerified: true,
+      },
+      interactiveGracePeriod: {
+        durationSeconds: 5,
+        undoWindowObserved: true,
+        undone: wasUndone,
+        dispatched: !wasUndone && finalDecision !== "pending",
+      },
+      botShield: "Cloudflare Turnstile Verified",
+      timestamp: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(evidence, null, 2)], {
       type: "application/json",
@@ -118,7 +171,7 @@ export function ApprovalDemo() {
     const href = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = href;
-    anchor.download = `${evidence.requestId}.json`;
+    anchor.download = `compliance-attestation-${evidence.requestId}.json`;
     anchor.click();
     URL.revokeObjectURL(href);
   }
@@ -201,27 +254,85 @@ export function ApprovalDemo() {
               <X aria-hidden="true" />
               <div className="grid gap-1"><strong className="text-xs">Execution blocked</strong><span className="text-[9px] text-sentinel-muted">Production deployment window is closed.</span></div>
             </div>
-          ) : (
+          ) : decision === "pending" ? (
             <div className="grid grid-cols-2 gap-2.5 px-[22px] max-lg:col-start-1">
-              <button className="flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-emerald-500 dark:border-sentinel-lime bg-emerald-500 dark:bg-sentinel-lime text-xs font-bold text-white dark:text-[#081004] shadow-sm transition hover:-translate-y-px [&_svg]:w-4" type="button" onClick={() => setDecision("approved")}><Check /> Approve</button>
-              <button className="flex min-h-12 items-center justify-center gap-2.5 rounded-full border border-sentinel-line bg-sentinel-surface text-xs font-bold text-sentinel-text transition hover:-translate-y-px hover:border-sentinel-red hover:bg-sentinel-red/10 [&_svg]:w-4" type="button" onClick={() => setDecision("denied")}><X /> Deny</button>
+              <button className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-emerald-500 dark:border-sentinel-lime bg-emerald-500 dark:bg-sentinel-lime text-xs font-bold text-white dark:text-[#081004] shadow-sm transition hover:-translate-y-px [&_svg]:w-4" type="button" onClick={() => handleTriggerDecision("approved")}><Check /> Approve</button>
+              <button className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-sentinel-line bg-sentinel-surface text-xs font-bold text-sentinel-text transition hover:-translate-y-px hover:border-sentinel-red hover:bg-sentinel-red/10 [&_svg]:w-4" type="button" onClick={() => handleTriggerDecision("denied")}><X /> Deny</button>
+            </div>
+          ) : undoCountdown !== null && undoCountdown > 0 ? (
+            <div className="mx-[22px] rounded-xl border border-amber-500/50 bg-amber-500/10 p-3.5 text-xs text-amber-700 dark:text-amber-300 max-lg:col-start-1">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="flex items-center gap-1.5 font-bold text-xs">
+                  <Timer className="h-4 w-4 animate-spin text-amber-500" />
+                  5s Undo Grace Period
+                </span>
+                <span className="font-mono text-[11px] font-semibold bg-amber-500/20 px-2 py-0.5 rounded-full text-amber-700 dark:text-amber-200">
+                  {undoCountdown}s left
+                </span>
+              </div>
+              <p className="text-[10px] text-sentinel-muted mb-2 leading-relaxed">
+                Decision held in reversible buffer. You can undo before irreversible dispatch occurs.
+              </p>
+              <div className="h-1.5 w-full bg-amber-500/20 rounded-full overflow-hidden mb-3">
+                <div
+                  className="h-full bg-amber-500 transition-all duration-1000 ease-linear rounded-full"
+                  style={{ width: `${(undoCountdown / 5) * 100}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={handleUndo}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500 text-[#081004] font-bold text-xs shadow hover:bg-amber-400 transition"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" /> Undo Decision
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSealNow}
+                  className="text-[11px] font-medium underline text-sentinel-muted hover:text-sentinel-text transition"
+                >
+                  Seal & dispatch now
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mx-[22px] rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-sentinel-lime max-lg:col-start-1 flex items-center justify-between">
+              <span className="flex items-center gap-2 font-semibold">
+                <CheckCircle2 className="h-4 w-4" /> Finalized & Irreversibly Dispatched
+              </span>
+              <button
+                type="button"
+                className="text-[11px] font-mono text-sentinel-muted hover:text-sentinel-text underline"
+                onClick={() => setDecision("pending")}
+              >
+                Reset
+              </button>
             </div>
           )}
-          <p className="mx-[22px] mb-[18px] mt-[11px] text-[10px] leading-normal text-sentinel-muted max-lg:col-start-1">
-            The decision is enforced before the requested action can run.
-          </p>
+
+          {wasUndone && decision === "pending" ? (
+            <p className="mx-[22px] mt-2 rounded bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 text-[10px] text-amber-600 dark:text-amber-400">
+              Decision reversed during 5s grace period. No actions were executed.
+            </p>
+          ) : (
+            <p className="mx-[22px] mb-[18px] mt-[11px] text-[10px] leading-normal text-sentinel-muted max-lg:col-start-1">
+              Actions are evaluated before dispatch with optimistic undo safety.
+            </p>
+          )}
+
           <div
-            className={`mx-[22px] rounded-[5px] border bg-sentinel-surface p-[15px] max-lg:col-start-2 max-lg:row-[2/6] max-lg:mt-6 max-[760px]:mt-[18px] ${
+            className={`mx-[22px] rounded-[7px] border bg-sentinel-surface p-[15px] max-lg:col-start-2 max-lg:row-[2/6] max-lg:mt-6 max-[760px]:mt-[18px] ${
               finalDecision !== "pending" ? "border-sentinel-lime/40" : "border-sentinel-line"
             }`}
             aria-live="polite"
           >
-            <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-sentinel-muted">Audit evidence</span>
+            <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-sentinel-muted">Cryptographic Audit Evidence</span>
             {finalDecision === "pending" ? (
               <div className="grid min-h-32 place-items-center content-center gap-[7px] text-center text-sentinel-muted">
                 <ShieldAlert className="w-[25px] text-sentinel-amber" />
                 <strong className="text-xs text-sentinel-text">Awaiting decision</strong>
-                <small className="text-[9px]">Evidence will be sealed after enforcement.</small>
+                <small className="text-[9px]">Evidence will be cryptographically sealed after enforcement.</small>
               </div>
             ) : (
               <>
@@ -229,19 +340,26 @@ export function ApprovalDemo() {
                   {finalDecision === "approved" ? <CheckCircle2 /> : <X />}
                   <strong className="font-mono text-[17px] tracking-[0.08em]">{finalDecision === "approved" ? "APPROVED" : "BLOCKED"}</strong>
                 </div>
+                <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[9px] font-mono text-sentinel-muted">
+                  <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 dark:bg-sentinel-lime/10 px-1.5 py-0.5 text-emerald-700 dark:text-sentinel-lime border border-emerald-500/30 dark:border-sentinel-lime/30">
+                    <ShieldCheck className="h-3 w-3" /> SHA-256 Sealed
+                  </span>
+                  <span>0 Anomalies</span>
+                </div>
                 <dl className="m-0 [&_dt]:text-sentinel-muted [&_dd]:m-0 [&_dd]:text-right [&_dd]:capitalize">
                   <div className={evidenceRow}><dt>Decision by</dt><dd>{scenario.automatic ? "Policy engine" : "Finance Lead"}</dd></div>
                   <div className={evidenceRow}><dt>Policy</dt><dd>{scenario.policy}</dd></div>
+                  <div className={evidenceRow}><dt>Grace period</dt><dd>5s (Passed)</dd></div>
                   <div className={evidenceRow}><dt>Result</dt><dd>{finalDecision}</dd></div>
                 </dl>
-                <button className="mt-[11px] flex items-center gap-2 border-0 bg-transparent p-0 text-[9px] text-sentinel-lime [&_svg]:w-[13px]" type="button" onClick={downloadEvidence}>
-                  <Download /> Download audit record
+                <button className="mt-[11px] flex items-center gap-2 rounded-lg border border-sentinel-line bg-sentinel-surface-raised px-2.5 py-1.5 text-[10px] font-semibold text-sentinel-text transition hover:border-emerald-600 dark:hover:border-sentinel-lime [&_svg]:w-3.5" type="button" onClick={downloadEvidence}>
+                  <Download /> Download SOC 2 Attestation (.json)
                 </button>
               </>
             )}
           </div>
-          {finalDecision !== "pending" && !scenario.automatic ? (
-            <button type="button" className="mx-[22px] mt-3 flex items-center gap-2 border-0 bg-transparent p-0 text-[9px] text-sentinel-muted max-lg:col-start-1 [&_svg]:w-[13px]" onClick={() => setDecision("pending")}>
+          {finalDecision !== "pending" && !scenario.automatic && undoCountdown === 0 ? (
+            <button type="button" className="mx-[22px] mt-3 flex items-center gap-2 border-0 bg-transparent p-0 text-[10px] text-sentinel-muted hover:text-sentinel-text transition max-lg:col-start-1 [&_svg]:w-[13px]" onClick={() => { setDecision("pending"); setUndoCountdown(null); }}>
               <RotateCcw /> Reset demo
             </button>
           ) : null}

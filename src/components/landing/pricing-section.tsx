@@ -24,8 +24,16 @@ export function PricingSection() {
 
   const faqs = [
     {
+      q: "How does the interactive 5-second Undo grace period work?",
+      a: "When an approver clicks Approve or Deny in Slack or the web dashboard, SentinelOps holds the decision in an optimistic reversible buffer for 5 seconds. Operators can click 'Undo' to cancel mistakes before irreversible downstream tool dispatch occurs.",
+    },
+    {
+      q: "How are SOC 2 and ISO 27001 compliance evidence packages generated?",
+      a: "SentinelOps generates one-click cryptographically signed attestation certificates. Every agent call, approver identity, policy rule, and timestamp is anchored into a tamper-evident SHA-256 Merkle chain that auditors can independently verify.",
+    },
+    {
       q: "How does SentinelOps count and discover agents?",
-      a: "SentinelOps integrates via lightweight decorators (Python SDK), API gateway proxies, or VCS webhooks. Every unique agent credential or identity that evaluates policy is tracked as an active agent.",
+      a: "SentinelOps integrates via lightweight decorators (Python SDK, TypeScript SDK), API gateway proxies, or VCS webhooks. Every unique agent credential or identity that evaluates policy is tracked as an active agent.",
     },
     {
       q: "Can we self-host SentinelOps or run in a private VPC?",
@@ -34,6 +42,10 @@ export function PricingSection() {
     {
       q: "How does the sub-20ms policy enforcement SLA work?",
       a: "Our distributed in-memory evaluation cache evaluates pre-compiled deterministic rules and velocity boundaries in sub-20ms before requests reach downstream tool APIs.",
+    },
+    {
+      q: "What bot defense protects workspace authentication?",
+      a: "SentinelOps integrates Cloudflare Turnstile bot verification on sign-in and workspace creation modals to eliminate automated credential stuffing without degrading the developer experience.",
     },
     {
       q: "How does Chargebee subscription billing and invoicing work?",
