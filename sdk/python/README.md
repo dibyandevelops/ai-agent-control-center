@@ -168,7 +168,18 @@ python examples/sales_representative_agent.py --scenarios
 python examples/sales_representative_agent.py --interactive
 ```
 
-### 2. Autonomous Sales Outreach Bot (`demo_sales_agent.py`)
+### 2. Autonomous Cloud Infrastructure SRE Bot (`devops_sre_agent.py`)
+
+A full production simulation of an autonomous DevOps SRE Agent demonstrating:
+- **Routine Low-Risk Scaling**: Kubernetes deployment scaled from 3 to 5 replicas (auto-approved in sub-20ms).
+- **High-Consequence Terraform Teardown**: Destructive cluster teardown intercepted for 4-Eyes dual sign-off with a 5-second Undo grace period.
+- **Rogue / Quarantined Agent Containment**: Immediate sub-4ms block when a rogue agent attempts backup archive purge under active quarantine.
+
+```bash
+python examples/devops_sre_agent.py
+```
+
+### 3. Autonomous Sales Outreach Bot (`demo_sales_agent.py`)
 
 Simulates background outreach with lead qualification, email drafting, and CRM sync.
 
@@ -176,7 +187,7 @@ Simulates background outreach with lead qualification, email drafting, and CRM s
 python examples/demo_sales_agent.py
 ```
 
-### 3. Connection Diagnostics (`test_connection.py`)
+### 4. Connection Diagnostics (`test_connection.py`)
 
 Verify connectivity, API key authentication, and audit round-trips.
 

@@ -8,8 +8,10 @@ import {
   Code2,
   Database,
   Download,
+  KeyRound,
   Landmark,
   RotateCcw,
+  Server,
   ShieldAlert,
   ShieldCheck,
   Timer,
@@ -19,7 +21,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RiskBadge } from "./ui";
 
 type Decision = "pending" | "approved" | "denied";
-type ScenarioId = "finance" | "data" | "release";
+type ScenarioId = "finance" | "data" | "devops" | "security" | "release";
 
 const scenarios = {
   finance: {
@@ -33,6 +35,7 @@ const scenarios = {
     outcome: "Human approval",
     icon: Landmark,
     automatic: false,
+    reviewerRole: "Finance Lead",
   },
   data: {
     agent: "Data Agent",
@@ -45,6 +48,33 @@ const scenarios = {
     outcome: "Human approval",
     icon: Database,
     automatic: false,
+    reviewerRole: "Data Protection Officer",
+  },
+  devops: {
+    agent: "DevOps SRE Agent",
+    action: "Terraform cluster teardown",
+    amount: "48 Kubernetes Nodes",
+    owner: "Platform Engineering",
+    environment: "Production",
+    policy: "INFRA-04",
+    risk: "High",
+    outcome: "Dual approval",
+    icon: Server,
+    automatic: false,
+    reviewerRole: "Lead SRE",
+  },
+  security: {
+    agent: "IAM Governance Bot",
+    action: "Grant emergency AWS root role",
+    amount: "2-Hour Root Lease",
+    owner: "SecOps & Cloud IAM",
+    environment: "Production",
+    policy: "IAM-002",
+    risk: "High",
+    outcome: "Dual approval",
+    icon: KeyRound,
+    automatic: false,
+    reviewerRole: "Head of InfoSec",
   },
   release: {
     agent: "Release Agent",
@@ -57,6 +87,7 @@ const scenarios = {
     outcome: "Blocked",
     icon: Code2,
     automatic: true,
+    reviewerRole: "Policy Engine",
   },
 } as const;
 
@@ -150,7 +181,7 @@ export function ApprovalDemo() {
       policy: scenario.policy,
       environment: scenario.environment,
       decision: finalDecision,
-      reviewer: finalDecision === "denied" && scenario.automatic ? "SentinelOps policy engine" : "Finance Lead",
+      reviewer: finalDecision === "denied" && scenario.automatic ? "SentinelOps policy engine" : scenario.reviewerRole,
       merkleRootHash: "sha256-8f2a910d65b70c3e98124efaa2b4c6e8",
       tamperEvidence: {
         anomaliesDetected: 0,
@@ -243,9 +274,11 @@ export function ApprovalDemo() {
         <section className="max-lg:col-span-full max-lg:grid max-lg:grid-cols-2 max-lg:border-t max-lg:border-sentinel-line max-lg:pb-[22px] max-[760px]:col-auto max-[760px]:block">
           <header className={`${panelHeader} max-lg:col-span-full`}>{scenario.automatic ? "Policy enforcement" : "Human approval"}</header>
           <div className="mx-[22px] mb-[18px] mt-6 flex items-center gap-3.5 border-b border-sentinel-line pb-5 max-lg:col-start-1">
-            <span className="grid h-12 w-12 place-items-center rounded-full border border-emerald-500/50 dark:border-sentinel-lime font-mono text-sm text-emerald-600 dark:text-sentinel-lime bg-emerald-500/10 dark:bg-sentinel-lime/10 [&_svg]:w-[22px]">{scenario.automatic ? <ShieldAlert /> : "FL"}</span>
+            <span className="grid h-12 w-12 place-items-center rounded-full border border-emerald-500/50 dark:border-sentinel-lime font-mono text-xs font-bold text-emerald-600 dark:text-sentinel-lime bg-emerald-500/10 dark:bg-sentinel-lime/10 [&_svg]:w-[22px]">
+              {scenario.automatic ? <ShieldAlert /> : scenario.reviewerRole.split(" ").map((w) => w[0]).join("").slice(0, 3)}
+            </span>
             <div className="grid gap-1">
-              <strong className="text-[15px] text-sentinel-text">{scenario.automatic ? "SentinelOps" : "Finance Lead"}</strong>
+              <strong className="text-[15px] text-sentinel-text">{scenario.automatic ? "SentinelOps" : scenario.reviewerRole}</strong>
               <small className="text-[10px] text-sentinel-muted">{scenario.automatic ? "Deterministic policy" : "Required approver"}</small>
             </div>
           </div>
@@ -347,7 +380,7 @@ export function ApprovalDemo() {
                   <span>0 Anomalies</span>
                 </div>
                 <dl className="m-0 [&_dt]:text-sentinel-muted [&_dd]:m-0 [&_dd]:text-right [&_dd]:capitalize">
-                  <div className={evidenceRow}><dt>Decision by</dt><dd>{scenario.automatic ? "Policy engine" : "Finance Lead"}</dd></div>
+                  <div className={evidenceRow}><dt>Decision by</dt><dd>{scenario.automatic ? "Policy engine" : scenario.reviewerRole}</dd></div>
                   <div className={evidenceRow}><dt>Policy</dt><dd>{scenario.policy}</dd></div>
                   <div className={evidenceRow}><dt>Grace period</dt><dd>5s (Passed)</dd></div>
                   <div className={evidenceRow}><dt>Result</dt><dd>{finalDecision}</dd></div>
