@@ -23,7 +23,8 @@
     "demo:reset": "node --env-file-if-exists=.env.local scripts/seed.mjs",
     "demo:release": "node --env-file-if-exists=.env.local examples/dry-run-release-agent.mjs",
     "test:lemonsqueezy": "node --env-file-if-exists=.env.local scripts/test-lemonsqueezy-webhook.mjs",
-    "test:dodopayments": "node --env-file-if-exists=.env.local scripts/test-dodopayments-webhook.mjs"
+    "test:dodopayments": "node --env-file-if-exists=.env.local scripts/test-dodopayments-webhook.mjs",
+    "agent:dba": "node --env-file-if-exists=.env.local examples/database-sql-agent.mjs"
   },
   "dependencies": {
     "@node-saml/node-saml": "5.1.0",
