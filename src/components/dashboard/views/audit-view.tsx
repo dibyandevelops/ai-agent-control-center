@@ -34,7 +34,7 @@ function generateDemoComplianceCertificate(auditEvents: AuditEvent[]): Complianc
     certificate: {
       certificateId: certId,
       issuedAt,
-      standard: "SOC 2 Type II (CC6.1, CC6.2) & ISO/IEC 27001:2022 A.12.4",
+      standard: "Designed for SOC 2 Type II (CC6.1, CC6.2) & ISO/IEC 27001:2022 A.12.4 Alignment",
       issuer: "SentinelOps Cryptographic Trust Authority",
       attestationDigest: "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
       organization: {
@@ -375,7 +375,7 @@ export function AuditView({
                 className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-sentinel-lime hover:underline"
               >
                 <Award className="h-3.5 w-3.5" />
-                <span>View & Download Signed SOC 2 Attestation Package</span>
+                <span>View & Download Audit Evidence Package (SOC 2 Aligned)</span>
               </button>
             ) : null}
           </div>

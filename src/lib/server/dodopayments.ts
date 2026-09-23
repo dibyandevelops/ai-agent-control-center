@@ -62,14 +62,12 @@ export async function processDodoPaymentsWebhookEvent(
     metadata.billing_interval === "year" ? "year" : "month";
 
   let subscriptionStatus: "active" | "past_due" | "canceled" | "paused" | "trialing" = "active";
-  if (eventType === "subscription.cancelled") {
+  if (eventType === "subscription.cancelled" || data.status === "cancelled" || data.status === "expired") {
     subscriptionStatus = "canceled";
-  } else if (eventType === "subscription.on_hold" || eventType === "payment.failed") {
+  } else if (eventType === "subscription.on_hold" || eventType === "payment.failed" || data.status === "on_hold") {
     subscriptionStatus = "past_due";
-  } else if (data.status === "cancelled") {
-    subscriptionStatus = "canceled";
-  } else if (data.status === "on_hold") {
-    subscriptionStatus = "past_due";
+  } else if (data.status === "pending") {
+    subscriptionStatus = "trialing";
   }
 
   const endsAt = data.next_billing_date ? new Date(data.next_billing_date) : null;

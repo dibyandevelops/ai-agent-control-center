@@ -31,7 +31,7 @@ export function HeroSection() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 dark:bg-sentinel-lime opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 dark:bg-sentinel-lime" />
           </span>
-          <span>SentinelOps v2.5 · 5s Undo Grace · SOC 2 Attestation · Turnstile Bot Defense</span>
+          <span>SentinelOps v2.5 · 5s Undo Grace · Designed for SOC 2 · Turnstile Bot Defense</span>
         </div>
 
         <h1 className="m-0 max-w-[660px] text-[clamp(58px,5.35vw,90px)] font-black leading-[0.96] tracking-[-0.065em] max-xl:text-[clamp(52px,5vw,68px)] max-[760px]:text-[clamp(47px,14vw,65px)] max-[760px]:leading-[0.99]">
@@ -63,7 +63,7 @@ export function HeroSection() {
 
         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-sentinel-muted pt-4 border-t border-sentinel-line">
           <span className="flex items-center gap-1.5 text-sentinel-text font-semibold">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-sentinel-lime" /> SOC 2 & ISO 27001 Proofs
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-sentinel-lime" /> Designed for SOC 2 & ISO 27001
           </span>
           <span>• 5-Sec Undo Grace</span>
           <span>• Sub-20ms Policy SLA</span>

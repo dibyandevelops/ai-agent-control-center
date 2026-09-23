@@ -330,7 +330,7 @@ export function StripeCheckoutDialog({
 
             <div className="flex items-center justify-center gap-2 text-[10px] text-sentinel-dim">
               <ShieldCheck className="h-3.5 w-3.5 text-sentinel-lime" />
-              <span>Guaranteed 14-day money back · Encrypted PCI-DSS Level 1 Compliant</span>
+              <span>Guaranteed 14-day money back · Stripe-Secured (PCI-DSS Level 1 Gateway)</span>
             </div>
           </form>
         )}

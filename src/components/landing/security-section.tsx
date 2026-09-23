@@ -45,7 +45,7 @@ const layers = [
   { label: "Identity", detail: "Users, agents, SAML 2.0 / SCIM, Turnstile bot shield", icon: Fingerprint },
   { label: "Policy", detail: "Deterministic rules, context, risk scores, velocity limits", icon: ShieldCheck },
   { label: "Approvals", detail: "Slack interactive blocks, web dashboard, 5s undo window", icon: Timer },
-  { label: "Audit & Proofs", detail: "SOC 2 Type II & ISO 27001 signed cryptographic certificates", icon: ClipboardCheck },
+  { label: "Audit & Proofs", detail: "Tamper-evident SHA-256 audit ledger designed for SOC 2 & ISO 27001 readiness", icon: ClipboardCheck },
 ] as const;
 
 const recentInnovations = [
@@ -56,8 +56,8 @@ const recentInnovations = [
     badge: "Operational Safety",
   },
   {
-    title: "One-Click Compliance Attestation",
-    desc: "Generate cryptographically verifiable SOC 2 Type II and ISO/IEC 27001 evidence packages with SHA-256 root hashes and zero tamper anomalies.",
+    title: "Auditor-Ready Evidence Export",
+    desc: "Generate cryptographically verifiable SHA-256 evidence packages formatted for SOC 2 and ISO 27001 auditor review.",
     icon: ShieldCheck,
     badge: "Audit & Legal Ready",
   },
@@ -76,8 +76,8 @@ const recentInnovations = [
 ] as const;
 
 const controls = [
-  "SOC 2 Type II Attestation",
-  "ISO/IEC 27001 Mapping",
+  "Designed for SOC 2 Alignment",
+  "ISO/IEC 27001 Control Mapping",
   "5s Undo Grace Window",
   "SHA-256 Merkle Seals",
   "Turnstile Bot Shield",

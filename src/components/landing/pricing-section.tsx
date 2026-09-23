@@ -51,8 +51,8 @@ export function PricingSection() {
       a: "When an approver clicks Approve or Deny in Slack or the web dashboard, SentinelOps holds the decision in an optimistic reversible buffer for 5 seconds. Operators can click 'Undo' to cancel mistakes before irreversible downstream tool dispatch occurs.",
     },
     {
-      q: "How are SOC 2 and ISO 27001 compliance evidence packages generated?",
-      a: "SentinelOps generates one-click cryptographically signed attestation certificates. Every agent call, approver identity, policy rule, and timestamp is anchored into a tamper-evident SHA-256 Merkle chain that auditors can independently verify.",
+      q: "How does SentinelOps support SOC 2 and ISO 27001 audit preparation?",
+      a: "SentinelOps generates one-click cryptographically signed audit evidence packages. Every agent call, approver identity, policy rule, and timestamp is anchored into a tamper-evident SHA-256 Merkle chain that external auditors can independently verify.",
     },
     {
       q: "How does SentinelOps count and discover agents?",
@@ -256,9 +256,9 @@ export function PricingSection() {
         <div className="space-y-1">
           <div className="flex items-center justify-center gap-1.5 text-emerald-600 dark:text-sentinel-lime">
             <Lock className="h-4 w-4" />
-            <strong className="text-xs font-bold text-sentinel-text">PCI-DSS Level 1</strong>
+            <strong className="text-xs font-bold text-sentinel-text">PCI-DSS Compliant Gateway</strong>
           </div>
-          <p className="text-[10px] text-sentinel-muted">Encrypted Tokenization</p>
+          <p className="text-[10px] text-sentinel-muted">Via Stripe Payment Infrastructure</p>
         </div>
         <div className="space-y-1">
           <div className="flex items-center justify-center gap-1.5 text-emerald-600 dark:text-sentinel-lime">
@@ -277,9 +277,9 @@ export function PricingSection() {
         <div className="space-y-1">
           <div className="flex items-center justify-center gap-1.5 text-amber-500">
             <ShieldCheck className="h-4 w-4" />
-            <strong className="text-xs font-bold text-sentinel-text">SOC 2 Type II</strong>
+            <strong className="text-xs font-bold text-sentinel-text">Designed for SOC 2</strong>
           </div>
-          <p className="text-[10px] text-sentinel-muted">Continuous Compliance Audit</p>
+          <p className="text-[10px] text-sentinel-muted">Auditor-Ready SHA-256 Evidence</p>
         </div>
       </div>
 

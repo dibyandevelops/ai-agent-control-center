@@ -174,7 +174,7 @@ export function ApprovalDemo() {
 
   function downloadEvidence() {
     const evidence = {
-      attestationStandard: "SOC 2 Type II & ISO/IEC 27001",
+      attestationStandard: "Designed for SOC 2 Type II & ISO/IEC 27001 Alignment",
       requestId: `req-${activeId}-2026-0727`,
       agent: scenario.agent,
       action: scenario.action,
@@ -386,7 +386,7 @@ export function ApprovalDemo() {
                   <div className={evidenceRow}><dt>Result</dt><dd>{finalDecision}</dd></div>
                 </dl>
                 <button className="mt-[11px] flex items-center gap-2 rounded-lg border border-sentinel-line bg-sentinel-surface-raised px-2.5 py-1.5 text-[10px] font-semibold text-sentinel-text transition hover:border-emerald-600 dark:hover:border-sentinel-lime [&_svg]:w-3.5" type="button" onClick={downloadEvidence}>
-                  <Download /> Download SOC 2 Attestation (.json)
+                  <Download /> Download Audit Evidence (.json)
                 </button>
               </>
             )}

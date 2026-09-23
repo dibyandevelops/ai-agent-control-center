@@ -211,11 +211,11 @@ export function DodoPaymentsCheckoutDialog({
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="h-3.5 w-3.5 text-teal-400 shrink-0" />
-                  <span>{plan.maxAgents} autonomous agent slots</span>
+                  <span>{plan.agents ? `${plan.agents} autonomous agent slots` : "Unlimited agent slots"}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="h-3.5 w-3.5 text-teal-400 shrink-0" />
-                  <span>{plan.slaGuarantee} uptime SLA</span>
+                  <span>{plan.repositories ? `${plan.repositories} connected repositories` : "Unlimited repositories"}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="h-3.5 w-3.5 text-teal-400 shrink-0" />

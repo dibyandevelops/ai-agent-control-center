@@ -72,10 +72,10 @@ export function ComplianceCertificateDialog({
             </div>
             <div>
               <h2 className="text-lg font-bold text-sentinel-text">
-                SOC 2 & ISO 27001 Compliance Certificate
+                SOC 2 & ISO 27001 Audit Evidence Export
               </h2>
               <p className="text-xs text-sentinel-muted">
-                Cryptographically signed attestation and tamper-evident hash evidence
+                Cryptographically signed proof and tamper-evident hash evidence designed for SOC 2 & ISO 27001 alignment
               </p>
             </div>
           </div>
@@ -86,7 +86,7 @@ export function ComplianceCertificateDialog({
               </span>
             ) : (
               <span className="hidden sm:inline-flex rounded-full bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 text-[10px] font-bold text-emerald-600 dark:text-sentinel-lime uppercase tracking-wider shrink-0">
-                Live Attestation
+                Live Evidence Chain
               </span>
             )
           ) : null}
@@ -96,7 +96,7 @@ export function ComplianceCertificateDialog({
           <div className="py-16 text-center space-y-3">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent dark:border-sentinel-lime" />
             <p className="text-xs font-semibold text-sentinel-muted">
-              Evaluating SHA-256 chain integrity & generating attestation…
+              Evaluating SHA-256 chain integrity & generating audit evidence…
             </p>
           </div>
         ) : certificate ? (
@@ -115,7 +115,7 @@ export function ComplianceCertificateDialog({
                 </div>
               </div>
               <span className="rounded-full bg-emerald-600/20 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-sentinel-lime uppercase tracking-wider">
-                Audited
+                Audit-Ready
               </span>
             </div>
 
@@ -135,10 +135,10 @@ export function ComplianceCertificateDialog({
 
               <div className="rounded-xl border border-sentinel-line bg-sentinel-canvas p-3">
                 <span className="font-bold text-sentinel-muted uppercase tracking-wider text-[10px]">
-                  Compliance Standard
+                  Target Alignment Standard
                 </span>
                 <p className="mt-1 font-semibold text-sentinel-text">
-                  SOC 2 Type II / ISO 27001 Annex A.12
+                  SOC 2 Type II / ISO 27001 Annex A.12 Alignment
                 </p>
                 <p className="text-[11px] text-sentinel-muted">NIST SP 800-53 AU-9</p>
               </div>
