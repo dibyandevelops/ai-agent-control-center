@@ -44,7 +44,7 @@ describe("Lemon Squeezy Integration Core", () => {
 
     expect(checkout.planCode).toBe("pro");
     expect(checkout.billingInterval).toBe("month");
-    expect(checkout.amount).toBe(79);
+    expect(checkout.amount).toBe(40);
     expect(checkout.currency).toBe("USD");
     expect(checkout.url).toBeDefined();
   });
@@ -61,7 +61,7 @@ describe("Lemon Squeezy Integration Core", () => {
 
     expect(checkout.planCode).toBe("pro");
     expect(checkout.billingInterval).toBe("year");
-    expect(checkout.amount).toBe(64 * 12); // $768/yr
+    expect(checkout.amount).toBe(33.33 * 12); // Monthly equivalent from the current plan catalog.
   });
 
   it("maps Lemon Squeezy variant names to internal PlanCode", () => {

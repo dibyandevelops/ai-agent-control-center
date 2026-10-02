@@ -16,7 +16,7 @@ import Link from "next/link";
 import React, { useState } from "react";
 import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
 
-interface DodoPaymentsCheckoutDialogProps {
+interface PaddleCheckoutDialogProps {
   open: boolean;
   planCode: PlanCode;
   billingInterval: "month" | "year";
@@ -24,13 +24,13 @@ interface DodoPaymentsCheckoutDialogProps {
   onSuccess?: (planName: string) => void;
 }
 
-export function DodoPaymentsCheckoutDialog({
+export function PaddleCheckoutDialog({
   open,
   planCode,
   billingInterval: initialInterval,
   onClose,
   onSuccess,
-}: DodoPaymentsCheckoutDialogProps) {
+}: PaddleCheckoutDialogProps) {
   const [interval, setInterval] = useState<"month" | "year">(initialInterval);
   const [loading, setLoading] = useState(false);
   const [requiresAuth, setRequiresAuth] = useState(false);
@@ -49,13 +49,12 @@ export function DodoPaymentsCheckoutDialog({
     setRequiresAuth(false);
 
     try {
-      const res = await fetch("/api/v1/billing/dodopayments/checkout", {
+      const res = await fetch("/api/v1/billing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           planCode,
           billingInterval: interval,
-          simulateInstantActivation: true,
         }),
       });
 
@@ -66,21 +65,16 @@ export function DodoPaymentsCheckoutDialog({
           setError("Administrator account required before subscribing.");
           return;
         }
-        throw new Error(data.error || "Failed to initialize Dodo Payments checkout.");
+        throw new Error(data.error || "Failed to initialize Paddle checkout.");
       }
 
       const payload = await res.json();
 
-      // If live Dodo Payments checkout URL, redirect to hosted session
-      if (payload.isLive && payload.url) {
+      if (payload.url) {
         window.location.href = payload.url;
         return;
       }
-
-      // In dev/sandbox mode, instant local activation
-      await new Promise((r) => setTimeout(r, 600));
-      setCompleted(true);
-      onSuccess?.(plan.name);
+      throw new Error("Paddle did not return a checkout URL.");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Checkout failed. Please try again.");
     } finally {
@@ -228,7 +222,7 @@ export function DodoPaymentsCheckoutDialog({
             <div className="rounded-xl border border-slate-700/40 bg-slate-900/40 p-3 text-xs text-slate-400 flex items-start gap-2.5">
               <Globe className="h-4 w-4 text-teal-400 shrink-0 mt-0.5" />
               <p className="leading-relaxed">
-                Processed via <strong>Dodo Payments (Merchant of Record)</strong>. Handles Australian GST, US Sales Tax, EU VAT, and automatic corporate invoices.
+                Processed securely by <strong>Paddle (Merchant of Record)</strong>, including applicable tax calculation and invoicing.
               </p>
             </div>
 
@@ -264,7 +258,7 @@ export function DodoPaymentsCheckoutDialog({
                 {loading ? (
                   <>
                     <LoaderCircle className="h-4 w-4 animate-spin" />
-                    Connecting to Dodo Checkout...
+                    Connecting to Paddle Checkout...
                   </>
                 ) : (
                   <>
@@ -274,7 +268,7 @@ export function DodoPaymentsCheckoutDialog({
                 )}
               </button>
               <p className="text-center text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
-                <Lock className="h-3 w-3" /> 256-bit TLS encrypted • Powered by Dodo Payments
+                <Lock className="h-3 w-3" /> Secure checkout • Powered by Paddle
               </p>
             </div>
           </>

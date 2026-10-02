@@ -16,7 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
-import { DodoPaymentsCheckoutDialog } from "@/components/pricing/dodo-payments-checkout-dialog";
+import { PaddleCheckoutDialog } from "@/components/pricing/dodo-payments-checkout-dialog";
 
 export function PricingSection() {
   const router = useRouter();
@@ -71,8 +71,8 @@ export function PricingSection() {
       a: "SentinelOps integrates Cloudflare Turnstile bot verification on sign-in and workspace creation modals to eliminate automated credential stuffing without degrading the developer experience.",
     },
     {
-      q: "How does Lemon Squeezy subscription billing and international tax work?",
-      a: "All subscriptions, prorated upgrades, and localized tax invoicing are processed securely through Lemon Squeezy as our Merchant of Record. They automatically calculate and remit Australian GST, US sales tax, and EU VAT, while supporting credit cards, Apple Pay, PayPal, and bank transfers worldwide.",
+      q: "How are subscription billing and international taxes handled?",
+      a: "Paid subscriptions are processed through Paddle as our Merchant of Record, including applicable tax calculation and invoicing. Workspace access changes only after SentinelOps receives and verifies a successful billing event.",
     },
   ];
 
@@ -372,9 +372,9 @@ export function PricingSection() {
         </div>
       </div>
 
-      {/* Dodo Payments Checkout Modal */}
+      {/* Paddle Checkout Modal */}
       {checkoutPlan && (
-        <DodoPaymentsCheckoutDialog
+        <PaddleCheckoutDialog
           open={Boolean(checkoutPlan)}
           planCode={checkoutPlan}
           billingInterval={billingInterval}

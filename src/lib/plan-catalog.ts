@@ -1,12 +1,10 @@
-export type PlanCode = "pilot" | "pro" | "enterprise";
+export type PlanCode = "pilot" | "starter" | "pro" | "advanced" | "enterprise";
 
 export const planCatalog = {
   pilot: {
     name: "Pilot",
     priceMonthly: 0,
     priceAnnual: 0,
-    stripePriceIdMonthly: null,
-    stripePriceIdAnnual: null,
     agents: 5,
     repositories: 2,
     pendingApprovals: 20,
@@ -21,12 +19,27 @@ export const planCatalog = {
       "Community Slack Support",
     ],
   },
+  starter: {
+    name: "Starter",
+    priceMonthly: 10,
+    priceAnnual: 8.33, // $100/yr, expressed as monthly equivalent for existing billing UI
+    agents: 5,
+    repositories: 2,
+    pendingApprovals: 20,
+    auditRetentionDays: 90,
+    httpsWebhooks: 3,
+    features: [
+      "Up to 5 AI Agents",
+      "2 Connected Repositories",
+      "20 Pending Human Approvals",
+      "90-Day Cryptographic Audit Chain",
+      "3 HTTPS Webhook Destinations",
+    ],
+  },
   pro: {
     name: "Team Pro",
-    priceMonthly: 79,
-    priceAnnual: 64, // $64/mo when billed annually ($768/yr)
-    stripePriceIdMonthly: "price_sentinel_pro_monthly",
-    stripePriceIdAnnual: "price_sentinel_pro_annual",
+    priceMonthly: 40,
+    priceAnnual: 33.33, // $400/yr, expressed as monthly equivalent
     agents: 25,
     repositories: 10,
     pendingApprovals: 100,
@@ -47,8 +60,6 @@ export const planCatalog = {
     name: "Enterprise",
     priceMonthly: 299,
     priceAnnual: 249,
-    stripePriceIdMonthly: "price_sentinel_enterprise_monthly",
-    stripePriceIdAnnual: "price_sentinel_enterprise_annual",
     agents: null,
     repositories: null,
     pendingApprovals: null,
@@ -63,6 +74,25 @@ export const planCatalog = {
       "Dedicated Private VPC Gateway",
       "Custom SLA & 24/7 Phone Support",
       "Dedicated Solutions Architect",
+    ],
+  },
+  advanced: {
+    name: "Advanced",
+    priceMonthly: 120,
+    priceAnnual: 100, // $1,200/yr, expressed as monthly equivalent
+    agents: null,
+    repositories: null,
+    pendingApprovals: null,
+    auditRetentionDays: 3650,
+    httpsWebhooks: null,
+    features: [
+      "Unlimited AI Agents & Repositories",
+      "Unlimited Pending Human Approvals",
+      "10-Year Immutable Audit Hash Chain",
+      "Unlimited SIEM / SOAR Webhooks",
+      "SCIM 2.0 & SAML 2.0 SSO",
+      "Dedicated Private VPC Gateway",
+      "Custom SLA & Dedicated Solutions Architect",
     ],
   },
 } as const;

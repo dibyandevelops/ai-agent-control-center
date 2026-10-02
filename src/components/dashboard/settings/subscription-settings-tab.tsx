@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
 import type { OperatorIdentity } from "@/lib/types";
 
@@ -136,6 +137,24 @@ export function SubscriptionSettingsTab({
   function notify(type: "success" | "error", message: string) {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 5000);
+  }
+
+  async function openPaddlePortal() {
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/v1/billing/manage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "portal" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not open Paddle billing portal.");
+      window.location.assign(data.url);
+    } catch (err: unknown) {
+      notify("error", err instanceof Error ? err.message : "Could not open Paddle billing portal.");
+    } finally {
+      setActionLoading(false);
+    }
   }
 
   async function handleUpdatePlan(e: React.FormEvent) {
@@ -344,7 +363,7 @@ export function SubscriptionSettingsTab({
             </div>
           </div>
           <button
-            onClick={() => setShowPaymentModal(true)}
+            onClick={openPaddlePortal}
             className="rounded-xl bg-red-600 text-white font-semibold px-4 py-2 text-xs hover:bg-red-700 transition shrink-0 w-full sm:w-auto"
           >
             Update Payment & Retry
@@ -446,34 +465,14 @@ export function SubscriptionSettingsTab({
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {canManage && (
               <>
-                <button
-                  onClick={() => {
-                    setTargetPlan(planCode);
-                    setTargetInterval(subscription?.billingInterval || "month");
-                    setShowPlanModal(true);
-                  }}
-                  className="primary-button text-xs py-2 px-3.5 flex items-center gap-1.5 w-full sm:w-auto justify-center"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Change Plan
-                </button>
-
-                {!isCanceled && planCode !== "pilot" && (
-                  <button
-                    onClick={() => setShowCancelModal(true)}
-                    className="secondary-button text-xs py-2 px-3 text-red-500 hover:text-red-600 hover:border-red-500/30 w-full sm:w-auto justify-center"
-                  >
-                    Cancel Subscription
-                  </button>
-                )}
-
-                {isCanceled && (
-                  <button
-                    onClick={handleReactivate}
-                    disabled={actionLoading}
-                    className="secondary-button text-xs py-2 px-3 text-sentinel-lime hover:border-sentinel-lime/40 w-full sm:w-auto justify-center"
-                  >
-                    Reactivate
+                {planCode === "pilot" ? (
+                  <Link href="/#pricing" className="primary-button text-xs py-2 px-3.5 flex items-center gap-1.5 w-full sm:w-auto justify-center">
+                    <Sparkles className="h-3.5 w-3.5" /> Upgrade Plan
+                  </Link>
+                ) : (
+                  <button onClick={openPaddlePortal} disabled={actionLoading} className="primary-button text-xs py-2 px-3.5 flex items-center gap-1.5 w-full sm:w-auto justify-center">
+                    {actionLoading ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    Manage Subscription in Paddle
                   </button>
                 )}
               </>
@@ -549,24 +548,7 @@ export function SubscriptionSettingsTab({
         {canManage && (
           <div className="mt-6 pt-5 border-t border-sentinel-line flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              {!isPaused && planCode !== "pilot" && (
-                <button
-                  onClick={() => setShowPauseModal(true)}
-                  className="secondary-button text-xs py-1.5 px-3 flex items-center gap-1.5"
-                >
-                  <Pause className="h-3 w-3" />
-                  Pause Billing
-                </button>
-              )}
-              {isPaused && (
-                <button
-                  onClick={handleReactivate}
-                  className="secondary-button text-xs py-1.5 px-3 flex items-center gap-1.5 text-sentinel-lime"
-                >
-                  <Play className="h-3 w-3" />
-                  Resume Billing
-                </button>
-              )}
+              {planCode !== "pilot" && <button onClick={openPaddlePortal} disabled={actionLoading} className="secondary-button text-xs py-1.5 px-3 flex items-center gap-1.5">Manage billing in Paddle</button>}
             </div>
 
             <p className="text-[11px] text-sentinel-muted">
@@ -585,16 +567,16 @@ export function SubscriptionSettingsTab({
               Primary Payment Method
             </h4>
             <p className="text-xs text-sentinel-muted mt-0.5">
-              Stored securely for automated renewals and overage settlements.
+                {subscription?.paymentMethod?.brand === "Paddle" ? "Payment details are securely managed by Paddle." : "Stored securely for automated renewals and overage settlements."}
             </p>
           </div>
 
-          {canManage && (
+          {canManage && planCode !== "pilot" && (
             <button
-              onClick={() => setShowPaymentModal(true)}
+              onClick={openPaddlePortal}
               className="secondary-button text-xs py-1.5 px-3 flex items-center gap-1.5"
             >
-              Update Payment Card
+              Manage Payment Method
             </button>
           )}
         </div>
@@ -602,25 +584,27 @@ export function SubscriptionSettingsTab({
         <div className="mt-4 flex items-center justify-between p-3.5 rounded-xl bg-sentinel-surface-raised border border-sentinel-line max-w-md">
           <div className="flex items-center gap-3">
             <div className="h-9 w-12 rounded-lg bg-sentinel-surface border border-sentinel-line flex items-center justify-center font-black text-[11px] uppercase tracking-wider text-sentinel-text">
-              {subscription?.paymentMethod?.brand || "VISA"}
+              {subscription?.paymentMethod?.brand || "—"}
             </div>
             <div>
               <div className="text-xs font-bold text-sentinel-text">
-                •••• •••• •••• {subscription?.paymentMethod?.last4 || "4242"}
+                {subscription?.paymentMethod?.last4 ? `•••• •••• •••• ${subscription.paymentMethod.last4}` : subscription?.status === "not_configured" ? "No payment method saved" : "Managed by Paddle"}
               </div>
               <div className="text-[11px] text-sentinel-muted">
-                Expires {subscription?.paymentMethod?.expMonth || 12}/{subscription?.paymentMethod?.expYear || 2028}
+                {subscription?.paymentMethod?.expMonth ? `Expires ${subscription.paymentMethod.expMonth}/${subscription.paymentMethod.expYear}` : "Payment data never stored by SentinelOps"}
               </div>
             </div>
           </div>
 
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-sentinel-lime border border-emerald-500/30">
             <Check className="h-2.5 w-2.5" />
-            Verified
+            {subscription?.status === "not_configured" ? "None" : subscription?.paymentMethod?.brand === "Paddle" ? "Paddle" : "Verified"}
           </span>
         </div>
       </div>
 
+      {process.env.NODE_ENV !== "production" && (
+      <>
       {/* 🧪 Subscription Testing Sandbox & Scenarios */}
       <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 p-5 sm:p-6 shadow-xs">
         <div className="flex items-start gap-3 pb-4 border-b border-purple-500/20">
@@ -746,6 +730,8 @@ export function SubscriptionSettingsTab({
           </button>
         </div>
       </div>
+      </>
+      )}
 
       {/* Invoices & Billing History */}
       <div className="rounded-2xl border border-sentinel-line bg-sentinel-surface p-5 sm:p-6 shadow-xs">

@@ -64,7 +64,8 @@ export async function createSelfServiceOrganization(input: {
   const baseSlug = organizationSlug(input.organizationName.trim());
   const verification = createOnboardingVerificationToken();
 
-  const planCode: PlanCode = (input.planCode && planCatalog[input.planCode]) ? input.planCode : "pilot";
+  // Plan selection during sign-up is intent only; paid access is granted by Paddle webhooks after payment.
+  const planCode: PlanCode = "pilot";
   const billingInterval: "month" | "year" = input.billingInterval === "year" ? "year" : "month";
   const planConfig = planCatalog[planCode];
   const retentionDays = planConfig.auditRetentionDays;
@@ -90,9 +91,7 @@ export async function createSelfServiceOrganization(input: {
       if (!organization.rows[0]) continue;
       const organizationId = organization.rows[0].id;
 
-      // Initialize billing account with selected tier
-      const periodEndsAt = new Date();
-      periodEndsAt.setDate(periodEndsAt.getDate() + (billingInterval === "year" ? 365 : 30));
+      // New workspaces start on Pilot. Paid entitlements only come from verified Paddle events.
       await client.query(
         `insert into organization_billing_accounts (
            organization_id,
@@ -102,15 +101,9 @@ export async function createSelfServiceOrganization(input: {
            billing_interval,
            current_period_ends_at,
            updated_at
-         ) values ($1, 'stripe', $2, $3, $4, $5, now())
+         ) values ($1, 'paddle', null, 'not_configured', $2, null, now())
          on conflict (organization_id) do nothing`,
-        [
-          organizationId,
-          `cus_sentinel_${organizationId.slice(0, 8)}`,
-          planCode === "pilot" ? "not_configured" : "active",
-          billingInterval,
-          planCode === "pilot" ? null : periodEndsAt,
-        ],
+        [organizationId, billingInterval],
       );
 
       await client.query(

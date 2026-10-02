@@ -4,19 +4,14 @@ import { getOperatorSession } from "@/lib/server/auth";
 import { getPool } from "@/lib/server/db";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
-import {
-  cancelSubscription,
-  pauseSubscription,
-  reactivateSubscription,
-  simulateSubscriptionScenario,
-  updatePaymentMethod,
-  updateSubscriptionPlan,
-} from "@/lib/server/subscription-core";
+import { simulateSubscriptionScenario } from "@/lib/server/subscription-core";
+import { getPaddleClient } from "@/lib/server/paddle";
 
 const manageActionSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("portal") }),
   z.object({
     action: z.literal("change_plan"),
-    planCode: z.enum(["pilot", "pro", "enterprise"]),
+    planCode: z.enum(["pilot", "starter", "pro", "advanced", "enterprise"]),
     billingInterval: z.enum(["month", "year"]).default("month"),
   }),
   z.object({
@@ -72,79 +67,51 @@ export async function POST(request: Request) {
     const body = await request.json();
     const input = manageActionSchema.parse(body);
 
+    if (input.action !== "portal" && (process.env.NODE_ENV === "production" || input.action !== "simulate_scenario")) {
+      return NextResponse.json(
+        { error: "Subscription changes must be completed in Paddle's secure customer portal. Use Paddle checkout to start or change a plan." },
+        { status: 409 },
+      );
+    }
+    if (input.action === "portal") {
+      const billing = await getPool().query<{
+        customer_id: string;
+        subscription_ids: string[];
+      }>(
+        "select c.customer_id, coalesce(array_agg(s.subscription_id) filter (where s.subscription_id is not null), '{}') as subscription_ids " +
+          "from customers c left join subscriptions s on s.customer_id = c.customer_id and s.organization_id = c.organization_id " +
+          "where c.organization_id = $1 group by c.customer_id order by c.customer_id limit 2",
+        [operator.organizationId],
+      );
+      const account = billing.rows[0];
+      if (!account?.customer_id) {
+        return NextResponse.json({ error: "No Paddle billing account exists for this workspace yet." }, { status: 409 });
+      }
+      if (billing.rows.length > 1) {
+        return NextResponse.json({ error: "Multiple Paddle customers are linked to this workspace; support must reconcile the billing records." }, { status: 409 });
+      }
+      const portal = await getPaddleClient().customerPortalSessions.create(
+        account.customer_id,
+        account.subscription_ids,
+      );
+      return NextResponse.json({ success: true, url: portal.urls.general.overview });
+    }
+
+    if (input.action !== "simulate_scenario") {
+      return NextResponse.json({ error: "Unsupported subscription action." }, { status: 400 });
+    }
     const pool = getPool();
     const client = await pool.connect();
     try {
       await client.query("begin");
-
-      let updatedSubscription;
-
-      switch (input.action) {
-        case "change_plan":
-          updatedSubscription = await updateSubscriptionPlan(client, {
-            organizationId: operator.organizationId,
-            planCode: input.planCode,
-            billingInterval: input.billingInterval,
-            operatorId: operator.id,
-            actorEmail: operator.email,
-          });
-          break;
-
-        case "cancel":
-          updatedSubscription = await cancelSubscription(client, {
-            organizationId: operator.organizationId,
-            immediately: input.immediately,
-            reason: input.reason,
-            operatorId: operator.id,
-            actorEmail: operator.email,
-          });
-          break;
-
-        case "reactivate":
-        case "resume":
-          updatedSubscription = await reactivateSubscription(client, {
-            organizationId: operator.organizationId,
-            operatorId: operator.id,
-            actorEmail: operator.email,
-          });
-          break;
-
-        case "pause":
-          updatedSubscription = await pauseSubscription(client, {
-            organizationId: operator.organizationId,
-            pauseMonths: input.pauseMonths,
-            operatorId: operator.id,
-            actorEmail: operator.email,
-          });
-          break;
-
-        case "update_payment_method":
-          updatedSubscription = await updatePaymentMethod(client, {
-            organizationId: operator.organizationId,
-            cardBrand: input.cardBrand,
-            cardLast4: input.cardLast4,
-            cardExp: input.cardExp,
-            operatorId: operator.id,
-            actorEmail: operator.email,
-          });
-          break;
-
-        case "simulate_scenario":
-          updatedSubscription = await simulateSubscriptionScenario(client, {
-            organizationId: operator.organizationId,
-            scenarioKey: input.scenarioKey,
-            operatorId: operator.id,
-            actorEmail: operator.email,
-          });
-          break;
-      }
-
-      await client.query("commit");
-
-      return NextResponse.json({
-        success: true,
-        subscription: updatedSubscription,
+      const subscription = await simulateSubscriptionScenario(client, {
+        organizationId: operator.organizationId,
+        scenarioKey: input.scenarioKey,
+        operatorId: operator.id,
+        actorEmail: operator.email,
       });
+      await client.query("commit");
+      return NextResponse.json({ success: true, subscription });
     } catch (err) {
       await client.query("rollback").catch(() => undefined);
       throw err;

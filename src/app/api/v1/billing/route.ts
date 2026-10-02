@@ -5,6 +5,35 @@ import { getOrganizationPlan } from "@/lib/server/plan-limits";
 import { apiError } from "@/lib/server/http";
 import { operatorCan } from "@/lib/server/operator-roles";
 import { getSubscriptionDetails } from "@/lib/server/subscription-core";
+import { z } from "zod";
+import { createPaddleCheckout } from "@/lib/server/paddle";
+
+const checkoutSchema = z.object({
+  planCode: z.enum(["starter", "pro", "advanced", "enterprise"]),
+  billingInterval: z.enum(["month", "year"]).default("month"),
+});
+
+export async function POST(request: Request) {
+  try {
+    const operator = await getOperatorSession();
+    if (!operator) return NextResponse.json({ error: "Operator authentication required." }, { status: 401 });
+    if (!operatorCan(operator.role, "manage_operators")) {
+      return NextResponse.json({ error: "Admin role required to manage billing." }, { status: 403 });
+    }
+    const input = checkoutSchema.parse(await request.json());
+    const checkout = await createPaddleCheckout({
+      ...input,
+      organizationId: operator.organizationId,
+      operatorId: operator.id,
+      email: operator.email,
+      name: operator.organizationName || operator.email.split("@")[0],
+      requestOrigin: process.env.SENTINELOPS_PUBLIC_URL || new URL(request.url).origin,
+    });
+    return NextResponse.json({ success: true, url: checkout.checkoutUrl, provider: "paddle" });
+  } catch (error) {
+    return apiError(error);
+  }
+}
 
 export async function GET() {
   try {

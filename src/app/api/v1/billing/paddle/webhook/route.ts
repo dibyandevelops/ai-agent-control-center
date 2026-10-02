@@ -1,6 +1,5 @@
 import { handlePaddleWebhookRequest } from "@/lib/server/paddle-webhook-route";
 
-// Legacy Paddle destination path retained for existing vendor settings.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

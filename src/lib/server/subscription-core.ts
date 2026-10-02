@@ -111,10 +111,11 @@ export async function getSubscriptionDetails(
   );
 
   const org = orgResult.rows[0];
-  const planCode: PlanCode = (org?.plan_code && planCatalog[org.plan_code]) ? org.plan_code : "pro";
+  const planCode: PlanCode = (org?.plan_code && planCatalog[org.plan_code]) ? org.plan_code : "pilot";
   const plan = planCatalog[planCode];
 
   const billingResult = await client.query<{
+    provider: string;
     subscription_status: SubscriptionStatus;
     billing_interval: BillingInterval;
     current_period_ends_at: Date | null;
@@ -124,7 +125,7 @@ export async function getSubscriptionDetails(
     card_exp: string;
     invoices: MockInvoice[];
   }>(
-    `select subscription_status, billing_interval, current_period_ends_at, cancel_at_period_end, card_brand, card_last4, card_exp, invoices
+    `select provider, subscription_status, billing_interval, current_period_ends_at, cancel_at_period_end, card_brand, card_last4, card_exp, invoices
      from organization_billing_accounts
      where organization_id = $1`,
     [organizationId],
@@ -135,7 +136,7 @@ export async function getSubscriptionDetails(
   const billingInterval: BillingInterval = billing?.billing_interval || "month";
   
   let endsAt = billing?.current_period_ends_at ? billing.current_period_ends_at.toISOString() : null;
-  if (!endsAt && status === "active") {
+  if (!endsAt && status === "active" && billing?.provider !== "paddle") {
     const d = new Date();
     d.setDate(d.getDate() + 30);
     endsAt = d.toISOString();
@@ -143,17 +144,17 @@ export async function getSubscriptionDetails(
 
   const [expMonthStr, expYearStr] = (billing?.card_exp || "12/28").split("/");
   const paymentMethod: PaymentMethodInfo = {
-    brand: billing?.card_brand || "visa",
-    last4: billing?.card_last4 || "4242",
-    expMonth: Number(expMonthStr) || 12,
-    expYear: Number(`20${expYearStr}`) || 2028,
+    brand: billing?.provider === "paddle" ? (status === "not_configured" ? "—" : "Paddle") : billing?.card_brand || "visa",
+    last4: billing?.provider === "paddle" ? "" : billing?.card_last4 || "4242",
+    expMonth: billing?.provider === "paddle" ? 0 : Number(expMonthStr) || 12,
+    expYear: billing?.provider === "paddle" ? 0 : Number(`20${expYearStr}`) || 2028,
     funding: "credit",
   };
 
   const invoices: MockInvoice[] =
     billing?.invoices && Array.isArray(billing.invoices) && billing.invoices.length > 0
       ? billing.invoices
-      : generateDefaultInvoices(planCode, billingInterval);
+      : billing?.provider === "paddle" ? [] : generateDefaultInvoices(planCode, billingInterval);
 
   return {
     planCode,
