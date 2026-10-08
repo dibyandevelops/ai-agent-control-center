@@ -173,7 +173,10 @@ Before enabling live checkout:
 3. Add the matching Paddle API key, notification signing secret, client token,
    and six price IDs to the correct Vercel project/environment. Set both
    `PADDLE_ENVIRONMENT` and `NEXT_PUBLIC_PADDLE_ENVIRONMENT` to the same explicit
-   value (`sandbox` or `production`).
+   value (`sandbox` or `production`). Keep
+   `NEXT_PUBLIC_PADDLE_CHECKOUT_ENABLED=false` until seller verification and
+   website approval are complete; the pricing page can still display Paddle's
+   localized catalog prices while checkout is disabled.
 4. Add `www.sentinelops-ai.com` as the approved/default checkout domain in
    Paddle and set `SENTINELOPS_PUBLIC_URL=https://www.sentinelops-ai.com` in the
    production environment. Configure DNS and the Vercel domain first.

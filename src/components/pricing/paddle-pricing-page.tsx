@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Tier } from "@/lib/paddle-pricing";
 
 type BillingInterval = "month" | "year";
+const checkoutEnabled = process.env.NEXT_PUBLIC_PADDLE_CHECKOUT_ENABLED === "true";
 
 let paddlePromise: Promise<Paddle | undefined> | null = null;
 let initializedPaddleCustomerId: string | null | undefined;
@@ -155,7 +156,7 @@ export function PaddlePricingPage({
   }, [configurationError, countryCode, expectedEnvironment, paddleCustomerId, sessionLoaded, tiers]);
 
   const openCheckout = useCallback(async (priceId: string) => {
-    if (!paddle) return;
+    if (!checkoutEnabled || !paddle) return;
     setOpeningPriceId(priceId);
     setError(null);
     try {
@@ -240,12 +241,12 @@ export function PaddlePricingPage({
 
               <button
                 type="button"
-                disabled={!paddle || !formattedTotal || Boolean(error) || isOpening}
+                disabled={!checkoutEnabled || !paddle || !formattedTotal || Boolean(error) || isOpening}
                 onClick={() => void openCheckout(priceId)}
                 className={`mt-6 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${tier.featured ? "bg-sentinel-lime text-sentinel-canvas hover:brightness-110" : "border border-sentinel-line-strong bg-sentinel-canvas text-sentinel-text hover:border-sentinel-lime"}`}
               >
                 {isOpening ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-                {isOpening ? "Opening checkout…" : "Subscribe"}
+                {isOpening ? "Opening checkout…" : checkoutEnabled ? "Subscribe" : "Available after approval"}
               </button>
 
               <div className="mt-7 border-t border-sentinel-line pt-6">
@@ -266,7 +267,9 @@ export function PaddlePricingPage({
 
       <p className="mx-auto mt-8 flex max-w-3xl items-center justify-center gap-2 text-center text-xs leading-5 text-sentinel-muted">
         <ShieldCheck className="h-4 w-4 shrink-0 text-sentinel-lime" />
-        Secure checkout and local currency pricing are provided by Paddle.
+        {checkoutEnabled
+          ? "Secure checkout and local currency pricing are provided by Paddle."
+          : "Prices are provided by Paddle. Checkout will open after seller verification and domain approval."}
       </p>
     </section>
   );
