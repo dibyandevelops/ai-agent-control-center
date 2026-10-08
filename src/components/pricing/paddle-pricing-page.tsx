@@ -3,13 +3,14 @@
 import { Check, LoaderCircle, ShieldCheck, Sparkles } from "lucide-react";
 import { initializePaddle, type Environments, type Paddle } from "@paddle/paddle-js";
 import { useCallback, useEffect, useState } from "react";
-import { pricingTiers } from "@/lib/paddle-pricing";
+import type { Tier } from "@/lib/paddle-pricing";
 
 type BillingInterval = "month" | "year";
 
 let paddlePromise: Promise<Paddle | undefined> | null = null;
+let initializedPaddleCustomerId: string | null | undefined;
 
-function getConfiguredPaddle() {
+function getConfiguredPaddle(paddleCustomerId: string | null, expectedEnvironment: string | undefined) {
   const environment = process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT;
   const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
 
@@ -18,6 +19,9 @@ function getConfiguredPaddle() {
   }
   if (environment !== "sandbox" && environment !== "production") {
     throw new Error("NEXT_PUBLIC_PADDLE_ENVIRONMENT must be sandbox or production.");
+  }
+  if (expectedEnvironment !== environment) {
+    throw new Error("Paddle server and browser environments do not match. Configure both for the same account.");
   }
   if (!token) {
     throw new Error("NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is required. Create a client-side token in Paddle Authentication.");
@@ -30,19 +34,42 @@ function getConfiguredPaddle() {
   }
 
   if (!paddlePromise) {
+    const initialCustomerId = paddleCustomerId;
     paddlePromise = initializePaddle({
       environment: environment as Environments,
       token,
+      pwCustomer: initialCustomerId ? { id: initialCustomerId } : {},
+    }).then((paddle) => {
+      initializedPaddleCustomerId = initialCustomerId;
+      return paddle;
     });
   }
-  return paddlePromise;
+  return paddlePromise.then((paddle) => {
+    if (paddle && initializedPaddleCustomerId !== paddleCustomerId) {
+      paddle.Update({ pwCustomer: paddleCustomerId ? { id: paddleCustomerId } : {} });
+      initializedPaddleCustomerId = paddleCustomerId;
+    }
+    return paddle;
+  });
 }
 
-export function PaddlePricingPage({ countryCode }: { countryCode?: string }) {
+export function PaddlePricingPage({
+  countryCode,
+  tiers,
+  expectedEnvironment,
+  configurationError,
+}: {
+  countryCode?: string;
+  tiers: Tier[];
+  expectedEnvironment?: string;
+  configurationError?: string;
+}) {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("month");
   const [paddle, setPaddle] = useState<Paddle>();
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [customerEmail, setCustomerEmail] = useState("");
+  const [paddleCustomerId, setPaddleCustomerId] = useState<string | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openingPriceId, setOpeningPriceId] = useState<string | null>(null);
@@ -53,14 +80,24 @@ export function PaddlePricingPage({ countryCode }: { countryCode?: string }) {
     void fetch("/api/v1/session", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) return null;
-        return response.json() as Promise<{ authenticated?: boolean; operator?: { email?: string } | null }>;
+        return response.json() as Promise<{
+          authenticated?: boolean;
+          operator?: { email?: string } | null;
+          paddleCustomerId?: string | null;
+        }>;
       })
       .then((session) => {
         if (active && session?.authenticated && session.operator?.email) {
           setCustomerEmail(session.operator.email);
         }
+        if (active) {
+          setPaddleCustomerId(session?.authenticated ? session.paddleCustomerId ?? null : null);
+          setSessionLoaded(true);
+        }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (active) setSessionLoaded(true);
+      });
 
     return () => {
       active = false;
@@ -71,15 +108,20 @@ export function PaddlePricingPage({ countryCode }: { countryCode?: string }) {
     let active = true;
 
     async function loadPrices() {
+      if (!sessionLoaded) return;
       setLoading(true);
       setError(null);
       try {
-        const configuredPaddle = await getConfiguredPaddle();
+        if (configurationError) throw new Error(configurationError);
+        if (tiers.some((tier) => !tier.priceId.month || !tier.priceId.year)) {
+          throw new Error("Paddle price IDs are not configured for every plan and billing interval.");
+        }
+        const configuredPaddle = await getConfiguredPaddle(paddleCustomerId, expectedEnvironment);
         if (!configuredPaddle) throw new Error("Paddle.js could not be initialized.");
         if (!active) return;
         setPaddle(configuredPaddle);
 
-        const items = pricingTiers.flatMap((tier) => [
+        const items = tiers.flatMap((tier) => [
           { priceId: tier.priceId.month, quantity: 1 },
           { priceId: tier.priceId.year, quantity: 1 },
         ]);
@@ -110,7 +152,7 @@ export function PaddlePricingPage({ countryCode }: { countryCode?: string }) {
     return () => {
       active = false;
     };
-  }, [countryCode]);
+  }, [configurationError, countryCode, expectedEnvironment, paddleCustomerId, sessionLoaded, tiers]);
 
   const openCheckout = useCallback(async (priceId: string) => {
     if (!paddle) return;
@@ -176,7 +218,7 @@ export function PaddlePricingPage({ countryCode }: { countryCode?: string }) {
       )}
 
       <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-3">
-        {pricingTiers.map((tier) => {
+        {tiers.map((tier) => {
           const priceId = tier.priceId[billingInterval];
           const formattedTotal = prices[priceId];
           const isOpening = openingPriceId === priceId;

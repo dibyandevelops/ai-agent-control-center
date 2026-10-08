@@ -28,11 +28,26 @@ export async function GET() {
           )
         : Promise.resolve({ rows: [{ count: "0" }] }),
     ]);
+    let paddleCustomerId: string | null = null;
+    if (operator && databaseConfigured) {
+      const customers = await getPool().query<{ customer_id: string }>(
+        `select customer_id from customers
+          where organization_id = $1 and left(customer_id, 4) = 'ctm_'
+          order by updated_at desc limit 2`,
+        [operator.organizationId],
+      );
+      // Only expose an unambiguous Paddle customer identity resolved from the
+      // authenticated workspace. Never accept a customer ID from the browser.
+      if (customers.rows.length === 1) {
+        paddleCustomerId = customers.rows[0].customer_id;
+      }
+    }
     return NextResponse.json({
       authenticated: Boolean(operator),
       databaseConfigured,
       operatorAccountsConfigured: Number(countResult.rows[0]?.count ?? 0) > 0,
       operator,
+      paddleCustomerId,
     });
   } catch (error) {
     return apiError(error);

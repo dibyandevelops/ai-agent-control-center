@@ -167,25 +167,27 @@ Before enabling live checkout:
 1. Complete Paddle's seller onboarding and verify the payout method with Paddle.
    Seller approval and Nepal payout eligibility are controlled by Paddle.
 2. The `/pricing` page uses Starter, Pro, and Advanced monthly/annual catalog
-   prices. Keep the matching sandbox price IDs in `src/lib/paddle-pricing.ts`
-   (optional server-side overrides are listed in `.env.example`).
-3. Add a Paddle sandbox API key and price IDs to the Vercel environment. Set
-   `PADDLE_ENVIRONMENT=sandbox` while validating; switch to `production` and use
-   production credentials/price IDs only after a successful sandbox run.
-4. Add `https://sentinelops-ai.com` as the approved/default checkout domain in
-   Paddle and set `SENTINELOPS_PUBLIC_URL=https://sentinelops-ai.com` in the
+   prices. Configure all six `PADDLE_*_PRICE_ID` values for the same account
+   named by `PADDLE_ENVIRONMENT`; they are deliberately not hard-coded or
+   silently defaulted. Use sandbox IDs in staging and live IDs in production.
+3. Add the matching Paddle API key, notification signing secret, client token,
+   and six price IDs to the correct Vercel project/environment. Set both
+   `PADDLE_ENVIRONMENT` and `NEXT_PUBLIC_PADDLE_ENVIRONMENT` to the same explicit
+   value (`sandbox` or `production`).
+4. Add `www.sentinelops-ai.com` as the approved/default checkout domain in
+   Paddle and set `SENTINELOPS_PUBLIC_URL=https://www.sentinelops-ai.com` in the
    production environment. Configure DNS and the Vercel domain first.
 5. In the Paddle **sandbox** dashboard, go to **Developer tools → Notifications**
    and create a destination pointing at
-   `https://sentinelops-ai.com/api/v1/billing/paddle/webhook`. Subscribe to
+   `https://www.sentinelops-ai.com/api/v1/billing/paddle/webhook`. Subscribe to
    `customer.created`, `customer.updated`, `subscription.created`,
    `subscription.updated`, `subscription.canceled`, `subscription.trialing`,
    `subscription.activated`, `subscription.past_due`, `subscription.paused`,
    `subscription.resumed`, and `transaction.completed`.
    Copy that destination's notification signing secret into
-   `PADDLE_WEBHOOK_SECRET` (it is not the API key). No Paddle MCP is connected,
-   so this dashboard step must be completed by an account administrator. The
-   old `/api/v1/billing/dodopayments/webhook` URL remains as a compatibility
+   `PADDLE_WEBHOOK_SECRET` (it is not the API key). Create a separate destination
+   in live after switching environments; never reuse the sandbox signing secret.
+   The old `/api/v1/billing/dodopayments/webhook` URL remains as a compatibility
    alias for any already-configured destination.
 
 Required environment values are listed in `.env.example`. Keep the API key and
@@ -202,7 +204,7 @@ Advanced sandbox catalog prices, including country overrides. Configure
 open Paddle **Checkout → Checkout settings** and set the default payment link to
 the sandbox checkout page for this app (use `http://localhost:3000` for local
 testing). For live checkout, use a real approved domain such as
-`https://sentinelops-ai.com`, never localhost.
+`https://www.sentinelops-ai.com`, never localhost.
 
 ## Audit evidence export
 

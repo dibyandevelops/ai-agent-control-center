@@ -1,6 +1,23 @@
 import { LandingHeader } from "@/components/landing/landing-header";
 import { LandingFooter } from "@/components/landing/landing-footer";
 
+function renderLinkedText(text: string) {
+  return text.split(/(https?:\/\/[^\s)]+)/g).map((part, index) => {
+    if (!part.startsWith("https://") && !part.startsWith("http://")) return part;
+    return (
+      <a
+        key={`${part}-${index}`}
+        className="text-sentinel-lime underline underline-offset-2"
+        href={part}
+        rel="noreferrer"
+        target="_blank"
+      >
+        {part}
+      </a>
+    );
+  });
+}
+
 export function PublicDocument({
   title,
   updated,
@@ -34,7 +51,7 @@ export function PublicDocument({
                   {section.title}
                 </h2>
                 <p className="mt-3 whitespace-pre-line text-xs sm:text-sm leading-relaxed text-sentinel-muted">
-                  {section.body}
+                  {renderLinkedText(section.body)}
                 </p>
               </section>
             ))}
@@ -43,9 +60,9 @@ export function PublicDocument({
             Questions? Contact{" "}
             <a
               className="font-semibold text-sentinel-lime hover:underline"
-              href="mailto:security@sentinelops.ai"
+              href="mailto:cs@sentinelops-ai.com"
             >
-              security@sentinelops.ai
+              cs@sentinelops-ai.com
             </a>
             .
           </p>
