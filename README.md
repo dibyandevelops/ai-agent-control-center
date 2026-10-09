@@ -155,28 +155,31 @@ automatically bypasses Turnstile; staging and production continue to enforce it.
 
 ## Paddle subscriptions
 
-Paddle is the only enabled paid checkout provider. Sign-up always creates a
-Pilot workspace; paid access is granted only for a verified Paddle subscription
-in `active` or `trialing` status. `paused`, `past_due`, and `canceled` deny paid
-access. A scheduled cancellation or pause does not revoke access before Paddle
-reports the effective status. Apply database migrations through
+Paddle billing integration is retained, but paid checkout is currently disabled
+while SentinelOps offers a free Pilot. Sign-up creates a Pilot workspace; paid
+access is granted only for a verified Paddle subscription in `active` or
+`trialing` status. `paused`, `past_due`, and `canceled` deny paid access. A
+scheduled cancellation or pause does not revoke access before Paddle reports
+the effective status. Apply database migrations through
 `database/migrations/039_paddle_fulfillment.sql` before deploying this flow.
 
 Before enabling live checkout:
 
 1. Complete Paddle's seller onboarding and verify the payout method with Paddle.
    Seller approval and Nepal payout eligibility are controlled by Paddle.
-2. The `/pricing` page uses Starter, Pro, and Advanced monthly/annual catalog
-   prices. Configure all six `PADDLE_*_PRICE_ID` values for the same account
-   named by `PADDLE_ENVIRONMENT`; they are deliberately not hard-coded or
-   silently defaulted. Use sandbox IDs in staging and live IDs in production.
+2. The public `/pricing` page currently offers the free Pilot and labels
+   Starter, Pro, and Advanced as planned, unavailable offerings. It does not
+   initialize Paddle or open checkout. Before relaunching billing, configure
+   all six `PADDLE_*_PRICE_ID` values for the same account named by
+   `PADDLE_ENVIRONMENT`; they are deliberately not hard-coded or silently
+   defaulted. Use sandbox IDs in staging and live IDs in production.
 3. Add the matching Paddle API key, notification signing secret, client token,
    and six price IDs to the correct Vercel project/environment. Set both
    `PADDLE_ENVIRONMENT` and `NEXT_PUBLIC_PADDLE_ENVIRONMENT` to the same explicit
    value (`sandbox` or `production`). Keep
    `NEXT_PUBLIC_PADDLE_CHECKOUT_ENABLED=false` until seller verification and
-   website approval are complete; the pricing page can still display Paddle's
-   localized catalog prices while checkout is disabled.
+   website approval are complete. The public pricing page does not load Paddle
+   while free-pilot mode is active.
 4. Add `www.sentinelops-ai.com` as the approved/default checkout domain in
    Paddle and set `SENTINELOPS_PUBLIC_URL=https://www.sentinelops-ai.com` in the
    production environment. Configure DNS and the Vercel domain first.
@@ -200,10 +203,13 @@ production. Billing changes and payment-method updates for paid workspaces use
 Paddle's hosted customer portal. Verify purchases with Paddle sandbox cards
 before switching the environment to production.
 
-The public `/pricing` page uses Paddle.js to preview the Starter, Pro, and
-Advanced sandbox catalog prices, including country overrides. Configure
+When paid checkout is intentionally relaunched, the public `/pricing` page can
+again use Paddle.js to preview the Starter, Pro, and Advanced catalog prices,
+including country overrides. Until then, keep
 `NEXT_PUBLIC_PADDLE_ENVIRONMENT=sandbox` and a `test_` client-side token in
-`.env.local`; the server API key remains server-only. To test sandbox checkout,
+staging before re-enabling the Paddle pricing component; leave checkout disabled
+until the release is approved. The server API key remains server-only. To test
+sandbox checkout,
 open Paddle **Checkout → Checkout settings** and set the default payment link to
 the sandbox checkout page for this app (use `http://localhost:3000` for local
 testing). For live checkout, use a real approved domain such as
