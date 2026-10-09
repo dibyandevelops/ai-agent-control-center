@@ -3,7 +3,7 @@ import type { Agent, Approval, AuditEvent } from "@/lib/types";
 import { calculateOverviewMetrics } from "./use-overview-metrics";
 import { calculateRiskPosture } from "./use-risk-posture";
 import { chartMaximum } from "./use-activity-telemetry";
-import { OVERVIEW_QUERY_KEY } from "./use-overview-query";
+import { OVERVIEW_QUERY_KEY, resolveOverviewApprovals } from "./use-overview-query";
 
 const sampleAgents: Agent[] = [
   {
@@ -96,6 +96,13 @@ const sampleAudit: AuditEvent[] = [
 describe("Overview Custom Hooks & Query Constants", () => {
   it("defines standard query keys for React Query overview caching", () => {
     expect(OVERVIEW_QUERY_KEY).toEqual(["control-center", "overview"]);
+  });
+
+  it("does not resurrect a decided approval from a stale query cache", () => {
+    const staleCachedApprovals = [sampleApprovals[0]];
+
+    expect(resolveOverviewApprovals([], staleCachedApprovals)).toEqual([]);
+    expect(resolveOverviewApprovals(undefined, staleCachedApprovals)).toEqual(staleCachedApprovals);
   });
 
   it("calculates fleet spend, health ratio, and policy compliance accurately in calculateOverviewMetrics", () => {
