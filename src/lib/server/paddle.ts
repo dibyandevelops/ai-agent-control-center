@@ -10,20 +10,13 @@ import {
   type TransactionNotification,
 } from "@paddle/paddle-node-sdk";
 import type { PoolClient } from "pg";
-import { pricingTiers } from "@/lib/paddle-pricing";
+import { readPaddlePriceIds } from "@/lib/paddle-pricing";
 import { planCatalog, type PlanCode } from "@/lib/plan-catalog";
 import { appendAuditEvent } from "./audit";
 import { subscriptionGrantsPaidAccess } from "./paddle-access";
 
 type PaidPlanCode = Exclude<PlanCode, "pilot">;
 type BillingInterval = "month" | "year";
-
-const tierPriceIds = Object.fromEntries(
-  pricingTiers.flatMap((tier) => [
-    [tier.name.toLowerCase() + "_month", tier.priceId.month],
-    [tier.name.toLowerCase() + "_year", tier.priceId.year],
-  ]),
-) as Record<string, string>;
 
 export function getPaddleConfig() {
   const environment = process.env.PADDLE_ENVIRONMENT;
@@ -33,17 +26,18 @@ export function getPaddleConfig() {
   if (environment !== "sandbox" && environment !== "production") {
     throw new Error("PADDLE_ENVIRONMENT must be sandbox or production.");
   }
+  const configuredPriceIds = readPaddlePriceIds((name) => process.env[name]);
   return {
     environment,
     apiKey: process.env.PADDLE_API_KEY || "",
     webhookSecret: process.env.PADDLE_WEBHOOK_SECRET || "",
     priceIds: {
-      starter_month: process.env.PADDLE_STARTER_MONTHLY_PRICE_ID || tierPriceIds.starter_month,
-      starter_year: process.env.PADDLE_STARTER_ANNUAL_PRICE_ID || tierPriceIds.starter_year,
-      pro_month: process.env.PADDLE_PRO_MONTHLY_PRICE_ID || tierPriceIds.pro_month,
-      pro_year: process.env.PADDLE_PRO_ANNUAL_PRICE_ID || tierPriceIds.pro_year,
-      advanced_month: process.env.PADDLE_ADVANCED_MONTHLY_PRICE_ID || tierPriceIds.advanced_month,
-      advanced_year: process.env.PADDLE_ADVANCED_ANNUAL_PRICE_ID || tierPriceIds.advanced_year,
+      starter_month: configuredPriceIds.starter_month,
+      starter_year: configuredPriceIds.starter_year,
+      pro_month: configuredPriceIds.pro_month,
+      pro_year: configuredPriceIds.pro_year,
+      advanced_month: configuredPriceIds.advanced_month,
+      advanced_year: configuredPriceIds.advanced_year,
       enterprise_month: process.env.PADDLE_ENTERPRISE_MONTHLY_PRICE_ID || "",
       enterprise_year: process.env.PADDLE_ENTERPRISE_ANNUAL_PRICE_ID || "",
     } as Record<string, string>,

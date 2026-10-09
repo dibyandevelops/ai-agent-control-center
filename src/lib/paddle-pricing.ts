@@ -1,12 +1,42 @@
+export type BillingInterval = "month" | "year";
+export type PaidTierName = "Starter" | "Pro" | "Advanced";
+export type PaddlePriceKey =
+  | "starter_month"
+  | "starter_year"
+  | "pro_month"
+  | "pro_year"
+  | "advanced_month"
+  | "advanced_year";
+
 export interface Tier {
-  name: "Starter" | "Pro" | "Advanced";
+  name: PaidTierName;
   description: string;
   features: string[];
   priceId: { month: string; year: string };
   featured?: boolean;
 }
 
-export const pricingTiers: Tier[] = [
+export type PaddlePriceIds = Record<PaddlePriceKey, string>;
+
+export const paddlePriceEnvironmentVariables: Record<PaddlePriceKey, string> = {
+  starter_month: "PADDLE_STARTER_MONTHLY_PRICE_ID",
+  starter_year: "PADDLE_STARTER_ANNUAL_PRICE_ID",
+  pro_month: "PADDLE_PRO_MONTHLY_PRICE_ID",
+  pro_year: "PADDLE_PRO_ANNUAL_PRICE_ID",
+  advanced_month: "PADDLE_ADVANCED_MONTHLY_PRICE_ID",
+  advanced_year: "PADDLE_ADVANCED_ANNUAL_PRICE_ID",
+};
+
+export function readPaddlePriceIds(readEnvironmentVariable: (name: string) => string | undefined): PaddlePriceIds {
+  return Object.fromEntries(
+    Object.entries(paddlePriceEnvironmentVariables).map(([key, variable]) => [
+      key,
+      readEnvironmentVariable(variable)?.trim() ?? "",
+    ]),
+  ) as PaddlePriceIds;
+}
+
+const tierDefinitions: Omit<Tier, "priceId">[] = [
   {
     name: "Starter",
     description: "The essentials for bringing a small agent team under control.",
@@ -17,10 +47,6 @@ export const pricingTiers: Tier[] = [
       "90-day cryptographic audit history",
       "3 HTTPS webhook destinations",
     ],
-    priceId: {
-      month: "pri_01m3xps84v5bmeydfkge6qbkdk",
-      year: "pri_01m3xpvj4jpbhm0qhx52zkz06k",
-    },
   },
   {
     name: "Pro",
@@ -34,10 +60,6 @@ export const pricingTiers: Tier[] = [
       "Multi-approver quorum and delegation",
       "Instant quarantine killswitch",
     ],
-    priceId: {
-      month: "pri_01m3xpz1d5220bzss50bnjn9nq",
-      year: "pri_01m3xq0tr47wh6j4j0s9n21hdk",
-    },
     featured: true,
   },
   {
@@ -52,9 +74,18 @@ export const pricingTiers: Tier[] = [
       "Dedicated private VPC gateway",
       "Custom SLA and dedicated solutions architect",
     ],
-    priceId: {
-      month: "pri_01m3xq28y7h835zwh17zx2rk9t",
-      year: "pri_01m3xq30amv6bb99cag5gr4r31",
-    },
   },
 ];
+
+export function getPricingTiers(priceIds: PaddlePriceIds): Tier[] {
+  return tierDefinitions.map((tier) => {
+    const key = tier.name.toLowerCase() as Lowercase<PaidTierName>;
+    return {
+      ...tier,
+      priceId: {
+        month: priceIds[`${key}_month` as PaddlePriceKey],
+        year: priceIds[`${key}_year` as PaddlePriceKey],
+      },
+    };
+  });
+}

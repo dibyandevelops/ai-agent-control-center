@@ -5,7 +5,7 @@ import type { Agent, Approval, AuditEvent, OperatorIdentity } from "@/lib/types"
 import { chartData } from "@/lib/demo-data";
 
 // Custom Hooks for React Query & Telemetry
-import { useOverviewQuery } from "@/hooks/use-overview-query";
+import { resolveOverviewApprovals, useOverviewQuery } from "@/hooks/use-overview-query";
 import { useApprovalMutation } from "@/hooks/use-approval-mutation";
 import { useScrollSync } from "@/hooks/use-scroll-sync";
 
@@ -80,7 +80,7 @@ export function OverviewView({
 
   // Fallback cleanly between query state and props
   const agents = queryAgents?.length ? queryAgents : (propAgents ?? []);
-  const approvals = queryApprovals ?? propApprovals ?? [];
+  const approvals = resolveOverviewApprovals(propApprovals, queryApprovals);
   const audit = queryAudit?.length ? queryAudit : (propAudit ?? []);
   const operator = queryOperator ?? propOperator ?? null;
   const live = queryIsLive ?? propLive ?? false;

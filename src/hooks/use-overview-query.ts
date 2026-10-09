@@ -33,6 +33,15 @@ export interface OverviewDataPayload {
 
 export const OVERVIEW_QUERY_KEY = ["control-center", "overview"] as const;
 
+export function resolveOverviewApprovals(
+  workspaceApprovals: Approval[] | undefined,
+  queryApprovals: Approval[] | undefined,
+) {
+  // The dashboard owns approval mutations. Prefer that state, including an
+  // empty list, so a stale background query cannot resurrect a decided card.
+  return workspaceApprovals ?? queryApprovals ?? [];
+}
+
 export async function fetchOverviewData({
   signal,
 }: { signal?: AbortSignal } = {}): Promise<OverviewDataPayload> {

@@ -3,13 +3,15 @@
 import { Check, LoaderCircle, ShieldCheck, Sparkles } from "lucide-react";
 import { initializePaddle, type Environments, type Paddle } from "@paddle/paddle-js";
 import { useCallback, useEffect, useState } from "react";
-import { pricingTiers } from "@/lib/paddle-pricing";
+import type { Tier } from "@/lib/paddle-pricing";
 
 type BillingInterval = "month" | "year";
+const checkoutEnabled = process.env.NEXT_PUBLIC_PADDLE_CHECKOUT_ENABLED === "true";
 
 let paddlePromise: Promise<Paddle | undefined> | null = null;
+let initializedPaddleCustomerId: string | null | undefined;
 
-function getConfiguredPaddle() {
+function getConfiguredPaddle(paddleCustomerId: string | null, expectedEnvironment: string | undefined) {
   const environment = process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT;
   const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
 
@@ -18,6 +20,9 @@ function getConfiguredPaddle() {
   }
   if (environment !== "sandbox" && environment !== "production") {
     throw new Error("NEXT_PUBLIC_PADDLE_ENVIRONMENT must be sandbox or production.");
+  }
+  if (expectedEnvironment !== environment) {
+    throw new Error("Paddle server and browser environments do not match. Configure both for the same account.");
   }
   if (!token) {
     throw new Error("NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is required. Create a client-side token in Paddle Authentication.");
@@ -30,19 +35,42 @@ function getConfiguredPaddle() {
   }
 
   if (!paddlePromise) {
+    const initialCustomerId = paddleCustomerId;
     paddlePromise = initializePaddle({
       environment: environment as Environments,
       token,
+      pwCustomer: initialCustomerId ? { id: initialCustomerId } : {},
+    }).then((paddle) => {
+      initializedPaddleCustomerId = initialCustomerId;
+      return paddle;
     });
   }
-  return paddlePromise;
+  return paddlePromise.then((paddle) => {
+    if (paddle && initializedPaddleCustomerId !== paddleCustomerId) {
+      paddle.Update({ pwCustomer: paddleCustomerId ? { id: paddleCustomerId } : {} });
+      initializedPaddleCustomerId = paddleCustomerId;
+    }
+    return paddle;
+  });
 }
 
-export function PaddlePricingPage({ countryCode }: { countryCode?: string }) {
+export function PaddlePricingPage({
+  countryCode,
+  tiers,
+  expectedEnvironment,
+  configurationError,
+}: {
+  countryCode?: string;
+  tiers: Tier[];
+  expectedEnvironment?: string;
+  configurationError?: string;
+}) {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("month");
   const [paddle, setPaddle] = useState<Paddle>();
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [customerEmail, setCustomerEmail] = useState("");
+  const [paddleCustomerId, setPaddleCustomerId] = useState<string | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openingPriceId, setOpeningPriceId] = useState<string | null>(null);
@@ -53,14 +81,24 @@ export function PaddlePricingPage({ countryCode }: { countryCode?: string }) {
     void fetch("/api/v1/session", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) return null;
-        return response.json() as Promise<{ authenticated?: boolean; operator?: { email?: string } | null }>;
+        return response.json() as Promise<{
+          authenticated?: boolean;
+          operator?: { email?: string } | null;
+          paddleCustomerId?: string | null;
+        }>;
       })
       .then((session) => {
         if (active && session?.authenticated && session.operator?.email) {
           setCustomerEmail(session.operator.email);
         }
+        if (active) {
+          setPaddleCustomerId(session?.authenticated ? session.paddleCustomerId ?? null : null);
+          setSessionLoaded(true);
+        }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (active) setSessionLoaded(true);
+      });
 
     return () => {
       active = false;
@@ -71,15 +109,20 @@ export function PaddlePricingPage({ countryCode }: { countryCode?: string }) {
     let active = true;
 
     async function loadPrices() {
+      if (!sessionLoaded) return;
       setLoading(true);
       setError(null);
       try {
-        const configuredPaddle = await getConfiguredPaddle();
+        if (configurationError) throw new Error(configurationError);
+        if (tiers.some((tier) => !tier.priceId.month || !tier.priceId.year)) {
+          throw new Error("Paddle price IDs are not configured for every plan and billing interval.");
+        }
+        const configuredPaddle = await getConfiguredPaddle(paddleCustomerId, expectedEnvironment);
         if (!configuredPaddle) throw new Error("Paddle.js could not be initialized.");
         if (!active) return;
         setPaddle(configuredPaddle);
 
-        const items = pricingTiers.flatMap((tier) => [
+        const items = tiers.flatMap((tier) => [
           { priceId: tier.priceId.month, quantity: 1 },
           { priceId: tier.priceId.year, quantity: 1 },
         ]);
@@ -110,10 +153,10 @@ export function PaddlePricingPage({ countryCode }: { countryCode?: string }) {
     return () => {
       active = false;
     };
-  }, [countryCode]);
+  }, [configurationError, countryCode, expectedEnvironment, paddleCustomerId, sessionLoaded, tiers]);
 
   const openCheckout = useCallback(async (priceId: string) => {
-    if (!paddle) return;
+    if (!checkoutEnabled || !paddle) return;
     setOpeningPriceId(priceId);
     setError(null);
     try {
@@ -176,7 +219,7 @@ export function PaddlePricingPage({ countryCode }: { countryCode?: string }) {
       )}
 
       <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-3">
-        {pricingTiers.map((tier) => {
+        {tiers.map((tier) => {
           const priceId = tier.priceId[billingInterval];
           const formattedTotal = prices[priceId];
           const isOpening = openingPriceId === priceId;
@@ -198,12 +241,12 @@ export function PaddlePricingPage({ countryCode }: { countryCode?: string }) {
 
               <button
                 type="button"
-                disabled={!paddle || !formattedTotal || Boolean(error) || isOpening}
+                disabled={!checkoutEnabled || !paddle || !formattedTotal || Boolean(error) || isOpening}
                 onClick={() => void openCheckout(priceId)}
                 className={`mt-6 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${tier.featured ? "bg-sentinel-lime text-sentinel-canvas hover:brightness-110" : "border border-sentinel-line-strong bg-sentinel-canvas text-sentinel-text hover:border-sentinel-lime"}`}
               >
                 {isOpening ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-                {isOpening ? "Opening checkout…" : "Subscribe"}
+                {isOpening ? "Opening checkout…" : checkoutEnabled ? "Subscribe" : "Available after approval"}
               </button>
 
               <div className="mt-7 border-t border-sentinel-line pt-6">
@@ -224,7 +267,9 @@ export function PaddlePricingPage({ countryCode }: { countryCode?: string }) {
 
       <p className="mx-auto mt-8 flex max-w-3xl items-center justify-center gap-2 text-center text-xs leading-5 text-sentinel-muted">
         <ShieldCheck className="h-4 w-4 shrink-0 text-sentinel-lime" />
-        Secure checkout and local currency pricing are provided by Paddle.
+        {checkoutEnabled
+          ? "Secure checkout and local currency pricing are provided by Paddle."
+          : "Prices are provided by Paddle. Checkout will open after seller verification and domain approval."}
       </p>
     </section>
   );
